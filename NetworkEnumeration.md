@@ -1,0 +1,89 @@
+# Enumeration
+This phase aims to improve our knowledge and understanding of the technologies, protocols, and how they work and learn to deal with new information and adapt to our already acquired knowledge.
+
+When scanning and inspecting, we look exactly for these two possibilities. Most of the information we get comes from misconfigurations or neglect of security for the respective services. Misconfigurations are either the result of ignorance or a wrong security mindset. For example, if the administrator only relies on the firewall, Group Policy Objects (GPOs), and continuous updates, it is often not enough to secure the network.
+
+Manual enumeration is a critical component. Many scanning tools simplify and accelerate the process.
+
+# Introduction to NMAP
+Network Mapper (Nmap) is an open-source network analysis and security auditing tool written in C, C++, Python, and Lua. It is designed to scan networks and identify which hosts are available on the network using raw packets, and services and applications, including the name and version, operating system.
+
+### Nmap Archietecture
+Nmap offers scans to find various results about our target
+1) Host Discovery
+2) Port Scanning
+3) Service Enumeration and detection
+4) Os Detection
+5) Scriptable communication with target (NSE)
+
+### Scan Techniques
+Nmap offers many different scanning techniques, making different types of connections and using differently structured packets to send.
+
+TCP-SYN scan (-sS) Sends packet with Flag SYN. Target Replies with SYN-ACK flag port is OPEN. Target replies with RST flag port is CLOSED. Target does not reply it is port is identified is FILTERED
+
+# Host Discovery
+
+Nmap offers techniques to confirm whether a system is alive on a network or not. Most effective host discovery method is ICMP ECHO requests.
+
+### Scan Network Range
+
+```Code
+nmap 10.129.2.0/24 -sn -oA tnet
+```
+This scan only works if firewall allows it.
+10.129.2.0/24 - Target network range
+-sn - disables port scanning
+-oA tnet - Stores the results in all formats starting with the name 'tnet'.
+
+#### Nmap scan with list 
+
+This can is to find the live targets in the provided list. (this may mean that the other hosts ignore the default ICMP echo requests because of their firewall configurations.)
+```code
+sudo nmap -sn -oA tnet -iL hosts.lst | grep for | cut -d" " -f5
+```
+-iL - Performs defined scans against targets in provided 'hosts.lst' list.
+
+#### Scan multiple IPs
+```code
+sudo nmap -sn -oA tnet 10.129.2.18 10.129.2.19 10.129.2.20
+```
+using respective octet
+```code
+sudo nmap -sn -oA tnet 10.129.2.18-20
+```
+If we disable port scan (-sn), Nmap automatically ping scan with ICMP Echo Requests (-PE). Target usally replies with ICMP reply if alive. Before Nmap sends ICMP request it could sent an ARP ping which will result in ARP reply. show packets sent and received (--packet-trace). To disable ARP ping (--disable-arp-ping).
+
+# Host and Port Scanning
+
+After figuring out system is live. We need more information on the system.
+1) Open ports and its services
+2) Service Versions and information from the Service
+3) Operation System
+
+| State           | Description                                                                                                           |
+|-----------------|-----------------------------------------------------------------------------------------------------------------------|
+| **open**        | This indicates that the connection to the scanned port has been established. These connections can be TCP connections, UDP datagrams as well as SCTP associations. |
+| **closed**      | When the port is shown as closed, the TCP protocol indicates that the packet we received back contains an RST flag. This scanning method can also be used to determine if our target is alive or not. |
+| **filtered**    | Nmap cannot correctly identify whether the scanned port is open or closed because either no response is returned from the target for the port or we get an error code from the target. |
+| **unfiltered**  | This state of a port only occurs during the TCP-ACK scan and means that the port is accessible, but it cannot be determined whether it is open or closed. |
+| **open|filtered** | If we do not get a response for a specific port, Nmap will set it to that state. This indicates that a firewall or packet filter may protect the port. |
+| **closed|filtered** | This state only occurs in the IP ID idle scans and indicates that it was impossible to determine if the scanned port is closed or filtered by a firewall. |
+
+### Discoverting Open TCP ports
+
+SYN scan (-sS) this default for root otherwise -sT will be performed. Define ports by (-p21) or range (-p21-445) or top ports (--top-ports=10) this is for most frequesnt used ports for scans,(-p-) is scan all ports.
+
+#### Scanning top 10 TCP ports
+```code
+sudo nmap 10.129.2.28 --top-ports=10
+```
+
+#### Nmap - Trace the Packets
+```code
+sudo nmap 10.129.2.28 -p 21 --packet-trace -Pn -n --disable-arp-ping
+```
+To have a clear view of the SYN scan, we disable the ICMP echo requests (-Pn), DNS resolution (-n), and ARP ping scan (--disable-arp-ping).
+
+### Connect Scan
+
+The Nmap TCP Connect Scan (-sT) uses the TCP three-way handshake to determine if a specific port on a target host is open or closed (establishes a full connection then sends to RST to kill connection). Sends SYN to target port. OPEN when recieves SYN-ACK and closed if RST packet. Connect scan is most accurate amd stealthy. Connect scan does not leave unfinished scans or unsent packets on the target host less likely tp get detected by IPS And IDS.

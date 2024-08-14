@@ -101,12 +101,7 @@ UDP port scan
 sudo nmap 10.129.2.28 -F -sU
 ```
 
-### Version Scan
 
-On OPEN ports using (-sV) to find version of service running on the port.
-```
-sudo nmap 10.129.2.28 -Pn -n --disable-arp-ping --packet-trace -p 445 --reason  -sV
-```
 # Saving Nmap Scans
 
 ### Different Formats 
@@ -133,8 +128,18 @@ xsltproc target.xml -o target.html
 
  It is essential to determine the application and its version as accurately as possible. Exact version number allows us to search for a more precise exploit. (-sV)  option (--stats-every=5s) Shows status of scan every 5 seconds.We can also increase the verbosity level (-v / -vv), which will show us the open ports directly when Nmap detects them.
 
+### Version Scan
+
+On OPEN ports using (-sV) to find version of service running on the port.
+```
+sudo nmap 10.129.2.28 -Pn -n --disable-arp-ping --packet-trace -p 445 --reason  -sV
+```
+
 ### Banner Grabbing
 
 Nmap looks at the banners of the scanned ports and prints them out. If it cannot identify versions through the banners, Nmap attempts to identify them through a signature-based matching system, but this significantly increases the scan's duration.
 
 Banner can be grabbed through successfully connecting to the service. You can use NETCAT (nc) to connect to client with specified port. Usually when u connect TCP is used (three-way handshake) then server sends PSH flag which indicateds server is sending data to you (usually banner at first). Then the you send the ACK flag to achknowledge data sent to you.
+```
+nc -nv 10.129.2.28 25
+```

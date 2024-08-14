@@ -128,3 +128,13 @@ Save nmap results in HTML
 ```
 xsltproc target.xml -o target.html
 ```
+
+# Service Enumeration
+
+ It is essential to determine the application and its version as accurately as possible. Exact version number allows us to search for a more precise exploit. (-sV)  option (--stats-every=5s) Shows status of scan every 5 seconds.We can also increase the verbosity level (-v / -vv), which will show us the open ports directly when Nmap detects them.
+
+### Banner Grabbing
+
+Nmap looks at the banners of the scanned ports and prints them out. If it cannot identify versions through the banners, Nmap attempts to identify them through a signature-based matching system, but this significantly increases the scan's duration.
+
+Banner can be grabbed through successfully connecting to the service. You can use NETCAT (nc) to connect to client with specified port. Usually when u connect TCP is used (three-way handshake) then server sends PSH flag which indicateds server is sending data to you (usually banner at first). Then the you send the ACK flag to achknowledge data sent to you.

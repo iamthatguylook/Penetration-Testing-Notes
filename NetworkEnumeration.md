@@ -84,6 +84,26 @@ sudo nmap 10.129.2.28 -p 21 --packet-trace -Pn -n --disable-arp-ping
 ```
 To have a clear view of the SYN scan, we disable the ICMP echo requests (-Pn), DNS resolution (-n), and ARP ping scan (--disable-arp-ping).
 
-### Connect Scan
+#### Connect Scan
 
 The Nmap TCP Connect Scan (-sT) uses the TCP three-way handshake to determine if a specific port on a target host is open or closed (establishes a full connection then sends to RST to kill connection). Sends SYN to target port. OPEN when recieves SYN-ACK and closed if RST packet. Connect scan is most accurate amd stealthy. Connect scan does not leave unfinished scans or unsent packets on the target host less likely tp get detected by IPS And IDS.
+
+### Filtered Ports
+
+Packets have been dropped or rejected due to firewall or certain restrictions (Target side). 
+
+### Discovering open UDP ports 
+
+UDP is a stateless protocol and does not require a three-way handshake like TCP. We do not receive any acknowledgment.Another disadvantage of this is that we often do not get a response back because Nmap sends empty datagrams to the scanned UDP ports, and we do not receive any response. So we cannot determine if the UDP packet has arrived at all or not. If the UDP port is open, we only get a response if the application is configured to do so. If we get an ICMP response with error code 3 (port unreachable), we know that the port is indeed closed. For all other ICMP responses, the scanned ports are marked as (open|filtered).
+
+UDP port scan 
+```
+sudo nmap 10.129.2.28 -F -sU
+```
+
+### Version Scan
+
+On OPEN ports using (-sV) to find version of service running on the port.
+```
+sudo nmap 10.129.2.28 -Pn -n --disable-arp-ping --packet-trace -p 445 --reason  -sV
+```

@@ -107,3 +107,24 @@ On OPEN ports using (-sV) to find version of service running on the port.
 ```
 sudo nmap 10.129.2.28 -Pn -n --disable-arp-ping --packet-trace -p 445 --reason  -sV
 ```
+# Saving Nmap Scans
+
+### Different Formats 
+
+1) Normal output (-oN) with the .nmap file extension
+2) Grepable output (-oG) with the .gnmap file extension
+3) XML output (-oX) with the .xml file extension
+ (-oA) For all formats
+
+Scan to save in all formats
+```
+sudo nmap 10.129.2.28 -p- -oA target
+```
+### Style sheets
+
+With the XML output, we can easily create HTML reports that are easy to read, even for non-technical people. This is later very useful for documentation, as it presents our results in a detailed and clear way. To convert the stored results from XML format to HTML, we can use the tool xsltproc.
+
+Save nmap results in HTML
+```
+xsltproc target.xml -o target.html
+```

@@ -200,3 +200,30 @@ sudo nmap 10.129.2.0/24 -F -oN tnet.T5 -T 5
 ```
 
 # Firewall and IDS/IPS Evasion
+
+Nmap bypasses using techniques like fragmentation,decoys,etc.
+
+### Firewall
+
+Firewall is security system based on specific ALLOW/DENY rules that decides how to handle connection based on rules.
+
+### IPS/IDS
+IDS scans the network for potential attacks, analyzes them, and reports any detected attacks. IPS complements IDS by taking specific defensive measures if a potential attack should have been detected. The analysis of such attacks is based on pattern matching and signatures. IPS prevents if signature is matched.
+
+IDS systems examine all connections between hosts. If the IDS finds packets containing the defined contents or specifications, the administrator is notified and takes appropriate action in the worst case.
+IPS systems take measures configured by the administrator independently to prevent potential attacks automatically. It is essential to know that IDS and IPS are different applications and that IPS serves as a complement to IDS.
+
+### Decoys
+Decoy scanning method (-D) With this method, Nmap generates various random IP addresses inserted into the IP header to disguise the origin of the packet sent. With this method, we can generate random (RND) a specific number (for example: 5) of IP addresses separated by a colon (:). Our real IP address is then randomly placed between the generated IP addresses. Decoys must be live.
+The spoofed packets are often filtered out by ISPs and routers, even though they come from the same network range. Therefore, we can also specify our VPS servers' IP addresses and use them in combination with "IP ID" manipulation in the IP headers to scan the target. Manually specify the source IP address (-S) to test if we get better results with this one.
+
+Scan using Decoys
+```
+sudo nmap 10.129.2.28 -p 80 -sS -Pn -n --disable-arp-ping --packet-trace -D RND:5
+```
+Scan by Using Different Source IP
+```
+sudo nmap 10.129.2.28 -n -Pn -p 445 -O -S 10.129.2.200 -e tun0
+```
+
+### DNS Proxying

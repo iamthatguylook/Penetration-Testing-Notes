@@ -143,3 +143,60 @@ Banner can be grabbed through successfully connecting to the service. You can us
 ```
 nc -nv 10.129.2.28 25
 ```
+# Nmap Scripting Engine
+
+Nmap Scripting Engine (NSE) is another handy feature of Nmap. It provides us with the possibility to create scripts in Lua for interaction with certain services, (-sC) default script.
+
+### Default Script
+```
+sudo nmap <target> -sC
+```
+### Specific Scripts Category
+```
+sudo nmap <target> --script <category>
+```
+### Defined Scripts
+```
+sudo nmap <target> --script <script-name>,<script-name>
+```
+### nmap aggressive scan (-A)
+This scans the target with multiple options as service detection (-sV), OS detection (-O), traceroute (--traceroute), and with the default NSE scripts (-sC).
+```
+sudo nmap 10.129.2.28 -p 80 -A
+```
+### Vulnerability Assessment
+The scripts used for the last scan interact with the webserver and its web application to find out more information about their versions and check various databases to see if there are known vulnerabilities.
+```
+nmap 10.129.2.28 -p 80 -sV --script vuln
+```
+# Performance
+
+Scanning performance is significant on large networks or low network bandwidth.
+
+### Nmap timeouts
+
+nmap sends packet to target and takes some time to recieve response from port(Round-Trip-Time - RTT)(--initial-rtt-timeout 50ms 	Sets the specified time value as initial RTT timeout). If RTT is reduced some hosts might be overlooked.
+
+nmap round trip scan
+```
+sudo nmap 10.129.2.0/24 -F --initial-rtt-timeout 50ms --max-rtt-timeout 100ms
+```
+
+### Nmap Max Retries
+
+This is retry rate of sent packets. (-F is top100 ports)
+```
+sudo nmap 10.129.2.0/24 -F --max-retries 0
+```
+
+### Rates
+If we know the network bandwidth, we can work with the rate of packets sent, which significantly speeds up our scans with Nmap. Minimum rate (--min-rate <number>) for sending packets.
+```
+sudo nmap 10.129.2.0/24 -F -oN tnet.minrate300 --min-rate 300
+```
+Nmap offers six different timing templates (-T <0-5>) for us to use. These values (0-5) determine the aggressiveness of our scans. If scan aggressive can be detected.
+```
+sudo nmap 10.129.2.0/24 -F -oN tnet.T5 -T 5
+```
+
+# Firewall and IDS/IPS Evasion

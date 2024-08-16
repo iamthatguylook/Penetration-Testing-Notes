@@ -227,3 +227,23 @@ sudo nmap 10.129.2.28 -n -Pn -p 445 -O -S 10.129.2.200 -e tun0
 ```
 
 ### DNS Proxying
+
+1) Default Behavior:
+ Nmap performs reverse DNS resolution by default to gather more information about the target.
+ DNS queries are typically made over UDP port 53.
+2) TCP Port 53 Usage:
+ Historically, TCP port 53 was used for DNS zone transfers and data transfers larger than 512 bytes. 
+ With the advent of IPv6 and DNSSEC, more DNS requests are now made via TCP port 53.
+3) Specifying DNS Servers:
+ Nmap allows specifying DNS servers using the --dns-server <ns>,<ns> option.
+ This is particularly useful in a demilitarized zone (DMZ) where company DNS servers are more trusted than external ones.
+4) Using TCP Port 53 as Source Port:
+ The --source-port option can be used to specify TCP port 53 for scans.
+ This can help bypass firewalls that trust traffic on this port, especially if IDS/IPS are not properly configured.
+5) Practical Applications:
+ Using trusted DNS servers in a DMZ to interact with internal network hosts.
+ Leveraging TCP port 53 to pass through firewalls and avoid detection by IDS/IPS.
+
+```
+sudo nmap 10.129.2.28 -p50000 -sS -Pn -n --disable-arp-ping --packet-trace --source-port 53
+```

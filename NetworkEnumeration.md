@@ -244,6 +244,7 @@ sudo nmap 10.129.2.28 -n -Pn -p 445 -O -S 10.129.2.200 -e tun0
  Using trusted DNS servers in a DMZ to interact with internal network hosts.
  Leveraging TCP port 53 to pass through firewalls and avoid detection by IDS/IPS.
 
+Change source port
 ```
 sudo nmap 10.129.2.28 -p50000 -sS -Pn -n --disable-arp-ping --packet-trace --source-port 53
 ```

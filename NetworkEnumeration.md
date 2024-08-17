@@ -248,3 +248,10 @@ Change source port
 ```
 sudo nmap 10.129.2.28 -p50000 -sS -Pn -n --disable-arp-ping --packet-trace --source-port 53
 ```
+## Evasion Disclaimer
+
+During nmap scans make sure to disable arp ping (--disable-arp-ping) and reverse dns resolution (-n) and ICMP Echo requests (-Pn) as this can be flagged by the firewall. 
+use source port 53(--source-port 53) as this is trusted.
+
+Some times firewalls are misconfigured and can allow UDP (-sU) scans.
+Make sure when you scan all ports use --max-retries=1 as it wont be loud.

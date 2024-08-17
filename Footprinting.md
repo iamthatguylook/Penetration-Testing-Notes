@@ -87,7 +87,7 @@ intext:CompanyName inurl:blob.core.windows.net
 
 Third party providers such as [domain.glass](https://domain.glass/) can give information on the company infrastructure. It can also give cloudflare assessment 'Safe' which means there is a security measure (level 2 in the methadology).
 
-###GrayHatWarfare
+### GrayHatWarfare
 
 [GrayHatWarfare](https://buckets.grayhatwarfare.com/)This can be used to different cloud storage resources alternative to google dorking method above. Can even sort and filter by file format.
 

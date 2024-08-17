@@ -60,3 +60,33 @@ dig any inlanefreight.com
 | MX records  | The mail server records show us which mail server is responsible for managing the emails for the company. Since this is handled by Google in our case, we should note this and skip it for now. |
 | NS records  | These kinds of records show which name servers are used to resolve the FQDN to IP addresses. Most hosting providers use their own name servers, making it easier to identify the hosting provider. |
 | TXT records | This type of record often contains verification keys for different third-party providers and other security aspects of DNS, such as SPF, DMARC, and DKIM, which are responsible for verifying and confirming the origin of the emails sent. Here we can already see some valuable information if we look closer at the results. |
+
+# Cloud Resources Passsive Enumeration
+
+The use of cloud resources is prevelant in many companies like S3 buckets (AWS), blobs (Azure), cloud storage (GCP), which can be accessed if configured incorrectly.
+
+##  Enumerate Company Hosted Servers
+```
+for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f1,4;done
+```
+![image](https://github.com/user-attachments/assets/22f50da7-5dea-493a-997f-b2757e7f7120)
+
+In the above image we can see s3 bucket We can find cloud resources through Google Dorking as well.
+
+## Google Dork AWS
+```
+intext:CompanyName inurl:amazonaws.com
+```
+## Google Dork Azure
+```
+intext:CompanyName inurl:blob.core.windows.net
+```
+## Passive Enumeration
+
+### domain.glass
+Third party providers such as [domain.glass](https://domain.glass/) can give information on the company infrastructure. It can also give cloudflare assessment 'Safe' which means there is a security measure (level 2 in the methadology).
+
+###GrayHatWarfare
+[GrayHatWarfare](https://buckets.grayhatwarfare.com/)This can be used to different cloud storage resources alternative to google dorking method above. Can even sort and filter by file format.
+
+Companies can make mistakes, private ssh keys can be uploaded which can give us a way to access machines.

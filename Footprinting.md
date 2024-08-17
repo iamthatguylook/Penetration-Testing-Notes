@@ -93,7 +93,7 @@ Third party providers such as [domain.glass](https://domain.glass/) can give inf
 
 Companies can make mistakes, private ssh keys can be uploaded which can give us a way to access machines.
 
-### Employee Enumeration
+### Employee Enumeration (staff)
 
 Use [LinkedIn](https://www.linkedin.com/) or [Xing](https://www.xing.com/) to find employees in the organisation. The experience section usually shows which methadologies or frameworks they use. Job postings from the company can also give us information on the frameworks and capabilities of a an employee.
 

@@ -1,6 +1,4 @@
-# Footprinting
-
-## Enumeration Principles
+# Enumeration Principles
 
 | No. | Principle                                                   |
 |-----|-------------------------------------------------------------|
@@ -8,7 +6,7 @@
 | 2   | Distinguish between what we see and what we do not see.     |
 | 3   | There are always ways to gain more information. Understand the target. |
 
-## Enumeration Methadology
+# Enumeration Methadology
 
 | Layer               | Description                                                                 | Information Categories                                                                 |
 |---------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
@@ -25,3 +23,40 @@ Layer 3 - This is the services the targets offer.
 Layer 4 - The processes that are launched by the system. The data exchanged between the processes.
 Layer 5 - Each service or process is run with certain priveledges. The priveledges used need to be understood.
 Layer 6 - Understanding the host itself the Enviornment. Understanding how the admins maintain the system.
+
+# Domain Enumeration
+
+First point of investigation is the main website. Examine the SSL Certificate of the website usually includes subdomain as well. https://crt.sh/ This source is Certificate Transparency logs. Certificate Transparency is a process that is intended to enable the verification of issued digital certificates for encrypted Internet connections. 
+ 
+### Crt.sh Certificate Transperancy
+```
+curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq .
+```
+### Crt.sh Unique subdomains 
+```
+curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq . | grep name | cut -d":" -f2 | grep -v "CN=" | cut -d'"' -f2 | awk '{gsub(/\\n/,"\n");}1;' | sort -u
+```
+### Crt.sh identify hosts
+```
+for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f1,4;done
+```
+## Shodan
+
+Shodan can be used to find devices that are connected permenantley to the internet like IOT devices. It searches the internet for open ports and other filters based on the IPs provided (FTP, SSH, SNMP, Telnet, RTSP, or SI).
+
+```
+for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f4 >> ip-addresses.txt;done
+for i in $(cat ip-addresses.txt);do shodan host $i;done
+```
+## Dig
+
+Displays dns records related to the domain 
+```
+dig any inlanefreight.com
+```
+| Record Type | Description                                                                                                                      |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------|
+| A records   | We recognize the IP addresses that point to a specific (sub)domain through the A record. Here we only see one that we already know. |
+| MX records  | The mail server records show us which mail server is responsible for managing the emails for the company. Since this is handled by Google in our case, we should note this and skip it for now. |
+| NS records  | These kinds of records show which name servers are used to resolve the FQDN to IP addresses. Most hosting providers use their own name servers, making it easier to identify the hosting provider. |
+| TXT records | This type of record often contains verification keys for different third-party providers and other security aspects of DNS, such as SPF, DMARC, and DKIM, which are responsible for verifying and confirming the origin of the emails sent. Here we can already see some valuable information if we look closer at the results. |

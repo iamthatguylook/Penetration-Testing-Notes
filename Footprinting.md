@@ -40,7 +40,7 @@ curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq . | grep name |
 ```
 for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f1,4;done
 ```
-## Shodan
+### Shodan
 
 Shodan can be used to find devices that are connected permenantley to the internet like IOT devices. It searches the internet for open ports and other filters based on the IPs provided (FTP, SSH, SNMP, Telnet, RTSP, or SI).
 
@@ -48,7 +48,7 @@ Shodan can be used to find devices that are connected permenantley to the intern
 for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f4 >> ip-addresses.txt;done
 for i in $(cat ip-addresses.txt);do shodan host $i;done
 ```
-## Dig
+### Dig
 
 Displays dns records related to the domain 
 ```
@@ -73,11 +73,11 @@ for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreig
 
 In the above image we can see s3 bucket We can find cloud resources through Google Dorking as well.
 
-## Google Dork AWS
+### Google Dork AWS
 ```
 intext:CompanyName inurl:amazonaws.com
 ```
-## Google Dork Azure
+### Google Dork Azure
 ```
 intext:CompanyName inurl:blob.core.windows.net
 ```

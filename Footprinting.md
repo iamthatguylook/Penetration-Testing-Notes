@@ -98,3 +98,43 @@ Companies can make mistakes, private ssh keys can be uploaded which can give us 
 Use [LinkedIn](https://www.linkedin.com/) or [Xing](https://www.xing.com/) to find employees in the organisation. The experience section usually shows which methadologies or frameworks they use. Job postings from the company can also give us information on the frameworks and capabilities of a an employee.
 
 [Github](https://github.com/boomcamp/django-security) can be used to find repositories of the employee. Which could have misconfigurations eg. Django OWASP10. Sometimes employees can have hardcoded security keys(JWT Token), Personal email addresses etc in the code which can be used.
+
+# FTP Enumeration
+
+FTP Runs on application layer of TCP/IP protocol. In FTP 2 connection channels are opened Control channel (port21) and Data channel (port 20).
+
+Active FTP Mode:
+1) In active mode, the client initiates the connection.
+2) The client sends a PORT command to the server, specifying a client-side port for data transfer.
+3) The server then connects back to the client on that specified port.
+However, if the client is behind a firewall, the server’s connection attempt may be blocked.
+Passive FTP Mode:
+1)In passive mode, the server announces a port for data transfer.
+2 The client sends a PASV command to the server, requesting a port.
+3) The server responds with a random port number for the client to use.
+4) The client initiates the data connection to that port, bypassing firewall issues.
+
+### TFTP
+TFTP does use user authentication. Runs on UDP based application layer recovery. TFTP operating exclusively in directories and with files that have been shared with all users and can be read and written globally (can be read based on read and write permissions).
+
+## Default configuration on FTP
+
+Configuration can be found in /etc/vsftpd.conf for vsFTPd.
+
+| Setting                | Description                                                                                   |
+|------------------------|-----------------------------------------------------------------------------------------------|
+| listen                 | Run from inetd or as a standalone daemon?                                                     |
+| listen_ipv6            | Listen on IPv6?                                                                               |
+| anonymous_enable       | Enable Anonymous access?                                                                       |
+| local_enable           | Allow local users to login?                                                                    |
+| dirmessage_enable      | Display active directory messages when users go into certain directories?                       |
+| use_localtime          | Use local time?                                                                                |
+| xferlog_enable         | Activate logging of uploads/downloads?                                                          |
+| connect_from_port_20   | Connect from port 20?                                                                          |
+| secure_chroot_dir      | Name of an empty directory                                                                     |
+| pam_service_name       | This string is the name of the PAM service vsftpd will use.                                      |
+| rsa_cert_file          | The location of the RSA certificate to use for SSL encrypted connections (cert file).           |
+| rsa_private_key_file   | The location of the RSA certificate to use for SSL encrypted connections (private key file).    |
+| ssl_enable             | Enable SSL?                                                                                    |
+
+ /etc/ftpusers holds the users that are denied access to FTP even if the users exist.

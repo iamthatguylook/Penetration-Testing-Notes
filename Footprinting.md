@@ -103,12 +103,13 @@ Use [LinkedIn](https://www.linkedin.com/) or [Xing](https://www.xing.com/) to fi
 
 FTP Runs on application layer of TCP/IP protocol. In FTP 2 connection channels are opened Control channel (port21) and Data channel (port 20).
 
-Active FTP Mode:
+__Active FTP Mode__:
 1) In active mode, the client initiates the connection.
 2) The client sends a PORT command to the server, specifying a client-side port for data transfer.
 3) The server then connects back to the client on that specified port.
 However, if the client is behind a firewall, the server’s connection attempt may be blocked.
-Passive FTP Mode:
+
+__Passive FTP Mode__:
 1)In passive mode, the server announces a port for data transfer.
 2 The client sends a PASV command to the server, requesting a port.
 3) The server responds with a random port number for the client to use.

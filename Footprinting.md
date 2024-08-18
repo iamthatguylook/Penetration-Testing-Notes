@@ -138,3 +138,92 @@ Configuration can be found in /etc/vsftpd.conf for vsFTPd.
 | ssl_enable             | Enable SSL?                                                                                    |
 
  /etc/ftpusers holds the users that are denied access to FTP even if the users exist.
+
+ ## Dangerous Settings
+
+ Anonymous authentication This is often used to allow everyone on the internal network to share files and data without accessing each other's computers.
+ | Setting                    | Description                                                                                   |
+|----------------------------|-----------------------------------------------------------------------------------------------|
+| anonymous_enable           | Allowing anonymous login?                                                                      |
+| anon_upload_enable         | Allowing anonymous to upload files?                                                             |
+| anon_mkdir_write_enable    | Allowing anonymous to create new directories?                                                    |
+| no_anon_password           | Do not ask anonymous for password?                                                               |
+| anon_root                  | Directory for anonymous.                                                                       |
+| write_enable               | Allow the usage of FTP commands: STOR, DELE, RNFR, RNTO, MKD, RMD, APPE, and SITE?              |
+
+Once connected through anonymous usually we get STATUS:220 with banner of the FTP server. This information could hold the service version. We can download all the files that are available to anonymous login.
+
+### Anonymous Login
+```
+ftp 10.129.14.136
+```
+use __ls__ command to list files and status command to get settings of the FTP server. For more information on packet tracing and communication use __debug__ and __trace__ command.
+
+### Hiding IDs and Recursive Listing
+
+| Setting                | Description                                                                                   |
+|------------------------|-----------------------------------------------------------------------------------------------|
+| dirmessage_enable      | Show a message when users first enter a new directory?                                         |
+| chown_uploads          | Change ownership of anonymously uploaded files?                                                |
+| chown_username         | User who is given ownership of anonymously uploaded files.                                      |
+| local_enable           | Enable local users to login?                                                                   |
+| chroot_local_user      | Place local users into their home directory?                                                    |
+| chroot_list_enable     | Use a list of local users that will be placed in their home directory?                            |
+| hide_ids               | All user and group information in directory listings will be displayed as "ftp".                |
+| ls_recurse_enable      | Allows the use of recursive listings.                                                           |
+
+__hide_ids=YES__ setting will not show UID and GUID. Identification of which rights these files have been written and uploaded will be difficult. This setting is a security feature to prevent local usernames from being revealed. If usernames are found it can help in methods like brute force.  In reality, [fail2ban](https://en.wikipedia.org/wiki/Fail2ban) solutions are now a standard implementation of any infrastructure that logs the IP address and blocks all access to the infrastructure after a certain number of failed login attempts.
+
+__ls_recurse_enable=YES__ This is often set on the vsFTPd server to have a better overview of the FTP directory structure.
+
+## Download and Upload FTP files
+
+__Download a perticular file__
+```
+get Important\ Notes.txt
+```
+__Download all available files__
+
+```
+wget -m --no-passive ftp://anonymous:anonymous@10.129.14.136
+```
+This can alert the system as usually no employee downloads all the files.  wget will create a directory with the name of the IP address of our target. 
+
+use ```tree .``` command to see the directory structure. Use ```put file.txt``` to upload files.
+
+## Footprinting the Service
+
+Use nmap NSE scripts to enumerate FTP. 
+
+Find NSE ftp scripts
+```
+find / -type f -name ftp* 2>/dev/null | grep scripts
+```
+As we already know, the FTP server usually runs on the standard TCP port 21, which we can scan using Nmap. We also use the version scan (-sV), aggressive scan (-A), and the default script scan (-sC) against our target.
+```
+sudo nmap -sV -p21 -sC -A 10.129.14.136
+```
+1) Default Script Scan in Nmap:
+ Nmap uses fingerprints, responses, and standard ports to scan services. 
+ For example, the __ftp-anon__ script checks if an FTP server allows anonymous access.
+ The __ftp-syst__ script reveals FTP server status and version.
+2) Tracing NSE Scripts:
+ Use __--script-trace__ in Nmap scans to see commands, ports, and responses.
+
+## Service Interaction
+
+__netcat__ or __telnet__ can be used to interact with the FTP server.
+
+```
+nc -nv 10.129.14.136 21
+```
+```
+ telnet 10.129.14.136 21
+```
+## Openssl ftp connect
+
+If FTP server runs with __TLS/SSL__ encryption. __Openssl__ client can be used to communicated with FTP server.
+```
+openssl s_client -connect 10.129.14.136:21 -starttls ftp
+```
+The __SSL__ certificate can show us valuable information such  as hostname, email address,etc.

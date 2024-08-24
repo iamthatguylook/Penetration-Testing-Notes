@@ -228,3 +228,79 @@ If FTP server runs with __TLS/SSL__ encryption. __Openssl__ client can be used t
 openssl s_client -connect 10.129.14.136:21 -starttls ftp
 ```
 The __SSL__ certificate can show us valuable information such  as hostname, email address,etc.
+
+# SMB Enumeration 
+
+Server Message Block (SMB) is a client-server protocol it regulates access to files, directories and other network resources eg printers,routers, or interfaces.
+Samba implements the Common Internet File System (CIFS) network protocol. CIFS allows samba to communicate with newer systems. When we pass SMB commands over Samba to an older NetBIOS service, it usually connects to the Samba server over TCP ports 137, 138, 139, but CIFS uses TCP port 445 only.
+### Default configuration file
+```
+cat /etc/samba/smb.conf | grep -v "#\|\;"
+```
+SMB server config can be overwritten in individual shares setting.
+
+### Restart SAMBA
+```
+sudo systemctl restart smbd
+```
+### SMB client connect 
+```
+smbclient -N -L //10.129.14.128
+```
+### SMB connect share
+```
+smbclient //10.129.14.128/sharename
+```
+### Download files from SMB
+```
+get prep-prod.txt
+```
+Samba acts as the service through which users connect using their credentials. The domain controller(Windows NT) verifies these credentials and grants access only if the user is authorized(NTDS.dit and SAM are password files), allowing them to access shared resources.
+From admin __smbstatus__ command provides way to see connections and which share the connection is been made to.
+
+### Nmap SMB enumeration
+```
+sudo nmap 10.129.14.128 -sV -sC -p139,445
+```
+### RPCclient SMB enumeration
+The Remote Procedure Call (RPC) is a concept and, therefore, also a central tool to realize operational and work-sharing structures in networks and client-server architectures.
+```
+rpcclient -U "" 10.129.14.128
+```
+| Query            | Description                                                   |
+|------------------|---------------------------------------------------------------|
+| srvinfo          | Server information.                                           |
+| enumdomains      | Enumerate all domains that are deployed in the network.       |
+| querydominfo     | Provides domain, server, and user information of deployed domains. |
+| netshareenumall  | Enumerates all available shares.                              |
+| netsharegetinfo <share> | Provides information about a specific share.           |
+| enumdomusers     | Enumerates all domain users.                                  |
+| queryuser <RID> , querygroup <RID>| Provides information about a specific user. retrieve information from the entire group|
+
+### RPCclient Brute Forcing User RIDs
+```
+for i in $(seq 500 1100);do rpcclient -N -U "" 10.129.14.128 -c "queryuser 0x$(printf '%x\n' $i)" | grep "User Name\|user_rid\|group_rid" && echo "";done
+```
+Alternative to this would be a Python script from __Impacket__ called __samrdump.py__.
+```
+samrdump.py 10.129.14.128
+```
+__SMBMap__ and __CrackMapExec__ tools are also widely used and helpful for the enumeration of SMB services.
+```
+smbmap -H 10.129.14.128
+```
+```
+crackmapexec smb 10.129.14.128 --shares -u '' -p ''
+```
+### enum4linux-ng
+Enum4linux
+__Installation__
+```
+git clone https://github.com/cddmp/enum4linux-ng.git
+cd enum4linux-ng
+pip3 install -r requirements.txt
+```
+__Enumeration__ 
+```
+./enum4linux-ng.py 10.129.14.128 -A
+```

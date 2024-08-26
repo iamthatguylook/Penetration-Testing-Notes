@@ -304,3 +304,53 @@ __Enumeration__
 ```
 ./enum4linux-ng.py 10.129.14.128 -A
 ```
+# NFS Enumeration
+Network File System (NFS) is to access file systems over a network as if they were local. NFS is used between Linux and Unix systems. __NFSv3__ Used IP based authentication (insecure) and __NFSv4__ uses user authntication.
+
+### Default configuraion 
+__/etc/exports__ file contains a table of physical filesystems on an NFS server accessible by the clients.Specify who can access them and what permissions they have. 
+| Option            | Description                                                                                           |
+|-------------------|-------------------------------------------------------------------------------------------------------|
+| rw                | Read and write permissions.                                                                           |
+| ro                | Read-only permissions.                                                                                |
+| sync              | Synchronous data transfer (a bit slower).                                                             |
+| async             | Asynchronous data transfer (a bit faster).                                                            |
+| secure            | Ports above 1024 will not be used.                                                                    |
+| insecure          | Ports above 1024 will be used.                                                                        |
+| no_subtree_check  | Disables the checking of subdirectory trees.                                                          |
+| root_squash       | Assigns all permissions of files owned by root (UID/GID 0) to the UID/GID of anonymous, preventing root from accessing files on an NFS mount. |
+
+### ExportFS
+Create NFS for subnet with sync and no subtree option for 10.129.14.0/24.
+```
+echo '/mnt/nfs  10.129.14.0/24(sync,no_subtree_check)' >> /etc/exports
+systemctl restart nfs-kernel-server 
+exportfs
+```
+### Nmap NFS Enumeration 
+```
+sudo nmap --script nfs* 10.129.14.128 -sV -p111,2049
+```
+### Show available NFS shares 
+```
+showmount -e 10.129.14.128
+```
+### Mounting NFS Share
+```
+mkdir target-NFS
+sudo mount -t nfs 10.129.14.128:/ ./target-NFS/ -o nolock
+cd target-NFS
+tree .
+```
+### List Contents with Usernames & Group Names
+```
+ls -l mnt/nfs/
+```
+### List Contents with UIDs & GUIDs
+```
+ls -n mnt/nfs/
+```
+Effect of root_squash:
+even if the UID and GID match the owner of a file on the NFS share, the NFS server treats the client’s root user as an anonymous user.
+
+To circumvent __root_squash__  we ssh with less privledge account to the target machine upload a shell with suid bit and change the owner to higher privledged account.

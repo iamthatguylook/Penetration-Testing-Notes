@@ -354,3 +354,35 @@ Effect of root_squash:
 even if the UID and GID match the owner of a file on the NFS share, the NFS server treats the client’s root user as an anonymous user.
 
 To circumvent __root_squash__  we ssh with less privledge account to the target machine upload a shell with suid bit and change the owner to higher privledged account.
+
+# DNS 
+DNS is a system for resolving computer names into IP addresses, and it does not have a central database. 
+| **Server Type**              | **Description**                                                                                                                                                                                                                       |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **DNS Root Server**          | The root servers of the DNS are responsible for the top-level domains (TLD). They are only requested if the name server does not respond. They link domain and IP address and are coordinated by ICANN. There are 13 root servers globally. |
+| **Authoritative Nameserver** | Authoritative name servers hold authority for a particular zone and provide binding information. If they cannot answer a query, the root name server takes over.                                                                  |
+| **Non-authoritative Nameserver** | Non-authoritative name servers do not hold responsibility for a DNS zone. They gather information on DNS zones using recursive or iterative querying.                                                                          |
+| **Caching DNS Server**       | Caching DNS servers store information from other name servers for a specified period. The duration is determined by the authoritative name server.                                                                                 |
+| **Forwarding Server**        | Forwarding servers forward DNS queries to another DNS server.                                                                                                                                                                         |
+| **Resolver**                 | Resolvers perform name resolution locally in a computer or router but are not authoritative DNS servers.                                                                                                                               |
+
+IT security professionals apply DNS over TLS (DoT) or DNS over HTTPS (DoH) here. In addition, the network protocol DNSCrypt also encrypts the traffic between the computer and the name server.
+
+| **DNS Record** | **Description**                                                                                                                                                             |
+|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **A**          | Returns an IPv4 address of the requested domain.                                                                                                                           |
+| **AAAA**       | Returns an IPv6 address of the requested domain.                                                                                                                           |
+| **MX**         | Returns the responsible mail servers for the domain.                                                                                                                        |
+| **NS**         | Returns the DNS servers (nameservers) of the domain.                                                                                                                        |
+| **TXT**        | Contains various information, such as validation for Google Search Console or SSL certificates. Also used for SPF and DMARC entries to validate mail traffic and protect from spam. |
+| **CNAME**      | Serves as an alias for another domain name. For example, a CNAME record for www.hackthebox.eu points to the same IP as hackthebox.eu.                                        |
+| **PTR**        | Performs reverse lookup by converting IP addresses into valid domain names.                                                                                                 |
+| **SOA**        | Provides information about the DNS zone and the email address of the administrative contact.                                                                              |
+
+### SOA Record lookup
+```
+dig soa www.inlanefreight.com
+```
+The dot (.) is replaced by an at sign (@) in the email address.
+
+### Default Configuration

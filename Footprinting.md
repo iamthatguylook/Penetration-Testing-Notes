@@ -386,3 +386,24 @@ dig soa www.inlanefreight.com
 The dot (.) is replaced by an at sign (@) in the email address.
 
 ### Default Configuration
+DNS servers work with three different types of configuration files:
+1) local DNS configuration files
+2) zone files
+3) reverse name resolution files
+
+DNS server Bind9 is often used in linux. 
+The local configuration files are usually:
+1) named.conf.local - Defines specific domain zones that the server will manage.
+2) named.conf.options - Contains global settings that apply to the server as a whole, such as where to forward DNS requests that the server can't resolve locally.
+3) named.conf.log - Manages logging settings for the server to keep track of DNS queries and server activity.
+
+### Local DNS Configuration
+```
+cat /etc/bind/named.conf.local
+```
+Here we define the different zones. These zones are divided into individual files called Zone Files. Zone File follows BIND format. one SOA record and at least one NS record is needed.
+
+### Zone file lookup 
+```
+cat /etc/bind/db.domain.com
+```

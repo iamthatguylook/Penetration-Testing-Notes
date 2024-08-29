@@ -407,3 +407,34 @@ Here we define the different zones. These zones are divided into individual file
 ```
 cat /etc/bind/db.domain.com
 ```
+Reverse Name Resolution Zone Files
+```
+ cat /etc/bind/db.10.129.14
+```
+### Dig NS Query 
+```
+dig ns inlanefreight.htb @10.129.14.128
+```
+### DIG Version Query
+```
+dig CH TXT version.bind 10.129.120.85
+```
+### DIG AXFR Zone Transfer
+```
+dig axfr inlanefreight.htb @10.129.14.128
+```
+If the administrator used a subnet for the allow-transfer option for testing purposes or as a workaround solution or set it to any, everyone would query the entire zone file at the DNS server. In addition, other zones can be queried, which may even show internal IP addresses and hostnames.
+
+### Dig AXFR subdomain Zone Transfer
+```
+dig axfr internal.inlanefreight.htb @10.129.14.128
+```
+### Subdomain Brute Forcing
+```
+for sub in $(cat /opt/useful/SecLists/Discovery/DNS/subdomains-top1million-110000.txt);do dig $sub.inlanefreight.htb @10.129.14.128 | grep -v ';\|SOA' | sed -r '/^\s*$/d' | grep $sub | tee -a subdomains.txt;done
+```
+__DNSenum__ Tool
+```
+dnsenum --dnsserver 10.129.14.128 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/SecLists/Discovery/DNS/subdomains-top1million-110000.txt inlanefreight.htb
+```
+

@@ -438,3 +438,55 @@ __DNSenum__ Tool
 dnsenum --dnsserver 10.129.14.128 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/SecLists/Discovery/DNS/subdomains-top1million-110000.txt inlanefreight.htb
 ```
 
+# SMTP Enumeration
+
+The Simple Mail Transfer Protocol (SMTP) is a protocol for sending emails in an IP network. 
+By default, SMTP servers accept connection requests on port 25. However, newer SMTP servers also use other ports such as TCP port 587. This port is used to receive mail from authenticated users/servers, usually using the STARTTLS command to switch the existing plaintext connection to an encrypted connection. 
+
+![image](https://github.com/user-attachments/assets/024a3728-5784-4778-9712-281be1d3d399)
+An extension for SMTP has been developed called Extended SMTP (ESMTP).
+ESMTP uses TLS, which is done after the EHLO command by sending STARTTLS.
+
+### SMTP commands
+
+| Command    | Description                                                                 |
+|------------|-----------------------------------------------------------------------------|
+| AUTH PLAIN | AUTH is a service extension used to authenticate the client.                |
+| HELO       | The client logs in with its computer name and thus starts the session.      |
+| MAIL FROM  | The client names the email sender.                                          |
+| RCPT TO    | The client names the email recipient.                                       |
+| DATA       | The client initiates the transmission of the email.                         |
+| RSET       | The client aborts the initiated transmission but keeps the connection between client and server. |
+| VRFY       | The client checks if a mailbox is available for message transfer.           |
+| EXPN       | The client also checks if a mailbox is available for messaging with this command. |
+| NOOP       | The client requests a response from the server to prevent disconnection due to time-out. |
+| QUIT       | The client terminates the session.                                          |
+To interact with the SMTP server, we can use the telnet tool to initialize a TCP connection with the SMTP server. The actual initialization of the session is done with the command mentioned above, HELO or EHLO.
+
+### Telnet HELO/EHLO
+```
+telnet 10.129.14.128 25
+```
+VRFY can be used to enumerate existing mailboxes in the server. CODE 252 user does not exist.
+### Telnet - VRFY
+
+```
+vjsingh284@htb[/htb]$ telnet 10.129.14.128 25
+```
+### Open Relay Configuration
+To prevent the sent emails from being filtered by spam filters and not reaching the recipient, the sender can use a relay server that the recipient trusts. It is an SMTP server that is known and verified by all others. As a rule, the sender must authenticate himself to the relay server before using it.
+
+Administrator misconfigure email server where they allow all ips to use the server so that legitimate email does not get into spam. 
+![image](https://github.com/user-attachments/assets/54381149-545a-44c8-bbc8-b62e3b3b791b)
+
+With this setting, this SMTP server can send fake emails and thus initialize communication between multiple parties.
+
+### Footprinting SMTP 
+```
+sudo nmap 10.129.14.128 -sC -sV -p25
+```
+use the smtp-open-relay NSE script to identify the target SMTP server as an open relay using 16 different tests.
+```
+sudo nmap 10.129.14.128 -p25 --script smtp-open-relay -v
+```
+

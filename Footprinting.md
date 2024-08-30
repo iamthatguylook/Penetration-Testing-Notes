@@ -492,3 +492,8 @@ use the smtp-open-relay NSE script to identify the target SMTP server as an open
 sudo nmap 10.129.14.128 -p25 --script smtp-open-relay -v
 ```
 
+### SMTP User Enumeration 
+```
+smtp-user-enum -M VRFY -U ./footprinting-wordlist.txt -t STMIP -m 60 -w 20
+```
+-m is worker processes -w query timeout

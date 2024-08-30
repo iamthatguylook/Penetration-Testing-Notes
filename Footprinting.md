@@ -471,7 +471,9 @@ VRFY can be used to enumerate existing mailboxes in the server. CODE 252 user do
 ### Telnet - VRFY
 
 ```
-vjsingh284@htb[/htb]$ telnet 10.129.14.128 25
+telnet 10.129.14.128 25
+VRFY root
+VRFY cry0l1t3
 ```
 ### Open Relay Configuration
 To prevent the sent emails from being filtered by spam filters and not reaching the recipient, the sender can use a relay server that the recipient trusts. It is an SMTP server that is known and verified by all others. As a rule, the sender must authenticate himself to the relay server before using it.

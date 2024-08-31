@@ -568,3 +568,46 @@ OpenSSL TLS Encrypted Interaction IMAP
 openssl s_client -connect 10.129.14.128:imaps
 ```
 # SNMP Enumeration
+Simple Network Management Protocol (SNMP) was created to monitor network devices. In addition, this protocol can also be used to handle configuration tasks and change settings remotely. The current version is SNMPv3, which increases the security of SNMP in particular, but also the complexity of using this protocol.
+
+SNMP also transmits control commands using agents over UDP port 161.SNMP also enables the use of so-called traps over UDP port 162. These are data packets sent from the SNMP server to the client without being explicitly requested. an SNMP __trap__ is sent to the client once a specific event occurs on the server-side.
+
+### MIB
+To ensure that SNMP access works across manufacturers and with different client-server combinations, the Management Information Base (MIB) was created. MIB contains all the SNMP objects (like data points) that a device can provide. Object Identifier (OID), which, in addition to the necessary unique address and a name, also provides information about the type, access rights, and a description of the respective object (eg printer OID online status this shows if printer online or offline).
+
+### SNMP Versions 
+__SNMPv1__ has no built-in authentication does not support encryption. It supports the retrieval of information from network devices, allows for the configuration of devices, and provides traps.
+__SNMPv2c__ is a version of SNMP used to manage network devices. It uses a password (community string) for security, but this password is sent without encryption, making it vulnerable to being intercepted and read by unauthorized parties.
+__SNMPv3__ The security has been increased enormously for SNMPv3 by security features such as authentication using username and password and transmission encryption (via pre-shared key) of the data. 
+
+### Dangerous Settings
+
+| Settings                | Description                                                                 |
+|-------------------------|-----------------------------------------------------------------------------|
+| `rwuser noauth`         | Provides access to the full OID tree without authentication.                |
+| `rwcommunity <community string> <IPv4 address>` | Provides access to the full OID tree regardless of where the requests were sent from. |
+| `rwcommunity6 <community string> <IPv6 address>` | Same access as with `rwcommunity` with the difference of using IPv6. |
+
+### SNMP footprinting
+Tools like snmpwalk, onesixtyone, and braa. Snmpwalk is used to query the OIDs with their information. Onesixtyone can be used to brute-force the names of the community strings since they can be named arbitrarily by the administrator.
+
+__snmpwalk__
+```
+snmpwalk -v2c -c public 10.129.14.128
+```
+-c is the community string needed to query snmp. if community string is not know we can brute force using onesixtyone
+
+___OneSixtyOne__
+```
+sudo apt install onesixtyone
+onesixtyone -c /opt/useful/SecLists/Discovery/SNMP/snmp.txt 10.129.14.128
+```
+Often, when certain community strings are bound to specific IP addresses, they are named with the hostname of the host, and sometimes even symbols are added to these names to make them more challenging to identify.
+
+Once we know a community string, we can use it with braa to brute-force the individual OIDs and enumerate the information behind them.
+__braa__
+```
+sudo apt install braa
+braa <community string>@<IP>:.1.3.6.*   # Syntax
+braa public@10.129.14.128:.1.3.6.*
+```

@@ -595,7 +595,7 @@ __snmpwalk__
 ```
 snmpwalk -v2c -c public 10.129.14.128
 ```
--c is the community string needed to query snmp. if community string is not know we can brute force using onesixtyone
+-c is the community string needed to query snmp. if community string is not known we can brute force using onesixtyone
 
 ___OneSixtyOne__
 ```

@@ -539,3 +539,23 @@ IMAP allows online management of emails directly on the server and supports fold
 | `auth_verbose`             | Logs unsuccessful authentication attempts and their reasons.                |
 | `auth_verbose_passwords`   | Passwords used for authentication are logged and can also be truncated.     |
 | `auth_anonymous_username`  | Specifies the username to be used when logging in with the ANONYMOUS SASL mechanism. |
+
+### IMAP/POP3 Footprinting
+Ports 110 and 995 are used for POP3, and ports 143 and 993 are used for IMAP. The higher ports (993 and 995) use TLS/SSL
+
+Nmap IMAP enumeration
+```
+sudo nmap 10.129.14.128 -sV -p110,143,993,995 -sC
+```
+Curl IMAP Login
+```
+curl -k 'imaps://10.129.14.128' --user cry0l1t3:1234 -v
+```
+OpenSSL TLS Encrypted Interaction POP3
+```
+openssl s_client -connect 10.129.14.128:pop3s
+```
+OpenSSL TLS Encrypted Interaction IMAP
+```
+openssl s_client -connect 10.129.14.128:imaps
+```

@@ -506,17 +506,25 @@ IMAP allows online management of emails directly on the server and supports fold
 
  | Command                       | Description                                                                 |
 |-------------------------------|-----------------------------------------------------------------------------|
-| `LOGIN username password`     | User's login.                                                               |
-| `LIST "" *`                   | Lists all directories.                                                      |
-| `CREATE "INBOX"`              | Creates a mailbox with a specified name.                                    |
-| `DELETE "INBOX"`              | Deletes a mailbox.                                                          |
-| `RENAME "ToRead" "Important"` | Renames a mailbox.                                                          |
-| `LSUB "" *`                   | Returns a subset of names from the set of names that the User has declared as being active or subscribed. |
-| `SELECT INBOX`                | Selects a mailbox so that messages in the mailbox can be accessed.          |
-| `UNSELECT INBOX`              | Exits the selected mailbox.                                                 |
-| `FETCH <ID> all`              | Retrieves data associated with a message in the mailbox.                    |
-| `CLOSE`                       | Removes all messages with the Deleted flag set.                             |
-| `LOGOUT`                      | Closes the connection with the IMAP server.                                 |
+| `a LOGIN username password`     | User's login.                                                               |
+| `a LIST "" *`                   | Lists all directories.                                                      |
+| `a CREATE "INBOX"`              | Creates a mailbox with a specified name.                                    |
+| `a DELETE "INBOX"`              | Deletes a mailbox.                                                          |
+| `a RENAME "ToRead" "Important"` | Renames a mailbox.                                                          |
+| `a LSUB "" *`                   | Returns a subset of names from the set of names that the User has declared as being active or subscribed. |
+| `a SELECT INBOX`                | Selects a mailbox so that messages in the mailbox can be accessed.          |
+| `a UNSELECT INBOX`              | Exits the selected mailbox.                                                 |
+| `a FETCH <ID> all`              | Retrieves data associated with a message in the mailbox.                    |
+| `a CLOSE`                       | Removes all messages with the Deleted flag set.                             |
+| `a LOGOUT`                      | Closes the connection with the IMAP server.                                 |
+| `a FETCH 1 FULL`                       | Fetches the entire message data for the first email.       |
+| `a FETCH 1 (BODY[HEADER])`             | Fetches only the headers of the first email.               |
+| `a FETCH 1 (BODY[TEXT])`               | Fetches only the body text of the first email.             |
+| `a FETCH 1 (FLAGS)`                    | Retrieves the flags (e.g., \Seen, \Answered) for the first email. |
+| `a FETCH 1 (ENVELOPE)`                 | Retrieves the envelope structure of the first email.       |
+| `a FETCH 1 (INTERNALDATE RFC822.SIZE)` | Retrieves the internal date and size of the first email.   |
+| `a FETCH 1 (UID)`                      | Retrieves the unique identifier for the first email.       |
+| `a FETCH 1 (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY[TEXT])` | Fetches flags, internal date, size, envelope, and body text of the first email. |
 
 ### POP3 commands
 | Command         | Description                                                      |

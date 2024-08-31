@@ -497,3 +497,45 @@ sudo nmap 10.129.14.128 -p25 --script smtp-open-relay -v
 smtp-user-enum -M VRFY -U ./footprinting-wordlist.txt -t STMIP -m 60 -w 20
 ```
 -m is worker processes -w query timeout
+
+# IMAP / POP3
+
+IMAP allows online management of emails directly on the server and supports folder structures.  The protocol is client-server-based and allows synchronization of a local email client with the mailbox on the server, providing a kind of network file system for emails, allowing problem-free synchronization across several independent clients.POP3, on the other hand, does not have the same functionality as IMAP, and it only provides listing, retrieving, and deleting emails as functions at the email server. 
+
+ IMAP works unencrypted and transmits commands, emails, or usernames and passwords in plain text. To ensure security mail servers use SSL/TLS the encrypted connection uses the standard port __143__ or an alternative port such as __993__.
+
+ | Command                       | Description                                                                 |
+|-------------------------------|-----------------------------------------------------------------------------|
+| `LOGIN username password`     | User's login.                                                               |
+| `LIST "" *`                   | Lists all directories.                                                      |
+| `CREATE "INBOX"`              | Creates a mailbox with a specified name.                                    |
+| `DELETE "INBOX"`              | Deletes a mailbox.                                                          |
+| `RENAME "ToRead" "Important"` | Renames a mailbox.                                                          |
+| `LSUB "" *`                   | Returns a subset of names from the set of names that the User has declared as being active or subscribed. |
+| `SELECT INBOX`                | Selects a mailbox so that messages in the mailbox can be accessed.          |
+| `UNSELECT INBOX`              | Exits the selected mailbox.                                                 |
+| `FETCH <ID> all`              | Retrieves data associated with a message in the mailbox.                    |
+| `CLOSE`                       | Removes all messages with the Deleted flag set.                             |
+| `LOGOUT`                      | Closes the connection with the IMAP server.                                 |
+
+### POP3 commands
+| Command         | Description                                                      |
+|-----------------|------------------------------------------------------------------|
+| `USER username` | Identifies the user.                                             |
+| `PASS password` | Authentication of the user using its password.                   |
+| `STAT`          | Requests the number of saved emails from the server.             |
+| `LIST`          | Requests from the server the number and size of all emails.      |
+| `RETR id`       | Requests the server to deliver the requested email by ID.        |
+| `DELE id`       | Requests the server to delete the requested email by ID.         |
+| `CAPA`          | Requests the server to display the server capabilities.          |
+| `RSET`          | Requests the server to reset the transmitted information.        |
+| `QUIT`          | Closes the connection with the POP3 server.                      |
+
+### Dangerous IMAP/POP3 Server Settings
+| Setting                    | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| `auth_debug`               | Enables all authentication debug logging.                                   |
+| `auth_debug_passwords`     | Adjusts log verbosity, the submitted passwords, and the scheme gets logged.  |
+| `auth_verbose`             | Logs unsuccessful authentication attempts and their reasons.                |
+| `auth_verbose_passwords`   | Passwords used for authentication are logged and can also be truncated.     |
+| `auth_anonymous_username`  | Specifies the username to be used when logging in with the ANONYMOUS SASL mechanism. |

@@ -656,3 +656,49 @@ The above schemas are usually Databases in a server.
 | `show columns from <table>;`                 | Show all columns in the selected database.                                  |
 | `select * from <table>;`                     | Show everything in the desired table.                                       |
 | `select * from <table> where <column> = "<string>";` | Search for needed string in the desired table.                              |
+
+# MSSQL Enumeration
+
+Microsoft SQL (MSSQL) is Microsoft's SQL-based relational database management system. SQL Server Management Studio (SSMS) comes as a feature that can be installed with the MSSQL install package or can be downloaded & installed separately. It is commonly installed on the server for initial configuration and long-term management of databases by admins. It is installed not only on the MSSQL server but on other desktops that need to manage the server.
+
+MSSQL clients ![image](https://github.com/user-attachments/assets/c1f153a7-0a37-4ba2-85d0-aa6ef0ce4805)
+```
+locate mssqlclient
+```
+| Default System Database | Description                                                                                           |
+|-------------------------|-------------------------------------------------------------------------------------------------------|
+| `master`                | Tracks all system information for an SQL server instance                                              |
+| `model`                 | Template database that acts as a structure for every new database created. Any setting changed in the model database will be reflected in any new database created after changes to the model database |
+| `msdb`                  | The SQL Server Agent uses this database to schedule jobs & alerts                                     |
+| `tempdb`                | Stores temporary objects                                                                              |
+| `resource`              | Read-only database containing system objects included with SQL server                                 |
+
+### Default configuration
+
+Once admin installs the mssql server. To make it network accessible the service will run NT SERVICE\MSSQLSERVER. Connecting from the client-side is possible through Windows Authentication, and by default, encryption is not enforced when attempting to connect.
+
+Authentication being set to Windows Authentication means that the underlying Windows OS will process the login request and use either the local SAM database or the domain controller (hosting Active Directory) before allowing connectivity to the database management system.
+
+### Dangerous Settings
+1) MSSQL clients not using encryption to connect to the MSSQL server
+
+2) The use of self-signed certificates when encryption is being used. It is possible to spoof self-signed certificates
+
+3) The use of named pipes
+
+4) Weak & default sa credentials. Admins may forget to disable this account
+
+### Footprinting MSSQL
+
+__Nmap__
+```
+nmap --script ms-sql-info,ms-sql-empty-password,ms-sql-xp-cmdshell,ms-sql-config,ms-sql-ntlm-info,ms-sql-tables,ms-sql-hasdbaccess,ms-sql-dac,ms-sql-dump-hashes --script-args mssql.instance-port=1433,mssql.username=sa,mssql.password=,mssql.instance-name=MSSQLSERVER -sV -p 1433 10.129.201.248
+```
+
+Metasploit to run an auxiliary scanner called __mssql_ping__ that will scan the MSSQL service and provide helpful information
+
+__Mssqlclient.py__
+```
+python3 mssqlclient.py Administrator@10.129.201.248 -windows-auth
+select name from sys.databases
+```

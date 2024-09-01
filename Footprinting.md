@@ -662,9 +662,12 @@ The above schemas are usually Databases in a server.
 Microsoft SQL (MSSQL) is Microsoft's SQL-based relational database management system. SQL Server Management Studio (SSMS) comes as a feature that can be installed with the MSSQL install package or can be downloaded & installed separately. It is commonly installed on the server for initial configuration and long-term management of databases by admins. It is installed not only on the MSSQL server but on other desktops that need to manage the server.
 
 MSSQL clients ![image](https://github.com/user-attachments/assets/c1f153a7-0a37-4ba2-85d0-aa6ef0ce4805)
+
+### Locate MSSQLclient
 ```
 locate mssqlclient
 ```
+
 | Default System Database | Description                                                                                           |
 |-------------------------|-------------------------------------------------------------------------------------------------------|
 | `master`                | Tracks all system information for an SQL server instance                                              |

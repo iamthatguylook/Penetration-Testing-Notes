@@ -838,3 +838,47 @@ Curl the uploaded file
 ```
 curl -X GET http://10.129.204.235/testing.txt
 ```
+
+# IPMI Enumeration 
+Intelligent Platform Management Interface (IPMI) is a set of standardized specifications for hardware-based host management systems used for system management and monitoring. IPMI can manage system and monitor even if system is OFF.
+
+IPMI can monitor a range of different things such as system temperature, voltage, fan status, and power supplies.
+IPMI needs several key components:
+
+1) Baseboard Management Controller (BMC): Think of this as the brain of IPMI. It’s a small computer within the main computer that handles the management tasks.
+2) Intelligent Chassis Management Bus (ICMB): This is like a communication highway that allows different computer cases (chassis) to talk to each other.
+3) Intelligent Platform Management Bus (IPMB): This extends the BMC’s reach, allowing it to manage more parts of the system.
+4) IPMI Memory: This is where important information is stored, like system logs and data repositories.
+5) Communications Interfaces: These are the various ways the BMC can communicate, including local system interfaces, serial and LAN interfaces, and other buses like ICMB and PCI Management Bus.
+
+IPMI runs on port __UDP/623__. Baseboard Management Controllers (BMCs) are the systems that use IPMI. They usually run ARM processor and use linux. BMC are usually exposed using a web-based management console for remote access using Telnet or ssh  and the port.
+
+### NMAP IPMI Scan
+```
+sudo nmap -sU --script ipmi-version -p 623 ilo.inlanfreight.local
+```
+
+### Metasploit Version Scan 
+```
+msf6 > use auxiliary/scanner/ipmi/ipmi_version 
+msf6 auxiliary(scanner/ipmi/ipmi_version) > set rhosts 10.129.42.195
+msf6 auxiliary(scanner/ipmi/ipmi_version) > show options
+```
+### Default BMC Username/Password 
+| Product          | Username     | Password                                                |
+|------------------|--------------|---------------------------------------------------------|
+| Dell iDRAC       | root         | calvin                                                  |
+| HP iLO           | Administrator| randomized 8-character string consisting of numbers and uppercase letters |
+| Supermicro IPMI  | ADMIN        | ADMIN                                                   |
+
+### Dangerous Settings
+flaw in the RAKP protocol in IPMI 2.0. During the authentication process, the server sends a salted SHA1 or MD5 hash of the user's password to the client before authentication takes place. This can be used to gain hash for any valid user on BMC. These hashes can be cracked offline using hashcat.
+
+In the event of an HP iLO using a factory default password, we can use this Hashcat mask attack command hashcat -m 7300 ipmi.txt -a 3 ?1?1?1?1?1?1?1?1 -1 ?d?u which tries all combinations of upper case letters and numbers for an eight-character password.
+
+Metasploit Dump hashes
+```
+msf6 > use auxiliary/scanner/ipmi/ipmi_dumphashes 
+msf6 auxiliary(scanner/ipmi/ipmi_dumphashes) > set rhosts 10.129.42.195
+msf6 auxiliary(scanner/ipmi/ipmi_dumphashes) > show options
+```

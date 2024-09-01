@@ -611,3 +611,48 @@ sudo apt install braa
 braa <community string>@<IP>:.1.3.6.*   # Syntax
 braa public@10.129.14.128:.1.3.6.*
 ```
+# MYSQL Enumeration
+MySQL is an open-source SQL relational database management system developed and supported by Oracle. MySQL works according to the client-server principle. MySQL is ideally suited for applications such as dynamic websites, where efficient syntax and high response speed are essential.
+In a web hosting with MySQL database, this serves as a central instance in which content required by PHP scripts is stored. Among these are: ![image](https://github.com/user-attachments/assets/f3655193-4ca2-4a6e-b697-1615cfc4c156)
+
+Sensitive data such as passwords can be stored in their plain-text form by MySQL; however, they are generally encrypted beforehand by the PHP scripts using secure methods such as One-Way-Encryption.
+
+### Default Configuration File
+```
+cat /etc/mysql/mysql.conf.d/mysqld.cnf | grep -v "#" | sed -r '/^\s*$/d'
+```
+### Dangerous Settings
+| Setting          | Description                                                                 |
+|------------------|-----------------------------------------------------------------------------|
+| user             | Sets which user the MySQL service will run as.                              |
+| password         | Sets the password for the MySQL user.                                       |
+| admin_address    | The IP address on which to listen for TCP/IP connections on the administrative network interface. |
+| debug            | This variable indicates the current debugging settings.                     |
+| sql_warnings     | This variable controls whether single-row INSERT statements produce an information string if warnings occur. |
+| secure_file_priv | This variable is used to limit the effect of data import and export operations. |
+
+### Footprinting the Service
+MySQL server runs on TCP port 3306.
+```
+sudo nmap 10.129.14.128 -sV -sC -p3306 --script mysql*
+```
+Some results like passwords can be false negative. Command to interact with mysql server.
+```
+mysql -u root -h 10.129.14.132
+```
+```
+mysql -u root -pP4SSw0rd -h 10.129.14.128
+```
+__Information Schema__: Think of this as a special database that holds information about other databases. It’s like a directory that tells you what tables, columns, and other objects exist in your databases. This information is standardized according to ANSI/ISO rules, making it consistent across different database systems.
+__System Schema__: This is a more detailed catalog used by Microsoft SQL servers. It contains a lot more information than the Information Schema, including internal system details. It’s like an advanced directory with extra details that are specific to Microsoft SQL servers.
+
+The above schemas are usually Databases in a server.
+| Command                                      | Description                                                                 |
+|----------------------------------------------|-----------------------------------------------------------------------------|
+| `mysql -u <user> -p<password> -h <IP address>` | Connect to the MySQL server. There should not be a space between the '-p' flag, and the password. |
+| `show databases;`                            | Show all databases.                                                         |
+| `use <database>;`                            | Select one of the existing databases.                                       |
+| `show tables;`                               | Show all available tables in the selected database.                         |
+| `show columns from <table>;`                 | Show all columns in the selected database.                                  |
+| `select * from <table>;`                     | Show everything in the desired table.                                       |
+| `select * from <table> where <column> = "<string>";` | Search for needed string in the desired table.                              |

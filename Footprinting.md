@@ -858,7 +858,7 @@ IPMI runs on port __UDP/623__. Baseboard Management Controllers (BMCs) are the s
 sudo nmap -sU --script ipmi-version -p 623 ilo.inlanfreight.local
 ```
 
-### Metasploit Version Scan 
+### Metasploit IPMI Version Scan 
 ```
 msf6 > use auxiliary/scanner/ipmi/ipmi_version 
 msf6 auxiliary(scanner/ipmi/ipmi_version) > set rhosts 10.129.42.195

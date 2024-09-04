@@ -889,4 +889,146 @@ hashcat -m 7300 -w 3 -O "93c887ae8200000052f17511d0fd3b9a08350b045e118a2cd0c3117
 
 # Linux Management Protocols
 
-In the world of Linux distributions, there are many ways to manage the servers remotely.
+## SSH (Secure Shell)
+**Purpose:** Establishes an encrypted connection between two computers.  
+**Default Port:** TCP 22
+
+**Authentication Methods:**
+- Password Authentication
+- Public Key Authentication (Most Common)
+- Host-based Authentication
+- Keyboard Authentication
+- Challenge-Response Authentication
+- GSSAPI Authentication
+
+**Key Versions:**
+- SSH-1: Outdated, vulnerable to MITM attacks.
+- SSH-2: More secure and stable.
+
+**Configuration File:** `/etc/ssh/sshd_config`
+
+**Dangerous Settings:**
+- `PasswordAuthentication yes`: Allows password-based authentication.
+- `PermitEmptyPasswords yes`: Allows empty passwords.
+- `PermitRootLogin yes`: Allows root login.
+- `Protocol 1`: Uses outdated encryption.
+- `X11Forwarding yes`: Can be a vector for attacks.
+- `AllowTcpForwarding yes`: Allows TCP port forwarding.
+- `PermitTunnel`: Allows tunneling.
+- `DebianBanner yes`: Displays version information.
+
+**Tool for Fingerprinting:** `ssh-audit`  
+**Usage:** `./ssh-audit.py <target-ip>`
+
+**Command to Check Authentication Methods:** `ssh -v <username>@<target-ip>`  
+**Changing Preferred Authentication Method:** `ssh -v <username>@<target-ip> -o PreferredAuthentications=password`
+
+## Rsync
+**Purpose:** Efficiently copies files locally and remotely, using delta-transfer algorithm.  
+**Default Port:** TCP 873
+
+**Command to Scan for Rsync:** `sudo nmap -sV -p 873 <target-ip>`  
+**Probing for Shares:** `nc -nv <target-ip> 873`  
+**Enumerating Shares:** `rsync -av --list-only rsync://<target-ip>/share`
+
+## R-Services
+**Purpose:** A suite of services for remote access, less secure than SSH.
+
+**Commands:**
+- `rcp`: Remote copy. Port 514.
+- `rsh`: Remote shell. Port 514.
+- `rexec`: Remote execution. Port 512.
+- `rlogin`: Remote login. Port 513.
+
+**Configuration Files:**
+- `/etc/hosts.equiv`: Global trusted hosts.
+- `.rhosts`: Per-user trusted hosts.
+
+**Nmap Scanning for R-Services:** `sudo nmap -sV -p 512,513,514 <target-ip>`  
+**Rlogin Example:** `rlogin <target-ip> -l <username>`  
+**Listing Authenticated Users:**
+- `rwho`: `rwho`
+- `rusers`: `rusers -al <target-ip>`
+
+## General Notes
+- **Remote Management Protocols:** Always check for default or weak configurations.
+- **Security:** Secure configurations include disabling unused features, using strong encryption, and restricting access.
+- **Testing:** Regularly test configurations and look for vulnerabilities.
+
+# Windows Remote Management Protocols
+
+The Windows Remote Management Protocols allow for the remote management of Windows servers through various tools and services, providing access to server hardware diagnostics, control, and administrative tasks via network connections. The main components used for remote management include the Remote Desktop Protocol (RDP), Windows Remote Management (WinRM), and Windows Management Instrumentation (WMI).
+
+Key Components of Windows Remote Management:
+## Remote Desktop Protocol (RDP):
+
+RDP is a Microsoft protocol that facilitates remote access to Windows computers, enabling display and control commands to be transmitted over encrypted IP networks, primarily using TCP port 3389.
+It supports Transport Layer Security (TLS) for encryption, but some configurations may still use self-signed certificates, which can be vulnerable to man-in-the-middle attacks.
+RDP is commonly used in corporate environments but requires careful firewall and NAT configurations for secure access.
+
+# Windows Remote Management Protocols
+
+The Windows Remote Management Protocols allow for the remote management of Windows servers through various tools and services, providing access to server hardware diagnostics, control, and administrative tasks via network connections. The main components used for remote management include the Remote Desktop Protocol (RDP), Windows Remote Management (WinRM), and Windows Management Instrumentation (WMI).
+
+## Key Components of Windows Remote Management
+
+### Remote Desktop Protocol (RDP)
+
+- **RDP** is a Microsoft protocol that facilitates remote access to Windows computers, enabling display and control commands to be transmitted over encrypted IP networks, primarily using TCP port 3389.
+- It supports **Transport Layer Security (TLS)** for encryption, but some configurations may still use self-signed certificates, which can be vulnerable to man-in-the-middle attacks.
+- RDP is commonly used in corporate environments but requires careful firewall and NAT configurations for secure access.
+
+**Footprinting RDP**
+```
+ nmap -sV -sC 10.129.201.248 -p3389 --script rdp*
+```
+```
+nmap -sV -sC 10.129.201.248 -p3389 --packet-trace --disable-arp-ping -n
+```
+### Windows Remote Management (WinRM)
+
+- **WinRM** is a service that implements the WS-Management protocol for hardware diagnostics and control, enabling remote command execution and management.
+- This service is crucial for automating administrative tasks and integrating with management tools like PowerShell.
+
+```
+nmap -sV -sC 10.129.201.248 -p5985,5986 --disable-arp-ping -n
+```
+```
+evil-winrm -i 10.129.201.248 -u Cry0l1t3 -p P455w0rD!
+```
+
+### Windows Management Instrumentation (WMI)
+
+- **WMI** provides a standardized way to access and manage system data, including configuration settings, performance metrics, and running processes.
+- It serves as the foundation for many remote management operations, particularly in scripts and automation tasks.
+```
+/usr/share/doc/python3-impacket/examples/wmiexec.py Cry0l1t3:"P455w0rD!"@10.129.201.248 "hostname"
+```
+## Security Considerations and Scanning
+
+- RDP security settings can be assessed using tools like Nmap and scripts that can identify whether network-level authentication (NLA) and other encryption methods are enabled.
+- Scanning with **Nmap** can reveal RDP service details, such as the security layer in use, product version, and hostname, which can help in identifying vulnerabilities.
+- A **Perl script** named `rdp-sec-check.pl`
+```
+git clone https://github.com/CiscoCXSecurity/rdp-sec-check.git && cd rdp-sec-check
+./rdp-sec-check.pl 10.129.201.248
+```
+by Cisco can further assess the security configurations of RDP servers, verifying the support of various protocols and encryption methods.
+
+## Common RDP Issues
+
+- **Inadequate Encryption**: Some RDP configurations might still use weaker encryption standards, making them vulnerable to interception.
+- **Certificate Mismatch**: When connecting to an RDP server, mismatched certificates can trigger warnings, indicating potential security risks.
+
+## Connecting to RDP Servers
+
+- On Linux, tools like **xfreerdp**
+```
+xfreerdp /u:cry0l1t3 /p:"P455w0rd!" /v:10.129.201.248
+```
+- , **rdesktop**, or **Remmina** can be used to connect to RDP servers. However, users must be vigilant about certificate warnings and connection settings to ensure secure access.
+
+## Conclusion
+
+Understanding and configuring these components correctly is crucial for securing remote access to Windows servers, preventing unauthorized access, and mitigating potential vulnerabilities.
+

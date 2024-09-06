@@ -41,4 +41,4 @@ whois inlanefreight.com
 
 - Identify key personnel: Records often reveal the names, emails, and phone numbers responsible for the domain
 - Discover network infrastructure: name servers and Ip addresses provides the target network structure.
-- Historical data analysis: [https://whoisfreaks.com/](WhoisFreaks) can reveal changes in ownership, contact info or tech details over time.
+- Historical data analysis: [WhoisFreaks](https://whoisfreaks.com/) can reveal changes in ownership, contact info or tech details over time.

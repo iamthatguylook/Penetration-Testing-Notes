@@ -42,3 +42,11 @@ whois inlanefreight.com
 - Identify key personnel: Records often reveal the names, emails, and phone numbers responsible for the domain
 - Discover network infrastructure: name servers and Ip addresses provides the target network structure.
 - Historical data analysis: [WhoisFreaks](https://whoisfreaks.com/) can reveal changes in ownership, contact info or tech details over time.
+
+### Utilising WHOIS
+```
+sudo apt update
+sudo apt install whois -y
+whois facebook.com
+```
+# DNS

@@ -26,3 +26,19 @@ Web Reconnaissance This process involves systematically and meticulously collect
 | Code Repositories      | Analysing publicly accessible code repositories like GitHub for exposed credentials or vulnerabilities. | Searching GitHub for code snippets or repositories related to the target that might contain sensitive information or code vulnerabilities. | GitHub, GitLab | Very Low: Code repositories are meant for public access, and searching them is not suspicious. |
 
 # WHOIS 
+WHOIS is a widely used query and response protocol designed to access databases that store information about registered internet resources. 
+
+```
+whois inlanefreight.com
+```
+1) Domain Name: The domain name itself (e.g., example.com)
+2) Registrar: The company where the domain was registered (e.g., GoDaddy, Namecheap)
+3) Registrant Contact: The person or organization that registered the domain.
+4) Administrative Contact: The person responsible for managing the domain.
+5) Technical Contact: The person handling technical issues related to the domain.
+6) Creation and Expiration Dates: When the domain was registered and when it's set to expire.
+7) Name Servers: Servers that translate the domain name into an IP address.
+
+- Identify key personnel: Records often reveal the names, emails, and phone numbers responsible for the domain
+- Discover network infrastructure: name servers and Ip addresses provides the target network structure.
+- Historical data analysis: [https://whoisfreaks.com/](WhoisFreaks) can reveal changes in ownership, contact info or tech details over time.

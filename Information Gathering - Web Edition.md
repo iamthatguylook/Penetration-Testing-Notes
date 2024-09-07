@@ -124,3 +124,19 @@ __Active Subdomain Enumeration__: 1) Use DNS Zone Transfer (mostly fail due to h
 __Passive Subdomain Enumeration__: 1) Certificate Transparency (CT) logs, public repositories of SSL/TLS certificates. These certificates often include a list of associated subdomains in their Subject Alternative Name (SAN) field. 2)  search engines like Google or DuckDuckGo. By employing specialised search operators (e.g., site:)
 
 ### Subdomain Bruteforcing
+
+| Tool        | Description                                                                                           |
+|-------------|-------------------------------------------------------------------------------------------------------|
+| dnsenum     | Comprehensive DNS enumeration tool that supports dictionary and brute-force attacks for discovering subdomains. |
+| fierce      | User-friendly tool for recursive subdomain discovery, featuring wildcard detection and an easy-to-use interface. |
+| dnsrecon    | Versatile tool that combines multiple DNS reconnaissance techniques and offers customizable output formats. |
+| amass       | Actively maintained tool focused on subdomain discovery, known for its integration with other tools and extensive data sources. |
+| assetfinder | Simple yet effective tool for finding subdomains using various techniques, ideal for quick and lightweight scans. |
+| puredns     | Powerful and flexible DNS brute-forcing tool, capable of resolving and filtering results effectively.   |
+
+__dnsenum__ performs 1) DNS Record Enumeration (A,AAAA,NS,MX,TXT records) 2) Zone Transfer Attempt 3) Subdomain enumeration 4) Google Scraping (Google search results to find additional subdomains that might not be listed in DNS records) 5) Reverse Lookup reverse DNS lookups to identify domains associated with a given IP 6) WHOIS Lookups (WHOIS queries to gather information about domain ownership and details)
+
+```
+dnsenum --enum inlanefreight.com -f /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -r
+```
+-r recursive subdomain brute-forcing (if a subdomain is found it will try to enumerate subdomains of the subdomain)

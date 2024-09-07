@@ -50,3 +50,10 @@ sudo apt install whois -y
 whois facebook.com
 ```
 # DNS
+The Domain Name System (DNS) acts as the internet's GPS, guiding your online journey from memorable landmarks (domain names) to precise numerical coordinates (IP addresses).
+
+When you enter a domain name, your computer first checks its memory (cache) for the IP address. If it doesn’t find it, it asks a __DNS resolver__, usually from your ISP. The resolver checks its own cache and, if needed, asks a __rootnameserver__, which directs it to the __TLD name server__ (like .com or .org). The TLD server then points to the __authoritative name server__ for the specific domain. This server provides the correct IP address, which the resolver sends back to your computer. Your computer then connects to the web server, and you can start browsing.
+
+The hosts file is a simple text file used to map hostnames to IP addresses, providing a manual method of domain name resolution. The hosts file is located in __C:\Windows\System32\drivers\etc\hosts__ on Windows and in __/etc/hosts__ on Linux
+
+## Digging DNS

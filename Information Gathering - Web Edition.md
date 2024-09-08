@@ -253,3 +253,17 @@ nikto -h inlanefreight.com -Tuning b
 -h is target host -Tuning b to only run the Software Identification modules.
 
 In output - Headers: Several non-standard or insecure headers were found, including a missing Strict-Transport-Security header and a potentially insecure x-redirect-by header.
+
+## Crawling
+Crawling, often called spidering, is the automated process of systematically browsing the World Wide Web. Similar to how a spider navigates its web, a web crawler follows links from one page to another, collecting information.
+
+Breadth-First Crawling (BFS) - 
+How it works: Imagine you’re exploring a building floor by floor. You check all the rooms on the first floor before moving to the second floor.
+Depth-First Crawling (DFS)
+How it works: Now, imagine you’re exploring the same building, but this time you go as deep as possible into one room, then the next, and so on. You go down one hallway until you can’t go any further, then backtrack and start down the next hallway.
+
+From crawling you extract : 
+1) Links (Internal and External): These are the fundamental building blocks of the web, connecting pages within a website (internal links) and to other websites (external links).
+2) Comments: Comments sections on blogs, forums, or other interactive pages can be a goldmine of information.
+3) Metadata: Metadata refers to data about data. In the context of web pages, it includes information like page titles, descriptions, keywords, author names, and dates.
+4) Sensitive Files: Web crawlers can be configured to actively search for sensitive files that might be inadvertently exposed on a website.(eg /files)

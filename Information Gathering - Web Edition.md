@@ -222,7 +222,7 @@ Techniques : Banner Grabbing, Analysing HTTP Headers: HTTP headers transmitted w
 | Netcraft   | Offers a range of web security services, including website fingerprinting and security reporting. | Provides detailed reports on a website's technology, hosting provider, and security posture. |
 | wafw00f    | Command-line tool specifically designed for identifying Web Application Firewalls (WAFs). | Helps determine if a WAF is present and, if so, its type and configuration. |
 
-### banner Grabbing
+### Banner Grabbing
 ```
 curl -I inlanefreight.com
 ```

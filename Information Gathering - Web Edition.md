@@ -135,8 +135,37 @@ __Passive Subdomain Enumeration__: 1) Certificate Transparency (CT) logs, public
 | puredns     | Powerful and flexible DNS brute-forcing tool, capable of resolving and filtering results effectively.   |
 
 __dnsenum__ performs 1) DNS Record Enumeration (A,AAAA,NS,MX,TXT records) 2) Zone Transfer Attempt 3) Subdomain enumeration 4) Google Scraping (Google search results to find additional subdomains that might not be listed in DNS records) 5) Reverse Lookup reverse DNS lookups to identify domains associated with a given IP 6) WHOIS Lookups (WHOIS queries to gather information about domain ownership and details)
-
 ```
 dnsenum --enum inlanefreight.com -f /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -r
 ```
 -r recursive subdomain brute-forcing (if a subdomain is found it will try to enumerate subdomains of the subdomain)
+
+
+### DNS Zone Transfer
+
+1. **Zone Transfer Request (AXFR)**
+   - The secondary DNS server initiates the process by sending a zone transfer request to the primary server.
+   - This request typically uses the AXFR (Full Zone Transfer) type.
+
+2. **SOA Record Transfer**
+   - Upon receiving the request (and potentially authenticating the secondary server), the primary server responds by sending its Start of Authority (SOA) record.
+   - The SOA record contains vital information about the zone, including its serial number, which helps the secondary server determine if its zone data is current.
+
+3. **DNS Records Transmission**
+   - The primary server then transfers all the DNS records in the zone to the secondary server, one by one.
+   - This includes records like A, AAAA, MX, CNAME, NS, and others that define the domain's subdomains, mail servers, name servers, and other configurations.
+
+4. **Zone Transfer Complete**
+   - Once all records have been transmitted, the primary server signals the end of the zone transfer.
+   - This notification informs the secondary server that it has received a complete copy of the zone data.
+
+5. **Acknowledgement (ACK)**
+   - The secondary server sends an acknowledgement message to the primary server, confirming the successful receipt and processing of the zone data.
+   - This completes the zone transfer process.
+
+if DNS server is not configured properly and allows for zone transfers we can gain Subdomains(including development enviornments) , IP Addresses, Name Server Records: Details about the authoritative name servers for the domain, revealing the hosting provider and potential misconfigurations.
+__Remediation__:  Modern DNS servers are typically configured to allow zone transfers only to trusted secondary servers.
+
+```
+dig axfr @nsztm1.digi.ninja zonetransfer.me
+```

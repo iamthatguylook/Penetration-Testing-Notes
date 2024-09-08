@@ -169,3 +169,31 @@ __Remediation__:  Modern DNS servers are typically configured to allow zone tran
 ```
 dig axfr @nsztm1.digi.ninja zonetransfer.me
 ```
+## Virtual Hosts 
+
+Web servers like Apache, Nginx, or IIS are designed to host multiple websites or applications on a single server. They achieve this through virtual hosting. Virtual hosting is the ability of web servers to distinguish between multiple websites or applications sharing the same IP address(using __HTTP HEADER__). 
+
+Difference between subdomain and virtual host
+
+__Subdomains__: Extensions of a main domain (like blog.example.com) used to organize different parts of a website.
+__Virtual Hosts__ (VHosts): Server configurations that allow multiple websites or apps to be hosted on one server, each with its own settings.
+
+If a virtual host does not have a DNS record, you can still access it by modifying the hosts file on your local machine. The hosts file allows you to map a domain name to an IP address manually(/etc/hosts).
+![image](https://github.com/user-attachments/assets/1c9b3443-6907-43ea-b63a-4d82582d6d57)
+
+Different types of vHosts
+1) Name-Based Virtual Hosting: HTTP Host header to distinguish between websites. It is the most common and flexible method, as it doesn't require multiple IP addresses.
+2) IP-Based Virtual Hosting: assigns a unique IP address to each website hosted on the server. Doesn't rely on the Host header.
+3) Port-Based Virtual Hosting: One website might be accessible on port 80, while another is on port 8080.(different websites on different ports)
+
+### VHOSTS Enumeration
+```
+gobuster vhost -u http://inlanefreight.htb:81 -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt --append-domain
+```
+Make sure you assign an IP to the domain if it is not recognisable by dns. In the command above do not forgot about changing the port as well. You can find the ports through nmap scans(initial stage).
+```
+sudo sh -c "echo '94.237.63.201 inlanefreight.htb' >> /etc/hosts"
+```
+
+## Certificate Transparency Logs
+

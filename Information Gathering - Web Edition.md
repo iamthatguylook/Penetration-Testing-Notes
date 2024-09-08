@@ -197,3 +197,59 @@ sudo sh -c "echo '94.237.63.201 inlanefreight.htb' >> /etc/hosts"
 
 ## Certificate Transparency Logs
 
+Certificate Transparency (CT) logs are public, append-only ledgers that record the issuance of SSL/TLS certificates. Whenever a Certificate Authority (CA) issues a new certificate, it must submit it to multiple CT logs. 
+
+crt.sh offers a convenient web interface, you can also leverage its API for automated searches directly from your terminal.
+
+```
+curl -s "https://crt.sh/?q=facebook.com&output=json" | jq -r '.[]
+ | select(.name_value | contains("dev")) | .name_value' | sort -u
+```
+jq -r '.[] | select(.name_value | contains("dev")) | .name_value': This part filters the JSON results, selecting only entries where the name_value field (which contains the domain or subdomain) includes the string "dev." The -r flag tells jq to output raw strings. -u orders it alphabetically.
+
+## Fingerprinting
+
+Fingerprinting focuses on extracting technical details about the technologies powering a website or web application.
+
+Techniques : Banner Grabbing, Analysing HTTP Headers: HTTP headers transmitted with every web page request and response contain a wealth of information. Probing for Specific Responses: Sending specially crafted requests to the target can elicit unique responses that reveal specific technologies or versions. Analysing Page Content: A web page's content, including its structure, scripts, and other elements, can often provide clues about the underlying technologies.
+
+| Tool       | Description                                                        | Features                                                                 |
+|------------|--------------------------------------------------------------------|--------------------------------------------------------------------------|
+| Wappalyzer | Browser extension and online service for website technology profiling. | Identifies a wide range of web technologies, including CMSs, frameworks, analytics tools, and more. |
+| BuiltWith  | Web technology profiler that provides detailed reports on a website's technology stack. | Offers both free and paid plans with varying levels of detail.            |
+| WhatWeb    | Command-line tool for website fingerprinting.                      | Uses a vast database of signatures to identify various web technologies.  |
+| Nmap       | Versatile network scanner that can be used for various reconnaissance tasks, including service and OS fingerprinting. | Can be used with scripts (NSE) to perform more specialised fingerprinting. |
+| Netcraft   | Offers a range of web security services, including website fingerprinting and security reporting. | Provides detailed reports on a website's technology, hosting provider, and security posture. |
+| wafw00f    | Command-line tool specifically designed for identifying Web Application Firewalls (WAFs). | Helps determine if a WAF is present and, if so, its type and configuration. |
+
+### banner Grabbing
+```
+curl -I inlanefreight.com
+```
+-I is header. Version number might be available. Location: tag in output is a redirect grab other banners.
+
+### Wafw00f
+Web Application Firewalls (WAFs) are security solutions designed to protect web applications from various attacks.
+```
+pip3 install git+https://github.com/EnableSecurity/wafw00f
+wafw00f inlanefreight.com
+```
+If protected then we might need to adapt techniques to bypass.
+
+### Nikto
+Nikto is a powerful open-source web server scanner. In addition to its primary function as a vulnerability assessment tool, Nikto's fingerprinting capabilities provide insights into a website's technology stack.
+
+__Installation__
+```
+sudo apt update && sudo apt install -y perl
+git clone https://github.com/sullo/nikto
+cd nikto/program
+chmod +x ./nikto.pl
+```
+__Command__
+```
+nikto -h inlanefreight.com -Tuning b
+```
+-h is target host -Tuning b to only run the Software Identification modules.
+
+In output - Headers: Several non-standard or insecure headers were found, including a missing Strict-Transport-Security header and a potentially insecure x-redirect-by header.

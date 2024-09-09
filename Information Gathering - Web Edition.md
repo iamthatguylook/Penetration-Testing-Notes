@@ -440,6 +440,7 @@ chmod +x ./finalrecon.py
 | `--wayback`   |              | Retrieve Wayback URLs for the target.        |
 | `--ps`        |              | Perform a fast port scan on the target.      |
 | `--full`      |              | Perform a full reconnaissance scan on the target. |
+
 __Usage__
 ```
 ./finalrecon.py --headers --whois --url http://inlanefreight.com

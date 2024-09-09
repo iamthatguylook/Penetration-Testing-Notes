@@ -267,3 +267,63 @@ From crawling you extract :
 2) Comments: Comments sections on blogs, forums, or other interactive pages can be a goldmine of information.
 3) Metadata: Metadata refers to data about data. In the context of web pages, it includes information like page titles, descriptions, keywords, author names, and dates.
 4) Sensitive Files: Web crawlers can be configured to actively search for sensitive files that might be inadvertently exposed on a website.(eg /files)
+
+## Robots.txt
+robots.txt is a simple text file placed in the root directory of a website (e.g., www.example.com/robots.txt). It adheres to the Robots Exclusion Standard, guidelines for how web crawlers should behave when visiting a website.
+__User-agent__: This line specifies which crawler or bot the following rules apply to. A wildcard (*) indicates that the rules apply to all bots.
+__Directives__: These lines provide specific instructions to the identified user-agent.
+### robots.txt in Web Reconnaissance
+__Uncovering Hidden Directories__: Disallowed paths in robots.txt often point to directories or files that they want private
+__Mapping Website Structure__: By analyzing the allowed and disallowed paths, security professionals can create a rudimentary map of the website's structure.
+__Detecting Crawler Traps__: Some websites intentionally include "honeypot" directories in robots.txt to lure malicious bots. 
+
+## Well-Known URIs
+/.well-known/ path on a web server, centralizes a website's critical metadata, including configuration files and information related to its services, protocols, and security mechanisms.
+| URI Suffix                     | Description                                                                 | Status      | Reference                                                                                                      |
+|--------------------------------|-----------------------------------------------------------------------------|-------------|---------------------------------------------------------------------------------------------------------------|
+| security.txt                   | Contains contact information for security researchers to report vulnerabilities. | Permanent   | RFC 9116                                                     |
+| /.well-known/change-password   | Provides a standard URL for directing users to a password change page.       | Provisional | WebAppSec Change Password URL |
+| openid-configuration           | Defines configuration details for OpenID Connect, an identity layer on top of the OAuth 2.0 protocol. | Permanent   | OpenID Connect Discovery 1.0                     |
+| assetlinks.json                | Used for verifying ownership of digital assets (e.g., apps) associated with a domain. | Permanent   | Digital Asset Links     |
+| mta-sts.txt                    | Specifies the policy for SMTP MTA Strict Transport Security (MTA-STS) to enhance email security. | Permanent   | RFC 8461                                                     |
+The information from the `openid-configuration` endpoint provides multiple exploration opportunities:
+
+- **Endpoint Discovery**:
+  - **Authorization Endpoint**: URL for user authorization requests.
+  - **Token Endpoint**: URL where tokens are issued.
+  - **Userinfo Endpoint**: URL providing user information.
+  - **JWKS URI**: Reveals the JSON Web Key Set (JWKS) with cryptographic keys.
+
+- **Supported Scopes and Response Types**: Helps map out functionality and limitations.
+
+- **Algorithm Details**: Information about supported signing algorithms for security measures.
+
+Exploring the IANA Registry and experimenting with the various .well-known URIs is an invaluable approach to uncovering additional web reconnaissance opportunities
+
+## Creepy Crawlies
+
+### Scrapy 
+__Installation__
+```
+pip3 install scrapy
+wget -O ReconSpider.zip https://academy.hackthebox.com/storage/modules/144/ReconSpider.v1.2.zip
+ unzip ReconSpider.zip
+```
+__Usage__
+```
+python3 ReconSpider.py http://inlanefreight.com
+```
+Output in results.json.
+| JSON Key        | Description                                           |
+|-----------------|-------------------------------------------------------|
+| emails          | Lists email addresses found on the domain.            |
+| links           | Lists URLs of links found within the domain.          |
+| external_files  | Lists URLs of external files such as PDFs.            |
+| js_files        | Lists URLs of JavaScript files used by the website.   |
+| form_fields     | Lists form fields found on the domain (empty in this example). |
+| images          | Lists URLs of images found on the domain.             |
+| videos          | Lists URLs of videos found on the domain (empty in this example). |
+| audio           | Lists URLs of audio files found on the domain (empty in this example). |
+| comments        | Lists HTML comments found in the source code.         |
+
+

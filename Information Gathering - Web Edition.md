@@ -115,7 +115,7 @@ google.com. 0 IN A 142.251.47.142: This is the answer to the query. It indicates
 
 An opt pseudosection can sometimes exist in a dig query. This is due to Extension Mechanisms for DNS (EDNS), which allows for additional features such as larger message sizes and DNS Security Extensions (DNSSEC) support.
 
-## Subdomains
+# Subdomains
 When exploring DNS records, we've primarily focused on the main domain (e.g., example.com) and its associated information. However, beneath the surface of this primary domain lies a potential network of subdomains. 
 Subdomains often host valuable information and resources that aren't directly linked from the main website. This can include: Development and Staging Environments ,Hidden Login Portals, Legacy Applications,Sensitive Information. 
 
@@ -169,7 +169,7 @@ __Remediation__:  Modern DNS servers are typically configured to allow zone tran
 ```
 dig axfr @nsztm1.digi.ninja zonetransfer.me
 ```
-## Virtual Hosts 
+# Virtual Hosts 
 
 Web servers like Apache, Nginx, or IIS are designed to host multiple websites or applications on a single server. They achieve this through virtual hosting. Virtual hosting is the ability of web servers to distinguish between multiple websites or applications sharing the same IP address(using __HTTP HEADER__). 
 
@@ -195,7 +195,7 @@ Make sure you assign an IP to the domain if it is not recognisable by dns. In th
 sudo sh -c "echo '94.237.63.201 inlanefreight.htb' >> /etc/hosts"
 ```
 
-## Certificate Transparency Logs
+# Certificate Transparency Logs
 
 Certificate Transparency (CT) logs are public, append-only ledgers that record the issuance of SSL/TLS certificates. Whenever a Certificate Authority (CA) issues a new certificate, it must submit it to multiple CT logs. 
 
@@ -207,7 +207,7 @@ curl -s "https://crt.sh/?q=facebook.com&output=json" | jq -r '.[]
 ```
 jq -r '.[] | select(.name_value | contains("dev")) | .name_value': This part filters the JSON results, selecting only entries where the name_value field (which contains the domain or subdomain) includes the string "dev." The -r flag tells jq to output raw strings. -u orders it alphabetically.
 
-## Fingerprinting
+# Fingerprinting
 
 Fingerprinting focuses on extracting technical details about the technologies powering a website or web application.
 
@@ -254,7 +254,7 @@ nikto -h inlanefreight.com -Tuning b
 
 In output - Headers: Several non-standard or insecure headers were found, including a missing Strict-Transport-Security header and a potentially insecure x-redirect-by header.
 
-## Crawling
+# Crawling
 Crawling, often called spidering, is the automated process of systematically browsing the World Wide Web. Similar to how a spider navigates its web, a web crawler follows links from one page to another, collecting information.
 
 Breadth-First Crawling (BFS) - 
@@ -326,7 +326,7 @@ Output in results.json.
 | audio           | Lists URLs of audio files found on the domain (empty in this example). |
 | comments        | Lists HTML comments found in the source code.         |
 
-## Search Engine Discovery
+# Search Engine Discovery
 
 | Operator        | Description                                                         | Example                                                         |
 |-----------------|---------------------------------------------------------------------|-----------------------------------------------------------------|
@@ -354,23 +354,23 @@ Output in results.json.
 
 ### Google Dorking
 Google Dorking, also known as Google Hacking, is a technique that leverages the power of search operators to uncover sensitive information, security vulnerabilities, or hidden content on websites, using Google Search.
-## Finding Login Pages
+__Finding Login Pages__
 - `site:example.com inurl:login`
 - `site:example.com (inurl:login OR inurl:admin)`
 
-## Identifying Exposed Files
+__Identifying Exposed Files__
 - `site:example.com filetype:pdf`
 - `site:example.com (filetype:xls OR filetype:docx)`
 
-## Uncovering Configuration Files
+__Uncovering Configuration Files__
 - `site:example.com inurl:config.php`
 - `site:example.com (ext:conf OR ext:cnf)` (searches for extensions commonly used for configuration files)
 
-## Locating Database Backups
+__Locating Database Backups__
 - `site:example.com inurl:backup`
 - `site:example.com filetype:sql`
 
-## Web Archives
+# Web Archives
 
 __The Wayback Machine__ is a digital archive of the World Wide Web and other information on the Internet. Founded by the Internet Archive, a non-profit organization, it has been archiving websites since 1996.
 
@@ -389,7 +389,7 @@ Gathering Intelligence: Use archived content for OSINT to gain insights into pas
 
 Stealthy Reconnaissance: Viewing archived snapshots is a passive method that doesn’t interact directly with the target, making it less detectable.
 
-## Automating recon
+# Automating recon
 Automating web reconnaissance tasks can significantly enhance efficiency and accuracy, allowing you to gather information at scale and identify potential vulnerabilities more rapidly.
 
 Automated tools offers __Efficiency__ , __Scalability__: Automation allows you to scale your reconnaissance efforts across a large number of targets, __Consistency__: Automated tools follow predefined rules and procedures, __Comprehensive Coverage__: Automation can be programmed to perform a wide range of reconnaissance tasks(dns,subdomain enumeration,port scanning,etc), __Integration__: Many automation frameworks allow for easy integration with other tools and platforms.

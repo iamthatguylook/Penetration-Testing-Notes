@@ -326,4 +326,121 @@ Output in results.json.
 | audio           | Lists URLs of audio files found on the domain (empty in this example). |
 | comments        | Lists HTML comments found in the source code.         |
 
+## Search Engine Discovery
 
+| Operator        | Description                                                         | Example                                                         |
+|-----------------|---------------------------------------------------------------------|-----------------------------------------------------------------|
+| `site:`         | Limits results to a specific website or domain.                     | `site:example.com`                                              |
+| `inurl:`        | Finds pages with a specific term in the URL.                        | `inurl:login`                                                   |
+| `filetype:`      | Searches for files of a particular type.                            | `filetype:pdf`                                                  |
+| `intitle:`      | Finds pages with a specific term in the title.                      | `intitle:"confidential report"`                                  |
+| `intext:` or `inbody:` | Searches for a term within the body text of pages.            | `intext:"password reset"`                                       |
+| `cache:`        | Displays the cached version of a webpage (if available).            | `cache:example.com`                                             |
+| `link:`         | Finds pages that link to a specific webpage.                        | `link:example.com`                                              |
+| `related:`      | Finds websites related to a specific webpage.                       | `related:example.com`                                           |
+| `info:`         | Provides a summary of information about a webpage.                  | `info:example.com`                                              |
+| `define:`       | Provides definitions of a word or phrase.                           | `define:phishing`                                               |
+| `numrange:`     | Searches for numbers within a specific range.                       | `site:example.com numrange:1000-2000`                            |
+| `allintext:`    | Finds pages containing all specified words in the body text.        | `allintext:admin password reset`                                |
+| `allinurl:`     | Finds pages containing all specified words in the URL.              | `allinurl:admin panel`                                          |
+| `allintitle:`   | Finds pages containing all specified words in the title.            | `allintitle:confidential report 2023`                            |
+| `AND`           | Narrows results by requiring all terms to be present.               | `site:example.com AND (inurl:admin OR inurl:login)`             |
+| `OR`            | Broadens results by including pages with any of the terms.          | `"linux" OR "ubuntu" OR "debian"`                               |
+| `NOT`           | Excludes results containing the specified term.                     | `site:bank.com NOT inurl:login`                                 |
+| `*` (wildcard)  | Represents any character or word.                                   | `site:socialnetwork.com filetype:pdf user* manual`              |
+| `..` (range search) | Finds results within a specified numerical range.                | `site:ecommerce.com "price" 100..500`                           |
+| `" "` (quotation marks) | Searches for exact phrases.                                    | `"information security policy"`                                 |
+| `-` (minus sign) | Excludes terms from the search results.                             | `site:news.com -inurl:sports`                                   |
+
+### Google Dorking
+Google Dorking, also known as Google Hacking, is a technique that leverages the power of search operators to uncover sensitive information, security vulnerabilities, or hidden content on websites, using Google Search.
+## Finding Login Pages
+- `site:example.com inurl:login`
+- `site:example.com (inurl:login OR inurl:admin)`
+
+## Identifying Exposed Files
+- `site:example.com filetype:pdf`
+- `site:example.com (filetype:xls OR filetype:docx)`
+
+## Uncovering Configuration Files
+- `site:example.com inurl:config.php`
+- `site:example.com (ext:conf OR ext:cnf)` (searches for extensions commonly used for configuration files)
+
+## Locating Database Backups
+- `site:example.com inurl:backup`
+- `site:example.com filetype:sql`
+
+## Web Archives
+
+__The Wayback Machine__ is a digital archive of the World Wide Web and other information on the Internet. Founded by the Internet Archive, a non-profit organization, it has been archiving websites since 1996.
+
+Crawling: The Wayback Machine uses bots to systematically browse the web and download copies of webpages by following links.
+
+Archiving: Downloaded pages, along with resources like images and scripts, are stored in the Wayback Machine. Each snapshot is tied to a specific date and time, with archiving done at intervals based on the site’s update frequency.
+
+Accessing: Users can view archived snapshots by entering a URL and selecting a date. The Wayback Machine allows browsing of pages, searching within archived content, and downloading sites for offline use.
+
+Use of webarchieve during Recon: 
+Uncovering Hidden Assets and Vulnerabilities: Discover old pages, directories, and files not visible on the current site, which might reveal sensitive info or security issues.
+
+Tracking Changes and Identifying Patterns: Compare historical snapshots to see how a website has evolved, including changes in structure, content, and potential vulnerabilities.
+
+Gathering Intelligence: Use archived content for OSINT to gain insights into past activities, marketing strategies, and technology choices.
+
+Stealthy Reconnaissance: Viewing archived snapshots is a passive method that doesn’t interact directly with the target, making it less detectable.
+
+## Automating recon
+Automating web reconnaissance tasks can significantly enhance efficiency and accuracy, allowing you to gather information at scale and identify potential vulnerabilities more rapidly.
+
+Automated tools offers __Efficiency__ , __Scalability__: Automation allows you to scale your reconnaissance efforts across a large number of targets, __Consistency__: Automated tools follow predefined rules and procedures, __Comprehensive Coverage__: Automation can be programmed to perform a wide range of reconnaissance tasks(dns,subdomain enumeration,port scanning,etc), __Integration__: Many automation frameworks allow for easy integration with other tools and platforms.
+
+### Recon Frameworks 
+
+__FinalRecon__ 
+__Recon-ng__ (It can perform DNS enumeration, subdomain discovery, port scanning, web crawling, and even exploit known vulnerabilities).
+__theHarvester__: Specifically designed for gathering email addresses, subdomains, hosts, employee names, open ports, and banners from different public sources like search engines, PGP key servers, and the SHODAN database.
+__SpiderFoot__: An open-source intelligence automation tool that integrates with various data sources to collect information about a target, including IP addresses, domain names, email addresses, and social media profiles.
+__OSINT Framework__: A collection of various tools and resources for open-source intelligence gathering.
+
+### FinalRecon
+
+It offers 
+- **Header Info:** Reveals server details and security issues.
+- **Whois Lookup:** Shows domain registration and contact info.
+- **SSL Certificate:** Checks validity and issuer.
+- **Crawler:**
+  - **HTML/CSS/JS:** Extracts links and resources.
+  - **Links:** Maps site structure.
+  - **Images, robots.txt, sitemap.xml:** Finds crawl paths and structure.
+  - **JS Links, Wayback Machine:** Uncovers hidden links and historical data.
+- **DNS Enumeration:** Queries DNS records, including DMARC.
+- **Subdomain Enumeration:** Uses multiple sources to find subdomains.
+- **Directory Enumeration:** Finds hidden directories and files.
+- **Wayback Machine:** Analyzes historical website data.
+
+__Installation__
+```
+git clone https://github.com/thewhiteh4t/FinalRecon.git
+cd FinalRecon
+pip3 install -r requirements.txt
+chmod +x ./finalrecon.py
+./finalrecon.py --help
+```
+| Option        | Argument     | Description                                  |
+|---------------|--------------|----------------------------------------------|
+| `-h, --help`  |              | Show the help message and exit.              |
+| `--url`       | URL          | Specify the target URL.                      |
+| `--headers`   |              | Retrieve header information for the target URL. |
+| `--sslinfo`   |              | Get SSL certificate information for the target URL. |
+| `--whois`     |              | Perform a Whois lookup for the target domain. |
+| `--crawl`     |              | Crawl the target website.                    |
+| `--dns`       |              | Perform DNS enumeration on the target domain. |
+| `--sub`       |              | Enumerate subdomains for the target domain.  |
+| `--dir`       |              | Search for directories on the target website. |
+| `--wayback`   |              | Retrieve Wayback URLs for the target.        |
+| `--ps`        |              | Perform a fast port scan on the target.      |
+| `--full`      |              | Perform a full reconnaissance scan on the target. |
+__Usage__
+```
+./finalrecon.py --headers --whois --url http://inlanefreight.com
+```

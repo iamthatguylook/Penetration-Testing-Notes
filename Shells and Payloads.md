@@ -154,3 +154,5 @@ $stream.Write($sendbyte,0,$sendbyte.Length);
 Includes a PowerShell prompt (PS) showing the current directory.
 7. Repeat Until Connection Closes: `$stream.Flush();` Ensures the buffer is fully sent before waiting for the next command.
 8. Close the Connection: `$client.Close();` Closes the TCP connection when finished.
+
+## Automating Payloads & Delivery with Metasploit

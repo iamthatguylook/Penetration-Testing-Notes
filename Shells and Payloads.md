@@ -395,3 +395,25 @@ Here are tools and methods for delivering and executing payloads on Windows host
 ## WSL and PowerShell For Linux
 
 Windows Subsystem for Linux (WSL) is a feature in Windows that lets you run a full Linux environment directly on your Windows machine without needing to use a virtual machine (VM) or dual boot. It allows developers and system administrators to use Linux tools and commands side by side with Windows programs. 
+
+# Infiltrating Unix\Linux
+
+# Web shells
+A web shell is a browser-based shell session we can use to interact with the underlying operating system of a web server. Again, to gain remote code execution via web shell, we must first find a website or web application vulnerability that can give us file upload capabilities. Most web shells are gained by uploading a payload written in a web language on the target server. The payload(s) we upload should give us remote code execution capability within the browser. 
+
+## Laudanum, One Webshell to Rule Them All
+Laudanum is a repository of ready-made files that can be used to inject onto a victim and receive back access via a reverse shell, run commands on the victim host right from the browser, and more. The repo includes injectable files for many different web application languages to include asp, aspx, jsp, php, and more.
+
+The Laudanum files are located in the /usr/share/laudanum directory. Most files can be copied as-is to the target. For shells, edit the file to insert your attacking host IP address to access the web shell or receive a reverse shell callback.
+
+### Move a Copy for Modification
+```
+cp /usr/share/laudanum/aspx/shell.aspx /home/tester/demo.aspx
+```
+Add your IP address to the allowedIps variable on line 59. It can be prudent to remove the ASCII art and comments from the file. These items in a payload are often signatured on and can alert the defenders/AV.
+
+Upload the file on an upload function. you will see output of the directory where our shell file was uploaded. Visit the url by changing the \ to / character.
+
+![image](https://github.com/user-attachments/assets/de27a6f9-984e-48cb-aace-f47e5a706879)
+
+we can issue commands here.

@@ -412,9 +412,12 @@ Make sure to add the ip and the url( <target ip> status.inlanefreight.local) in 
 cp /usr/share/laudanum/aspx/shell.aspx /home/tester/demo.aspx
 ```
 Add your IP address to the allowedIps variable on line 59. It can be prudent to remove the ASCII art and comments from the file. These items in a payload are often signatured on and can alert the defenders/AV.
+![image](https://github.com/user-attachments/assets/5e36fef5-d0ee-4c31-a8d3-c33b87cd5c26)
 
 Upload the file on an upload function. you will see output of the directory where our shell file was uploaded. Visit the url by changing the \ to / character.
 
 ![image](https://github.com/user-attachments/assets/de27a6f9-984e-48cb-aace-f47e5a706879)
 
 we can issue commands here.
+
+## Antak Webshell

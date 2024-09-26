@@ -550,3 +550,39 @@ cp /usr/share/nishang/Antak-WebShell/antak.aspx /home/administrator/Upload.aspx
 Make sure you modify the file and change password and text. Upload the file and visit the url.  you will get alert to enter text and password enter the same one as the one u modified before.
 
 With access via the Antak Webshell, we can execute PowerShell commands to navigate and perform actions on the host. This includes uploading and downloading files, executing scripts, and more. We can deliver a callback to our command and control platform by using the Upload function or a PowerShell one-liner to download and run the shell. If you're unsure where to start, use the help command in the prompt window.
+
+## PHP Web Shells
+ PHP is an open-source general-purpose scripting language typically used as part of a web stack that powers a website.
+### Hands-on with PHP-Based Web Shell
+
+- **Objective**: Use a PHP web shell to interact with a vulnerable rConfig 3.9.6 Linux host.
+- **Login**: Access rConfig with default credentials (admin) and navigate to Devices > Vendors > Add Vendor.
+
+#### Web Shell Upload Process
+
+- **Web Shell Source**: Use [WhiteWinterWolf's](https://github.com/WhiteWinterWolf/wwwolf-php-webshell) PHP Web Shell (download or copy source code).
+- **File Type Restriction**: rConfig only allows image uploads (.png, .jpg, .gif).
+- **Bypassing Restrictions**: Utilize Burp Suite to modify the Content-Type during upload.
+
+#### Burp Suite Configuration
+
+- **Proxy Settings**: Set IP to 127.0.0.1 and port to 8080 in browser settings.
+- **Upload Process**:
+    - Browse and select the .php file for upload.
+    - Forward HTTP requests until you see the POST request.
+    - Change Content-Type from `application/x-php` to `image/gif` to bypass restrictions.
+    - Forward requests to complete the upload.
+
+#### Confirmation and Execution
+
+- **Success Message**: Look for "Added new vendor NetVen to Database" to confirm upload.
+- **Access Web Shell**: Navigate to `/images/vendor/connect.php` to execute the shell.
+
+#### Considerations for Web Shells
+
+- **File Management**: Web apps may delete files after a certain period.
+- **Interactivity Limitations**: Non-interactive shells may hinder command execution and enumeration.
+- **Stealth**: Attempt to operate undetected and cover tracks by deleting payloads after use.
+- **Documentation**: Record methods attempted, successes, failures, payload names, and file hashes for reporting.
+
+ 

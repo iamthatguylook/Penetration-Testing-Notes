@@ -585,4 +585,13 @@ With access via the Antak Webshell, we can execute PowerShell commands to naviga
 - **Stealth**: Attempt to operate undetected and cover tracks by deleting payloads after use.
 - **Documentation**: Record methods attempted, successes, failures, payload names, and file hashes for reporting.
 
- 
+ # Detection & Prevention
+
+ ## Monitoring 
+ The ATT&CK Framework as defined by MITRE, is "a globally-accessible knowledge base of adversary tactics and techniques based on real-world observations."
+
+ ## Events To Watch For:
+
+**File uploads**: Especially with Web Applications, file uploads are a common method of acquiring a shell on a host besides direct command execution in the browser. Pay attention to application logs.  The use of firewalls and anti-virus.
+**Suspicious non-admin user actions**: Issuing commands like whoami by regular users or admins can be a significant indicator of compromise. Similarly, users connecting to non-standard SMB shares, such as end host to end host rather than end host to infrastructure server, can also be suspicious. To gain more insight, it’s crucial to enable security measures like logging all user interactions, PowerShell logging, and monitoring shell interface usage.
+**Anomalous network sessions**: Users typically follow consistent patterns in their network interactions, such as visiting the same websites and using the same applications regularly. Logging and analyzing NetFlow data can help identify unusual network traffic. Key indicators of compromise include top talkers, unique site visits, heartbeats on nonstandard ports (e.g., port 4444 used by Meterpreter), remote login attempts, and bulk GET/POST requests in short periods. Tools like network monitors, firewall logs, and SIEMs can help manage and analyze network traffic effectively.

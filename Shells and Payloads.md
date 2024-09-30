@@ -595,3 +595,27 @@ With access via the Antak Webshell, we can execute PowerShell commands to naviga
 **File uploads**: Especially with Web Applications, file uploads are a common method of acquiring a shell on a host besides direct command execution in the browser. Pay attention to application logs.  The use of firewalls and anti-virus.
 **Suspicious non-admin user actions**: Issuing commands like whoami by regular users or admins can be a significant indicator of compromise. Similarly, users connecting to non-standard SMB shares, such as end host to end host rather than end host to infrastructure server, can also be suspicious. To gain more insight, it’s crucial to enable security measures like logging all user interactions, PowerShell logging, and monitoring shell interface usage.
 **Anomalous network sessions**: Users typically follow consistent patterns in their network interactions, such as visiting the same websites and using the same applications regularly. Logging and analyzing NetFlow data can help identify unusual network traffic. Key indicators of compromise include top talkers, unique site visits, heartbeats on nonstandard ports (e.g., port 4444 used by Meterpreter), remote login attempts, and bulk GET/POST requests in short periods. Tools like network monitors, firewall logs, and SIEMs can help manage and analyze network traffic effectively.
+
+### Network Visibility & Documentation
+- **Visibility:** Critical for protecting systems and networks.
+- **Documentation & Diagrams:** Maintain updated network topology diagrams to track devices and traffic flow.
+- **Tools:** Research interactive tools like NetBrain for remote management and documentation.  
+- **Cloud Controllers:** Devices from Cisco Meraki, Ubiquiti, and Palo Alto offer Layer 7 visibility with cloud-based dashboards for easier traffic monitoring.
+
+### Baseline Monitoring
+- **Network Baseline:** Essential to detect anomalies quickly. Helps triage threats and prevent data leaks.
+
+### Shells & Network Traffic
+- **Network Traffic:** Shells/payloads need to communicate over the network. Traffic can be inspected for suspicious patterns (e.g., Netcat on port 4444).
+- **Encryption:** Netcat shells send unencrypted traffic, making them easier to detect.
+
+### Protecting End Devices
+- **End Devices:** Workstations, servers, printers, NAS, IoT devices need protection.
+- **Basics:** Enable antivirus (e.g., Windows Defender), patch management, and firewalls.
+- **Human Element:** Users are often exploited via phishing. Monitor end devices for security events.
+
+### Mitigations
+- **Sandboxing:** Restrict application access to limit potential damage.
+- **Least Privilege:** Limit user access, especially avoiding admin or domain-level permissions.
+- **Segmentation & Hardening:** Harden hosts and use segmentation (e.g., DMZ) to isolate exposed services.
+- **Firewalls:** Implement strict inbound/outbound rules. Use NAT to hinder shell payloads.

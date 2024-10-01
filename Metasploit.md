@@ -116,3 +116,27 @@ setg RHOSTS 10.10.10.40
 ```
  run
 ```
+# Targets
+Targets are unique operating system identifiers taken from the versions of those specific operating systems which adapt the selected exploit module to run on that particular version of the operating system.
+
+1. **Targets**:  
+   - Unique to specific OS versions, service packs, or language versions.  
+   - The chosen exploit module is adapted to match the identified target for a successful attack.
+
+2. **`show targets` Command**:  
+   - Inside a selected exploit module: Lists all vulnerable targets for that specific module.  
+   - Outside any module: Prompts that an exploit module needs to be selected first.
+
+3. **Exploit Module Information**:  
+   - **Automatic Targeting**: Metasploit automatically detects the version of the target and adapts the exploit.  
+   - **Manual Targeting**: Use `set target <index>` to manually choose the target from the available list based on your knowledge of the target's OS version and service pack.
+
+4. **Target Types**:  
+   - Target details may vary based on service packs, OS versions, or language versions.  
+   - Metasploit adjusts parameters like the **return address**, which can be affected by differences in language packs or hooks.  
+   - Common return addresses used in exploits include `jmp esp` or `pop/pop/ret` sequences.
+
+5. **Return Address**:  
+   - A critical part of the exploit that directs program flow.  
+   - Language packs, software versions, or system hooks can change the location of the return address.  
+   - Use **msfpescan** to find a suitable return address when crafting or adapting an exploit.

@@ -140,3 +140,71 @@ Targets are unique operating system identifiers taken from the versions of those
    - A critical part of the exploit that directs program flow.  
    - Language packs, software versions, or system hooks can change the location of the return address.  
    - Use **msfpescan** to find a suitable return address when crafting or adapting an exploit.
+
+# Payloads
+
+A Payload in Metasploit refers to a module that aids the exploit module in (typically) returning a shell to the attacker. The payloads are sent together with the exploit itself to bypass standard functioning procedures of the vulnerable service (exploits job) and then run on the target OS to typically return a reverse connection to the attacker and establish a foothold (payload's job).
+
+**Singles** are self-contained payloads that include both the exploit and the full shellcode necessary for execution. They are designed to be more stable and provide immediate results upon execution, although their larger size may limit compatibility with certain exploits. Examples of Single payloads include tasks like adding a user to the target system or initiating a process.
+
+**Stagers** work in conjunction with Stages to establish a connection between the attacker and the victim. They are small and reliable, waiting on the attacker’s machine to connect after the Stage completes its run on the target. Metasploit intelligently selects the best available stager, reverting to less preferred options if necessary. There are two types of stagers: NX and NO-NX. NX stagers are typically larger due to the use of VirtualAlloc for memory allocation and are the default choice for Windows 7 compatibility, addressing reliability issues with NX CPUs and DEP.
+
+**Stages** are payload components downloaded by Stagers, offering advanced features such as Meterpreter and VNC Injection without size constraints. They utilize middle stagers to improve handling of larger payloads, addressing the limitations of single recv() calls that may fail. The Stager first receives the middle stager, which then facilitates the full payload download.
+
+## Staged Payloads
+
+- **Definition**: Staged payloads modularize the exploitation process, separating functions into distinct code blocks that chain together to gain remote access to a target machine.
+- **Objectives**: Besides shell access, they aim to be compact and stealthy to evade Antivirus (AV) and Intrusion Prevention System (IPS) detection.
+
+### Stage0
+
+- **Purpose**: The initial shellcode sent to the target to establish a reverse connection back to the attacker’s machine.
+- **Common Types**: Seen in names like `reverse_tcp`, `reverse_https`, etc.
+- **Communication**: Designed to read a larger subsequent payload (Stage1 mostly to gain shell access) into memory after a stable channel is established. 
+
+### Meterpreter Payload
+
+- **Characteristics**: A multifaceted payload using DLL injection, ensuring a stable and hard-to-detect connection. It resides in memory, leaving no traces on the hard drive.
+- **Functionality**: Offers commands for keystroke capture, password collection, and more. It supports dynamic loading of scripts and plugins.
+
+### Searching for Payloads
+
+- **Finding Payloads**: Use `show payloads` in `msfconsole` to see available options.
+- **Grep for Filtering**: To speed up searches, use `grep` with keywords, e.g., `grep meterpreter show payloads`.
+
+### Selecting Payloads
+
+- **Process**: To set a payload, first select an exploit module and use `set payload <no.>` with the corresponding index number.
+
+## MSF Payload and Exploit Configuration
+Detecting Target OS:
+
+Running show payloads in the exploit module detects that the target is Windows, showing relevant payloads.
+Key Parameters for Configuration:
+
+Exploit Module:
+RHOSTS: IP of the target machine.
+RPORT: Check it's set to port 445 (SMB).
+Payload Module:
+LHOST: Attacker's IP address.
+LPORT: Check it's not in use.
+Check LHOST IP:
+
+Use ifconfig in msfconsole.
+
+Using Meterpreter:
+Replace **whoami** with **getuid** to check user (meterpreter uses linux commands)
+
+Meterpreter Commands:
+Core Commands: Background session, load extensions, exit session.
+File System Commands: ls, cd, upload, download.
+Networking Commands: ifconfig, netstat, portfwd.
+System Commands: ps, shell, shutdown.
+
+Use help command to find out all possible commands of meterpreter.
+
+To access shell use **shell** command.
+
+**Channel 1** has been created, and we are automatically placed into the CLI for this machine. The channel here represents the connection between our device and the target host, which has been established in a reverse TCP connection (from the target host to us) using a Meterpreter Stager and Stage.
+## Payload Types
+![image](https://github.com/user-attachments/assets/593bb485-7e62-499b-99f4-205fee825ce5)

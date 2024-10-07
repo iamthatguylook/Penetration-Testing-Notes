@@ -237,3 +237,117 @@ Metasploit offers a tool called msf-virustotal that we can use with an API key t
 ```
 msf-virustotal -k <API key> -f TeamViewerInstall.exe
 ```
+
+# Databases
+**Databases** in msfconsole are used to keep track of your results. It is no mystery that during even more complex machine assessments, much less entire networks, things can get a little fuzzy and complicated due to the sheer amount of search results, entry points, detected issues, discovered credentials, etc.
+
+## Setting up the Database
+**PostgreSQL Status**
+```
+sudo service postgresql status
+```
+Start PostgreSQL
+```
+sudo systemctl start postgresql
+```
+**MSF - Initiate a Database**
+```
+sudo msfdb init
+```
+Sometimes an error can occur if Metasploit is not up to date. 
+
+check msfdb status
+```
+ sudo msfdb status
+```
+
+**MSF - Connect to the Initiated Database**
+```
+sudo msfdb run
+```
+If, however, we already have the database configured and are not able to change the password to the MSF username, proceed with these commands:
+```
+msfdb reinit
+cp /usr/share/metasploit-framework/config/database.yml ~/.msf4/
+sudo service postgresql restart
+msfconsole -q
+```
+
+The msfconsole also offers integrated help for the database. 
+
+```
+help database
+```
+## Using the Database
+With the help of the database, we can manage many different categories and hosts that we have analyzed. Alternatively, the information about them that we have interacted with using Metasploit. These databases can be exported and imported. 
+### Workspaces
+
+We can think of Workspaces the same way we would think of folders in a project. We can segregate the different scan results, hosts, and extracted information by IP, subnet, network, or domain.
+
+View current workspace use workspace command.
+```
+msf6 > workspace
+```
+Add Workspace
+```
+workspace -a Target_1
+```
+Delete Workspace 
+```
+workspace -d Target_1
+```
+Change workspace
+```
+workspace Target_1
+```
+we can use the **workspace -h command **for the help menu related to Workspaces.
+
+## Importing Scan Results
+we want to import a Nmap scan of a host into our Database's Workspace to understand the target better. We can use the db_import command for this.(make sure file is in .xml it is preferred)
+
+
+```
+db_import Target.xml
+```
+
+## Using Nmap Inside MSFconsole
+```
+db_nmap -sV -sS 10.10.10.8
+```
+![image](https://github.com/user-attachments/assets/40a4ceb3-6899-4adb-9998-23cd83b71163)
+
+
+### Data Backup
+make sure to back up our data if anything happens with the PostgreSQL service.
+
+**db_export help command**
+```
+db_export -h
+```
+
+```
+db_export -f xml backup.xml
+```
+
+### Hosts
+The hosts command displays a database table automatically populated with the host addresses, hostnames, and other information we find about these during our scans and interactions.For example, suppose msfconsole is linked with scanner plugins that can perform service and OS detection.
+
+**MSF - Stored Hosts**
+```
+hosts -h
+```
+### Services
+The services command functions the same way as the previous one. It contains a table with descriptions and information on services discovered during scans or interactions. In the same way as the command above, the entries here are highly customizable.
+```
+services -h
+```
+### Credentials
+The creds command allows you to visualize the credentials gathered during your interactions with the target host. (can add manually the creds)
+```
+creds -h
+```
+### Loot
+The loot command works in conjunction with the command above to offer you an at-a-glance list of owned services and users. The loot, in this case, refers to hash dumps from different system types, namely hashes, passwd, shadow, and more.
+```
+loot -h
+```

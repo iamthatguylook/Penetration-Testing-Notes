@@ -351,3 +351,45 @@ The loot command works in conjunction with the command above to offer you an at-
 ```
 loot -h
 ```
+# Plugins
+Plugins are readily available software that has already been released by third parties and have given approval to the creators of Metasploit to integrate their software inside the framework.The use of plugins makes a pentester's life even easier, bringing the functionality of well-known software into the msfconsole or Metasploit Pro environments.
+
+## Using Plugins
+Navigating to /usr/share/metasploit-framework/plugins, which is the default directory for every new installation of msfconsole, should show us which plugins we have 
+```
+ls /usr/share/metasploit-framework/plugins
+```
+**MSF - Load Nessus**
+
+```
+load nessus
+```
+```
+ nessus_help
+```
+### Installing new Plugins 
+ popular plugins are installed with each update of the Parrot OS distro as they are pushed out towards the public by their makers, collected in the Parrot update repo. 
+
+ To install new custom plugins not included in new updates of the distro, we can take the .rb file provided on the maker's page and place it in the folder at /usr/share/metasploit-framework/plugins with the proper permissions.
+**Downloading MSF Plugins**
+```
+git clone https://github.com/darkoperator/Metasploit-Plugins
+ls Metasploit-Plugins
+```
+Here we can take the plugin pentest.rb as an example and copy it to /usr/share/metasploit-framework/plugins.
+```
+sudo cp ./Metasploit-Plugins/pentest.rb /usr/share/metasploit-framework/plugins/pentest.rb
+```
+Use the **load** command and **help **to see the actions that can be performed 
+popular plugins below:
+![image](https://github.com/user-attachments/assets/c0a8535d-2369-41f9-90b9-c883393d72b7)
+
+## Mixins
+Mixins are classes that act as methods for use by other classes without having to be the parent class of those other classes.
+
+Thus, it would be deemed inappropriate to call it inheritance but rather inclusion. They are mainly used when we:
+
+1) Want to provide a lot of optional features for a class.
+2) Want to use one particular feature for a multitude of classes.
+
+Most of the Ruby programming language revolves around Mixins as Modules. 

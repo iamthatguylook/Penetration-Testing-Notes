@@ -393,3 +393,42 @@ Thus, it would be deemed inappropriate to call it inheritance but rather inclusi
 2) Want to use one particular feature for a multitude of classes.
 
 Most of the Ruby programming language revolves around Mixins as Modules. 
+
+#  Sessions
+MSFconsole can manage multiple modules at the same time. This is one of the many reasons it provides the user with so much flexibility. This is done with the use of Sessions, which creates dedicated control interfaces for all of your deployed modules.
+
+## Using Sessions
+While running any available exploits or auxiliary modules in msfconsole, we can background the session as long as they form a channel of communication with the target host. (**[CTRL] + [Z]**)
+
+**Listing Active Sessions**
+```
+sessions
+```
+**Interacting with a Session**
+```
+sessions -i 1
+```
+This is specifically useful when we want to run an additional module on an already exploited system with a formed, stable communication channel.
+
+This can be done by backgrounding our current session, which is formed due to the success of the first exploit, searching for the second module we wish to run, and, if made possible by the type of module selected, selecting the session number on which the module should be run. This can be done from the second module's show options menu
+
+Usually, these modules can be found in the post category, referring to Post-Exploitation modules. 
+## Jobs
+If, for example, we are running an active exploit under a specific port and need this port for a different module, we cannot simply terminate the session using [CTRL] + [C]. If we did that, we would see that the port would still be in use, affecting our use of the new module. So instead, we would need to use the jobs command to look at the currently active tasks running in the background and terminate the old ones to free up the port.
+**Viewing the Jobs Command Help Menu**
+```
+ jobs -h
+```
+**Viewing the Exploit Command Help Menu**
+```
+exploit -h
+```
+**Running an Exploit as a Background Job**
+```
+exploit -j
+```
+**Listing Running Jobs**
+ To kill a specific job, look at the index no. of the job and use the kill [index no.]
+ ```
+jobs -l
+```

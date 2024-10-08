@@ -469,3 +469,51 @@ The developers of Meterpreter set clear design goals for the project
 1) Stealthy - Meterpreter runs in memory, injecting into processes without leaving files or creating new processes.
 2) Powerful - It uses encrypted channelized communication, allowing shell spawning and secure data exchange.
 3) Extensible - Meterpreter can load new features over the network without needing to rebuild.
+
+## Using Meterpreter 
+
+**MSF - Scanning Target**
+```
+db_nmap -sV -p- -T5 -A 10.10.10.15
+```
+use host and service command to find what is running on the machine. Explore the services.
+Nmap scan more closely, we notice that the server is running Microsoft IIS httpd 6.0(This is an example situation). So we further our research in that direction, searching for common vulnerabilities for this version of IIS. 
+
+**MSF - Searching for Exploit**
+```
+search iis_webdav_upload_asp
+```
+Set the options accordingly
+![image](https://github.com/user-attachments/assets/b1a2176d-7c05-43ca-b125-45935ed19b83)
+
+After gaining a Meterpreter shell, we notice a .asp file named metasploit28857905 on the target system. Since Meterpreter resides in memory, the file isn't needed, but msfconsole's attempt to remove it failed due to access permissions. Leaving such traces can expose the attack to sysadmins, who can stop it by scanning for similar filenames or signatures using regex. To continue the attack and elevate privileges, we attempt to migrate our process to a more privileged user after encountering an access denied message.
+
+![image](https://github.com/user-attachments/assets/dfe1a2c2-8039-41e3-96a1-2b97a40dbc55)
+
+Now that we have established at least some privilege level in the system, it is time to escalate that privilege. So, we look around for anything interesting, and in the C:\Inetpub\ location, we find an interesting folder named AdminScripts. However, unfortunately, we do not have permission to read what is inside it.
+
+Use local exploit suggester module, attach it to session. **Bg** the successful exploit session and run the module on the session.
+![image](https://github.com/user-attachments/assets/d1e1bbab-9b41-49d6-ad87-7cfddd5ed8d4)
+
+Running the recon module presents us with a multitude of options. Going through each separate one, we land on the ms15_051_client_copy_image entry, which proves to be successful. This exploit lands us directly within a root shell, giving us total control over the target system.
+
+**MSF - Privilege Escalation**
+
+```
+use exploit/windows/local/ms15_051_client_copy_images
+```
+set the options and run the exploit you will gain root.
+
+**MSF - Dumping Hashes**
+```
+ hashdump
+```
+```
+lsa_dump_sam
+```
+
+**MSF - Meterpreter LSA Secrets Dump**
+```
+lsa_dump_secrets
+```
+From this point, if the machine was connected to a more extensive network, we could use this loot to pivot through the system, gain access to internal resources and impersonate users with a higher level of access if the overall security posture of the network is weak.

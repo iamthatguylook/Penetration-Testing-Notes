@@ -432,3 +432,40 @@ exploit -j
  ```
 jobs -l
 ```
+# Meterpreter
+The Meterpreter Payload is a specific type of multi-faceted, extensible Payload that uses DLL injection to ensure the connection to the victim host is stable and difficult to detect using simple checks and can be configured to be persistent across reboots or system changes. 
+
+** Meterpreter Commands**
+![image](https://github.com/user-attachments/assets/9293020f-102c-43fb-8a34-2b58d440a65e)
+
+### Running Meterpreter
+
+1. **Select Payload**
+   - Use `show payloads` to select the appropriate Meterpreter payload based on:
+     - Type of connection (bind, reverse, etc.)
+     - Target OS (Windows, Linux, etc.)
+
+2. **Exploit Execution**
+   - When the exploit runs, the target executes the **initial stager** (bind, reverse, findtag, passivex, etc.).
+
+3. **DLL Injection**
+   - The stager loads the **Reflective DLL**, which injects Meterpreter into the target system.
+
+4. **Core Initialization**
+   - Meterpreter establishes an **AES-encrypted** connection over the socket.
+   - Sends a **GET** request to your system, which configures the client.
+
+5. **Loading Extensions**
+   - Meterpreter loads extensions like:
+     - **stdapi** (for basic functions like file management)
+     - **priv** (for administrative actions, if available)
+   - All communication remains **AES-encrypted**.
+
+6. **Meterpreter Shell**
+   - After the payload runs, you receive a **Meterpreter shell**.
+   - Use `help` to see available commands.
+
+The developers of Meterpreter set clear design goals for the project
+1) Stealthy - Meterpreter runs in memory, injecting into processes without leaving files or creating new processes.
+2) Powerful - It uses encrypted channelized communication, allowing shell spawning and secure data exchange.
+3) Extensible - Meterpreter can load new features over the network without needing to rebuild.

@@ -99,3 +99,80 @@ PS C:\Users[Username]\AppData\Local\Microsoft[Vault/Credentials]\
 - Group accounts
 - Computer accounts
 - Group policy objects
+
+# John the Ripper (JTR)
+- **JTR** is a popular open-source tool for testing password strength and cracking encrypted passwords using brute force or dictionary attacks.
+- Initially developed for UNIX-based systems (1996), it is widely used in the security field.
+- The "Jumbo" variant includes optimizations, multilingual wordlists, and support for 64-bit systems.
+
+## Supported Encryption Technologies
+- **UNIX crypt(3)**: Traditional UNIX encryption with a 56-bit key.
+- **DES-based**: Uses the Data Encryption Standard.
+- **Blowfish-based**: 448-bit key encryption.
+- **SHA-crypt hashes**: Commonly used in modern Linux distributions.
+- **Windows LM**: Uses a 56-bit key for encryption.
+- **And many more**: Supports a wide range of encryption formats.
+
+## Attack Methods
+1. **Dictionary Attacks**:
+   - Uses a pre-generated list of words to compare against hashed passwords.
+   - Common and effective but requires comprehensive wordlists.
+2. **Brute Force Attacks**:
+   - Attempts every possible combination of characters.
+   - Time-consuming, especially for long or complex passwords.
+3. **Rainbow Table Attacks**:
+   - Uses precomputed hash-password pairs for quick lookup.
+   - Limited by the size of the rainbow table.
+
+## Cracking Modes
+1. **Single Crack Mode**:
+   - Uses built-in wordlist or user-specified rules.
+   - Basic but less efficient for complex passwords.
+   - Command example:
+   - ```
+     john --format=<hash_type> <hash_file>
+     ```
+     ## Cracking with John
+   - Supports various hash formats, e.g.,
+  ```
+  john --format=sha256 hashes_to_crack.txt`.
+  ```
+   - Outputs cracked passwords to "john.pot" in the user's home directory.
+   - Progress can be viewed with `john --show`.
+![image](https://github.com/user-attachments/assets/5a5c0ab1-6829-4b8c-8935-6f87483f775c)
+
+2. **Wordlist Mode**:
+   - Cracks passwords using one or more wordlists.
+   - Allows applying mangling rules to modify words in the list.
+   - Command example:
+   - ```
+     john --wordlist=<wordlist_file> --rules <hash_file>
+     ```
+
+
+
+ 3. Incremental Mode in John
+   - **Command:** `john --incremental <hash_file>`
+     - Reads the hashes from the specified file and generates all possible character combinations, incrementing the length with each iteration.
+     - **Resource-Intensive:** Takes a long time to complete, depending on password complexity and system performance.
+     - **Character Set:** Default is `a-zA-Z0-9`. For complex passwords with special characters, a custom character set is needed.
+
+### Cracking Files with John
+It is also possible to crack even password-protected or encrypted files with John. We use additional tools that process the given files and produce hashes that John can work with. It automatically detects the formats and tries to crack them.
+
+```
+
+pdf2john server_doc.pdf > server_doc.hash
+ john server_doc.hash
+```
+```
+ john --wordlist=<wordlist.txt> server_doc.hash
+```
+![image](https://github.com/user-attachments/assets/58c7507c-0f88-4090-baf8-7f87df75cc81)
+
+locate more tools
+
+```
+locate *2john*
+```
+

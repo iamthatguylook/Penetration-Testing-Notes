@@ -393,6 +393,46 @@ We can now use another tool called CeWL to scan potential words from the company
 cewl https://www.inlanefreight.com -d 4 -m 6 --lowercase -w inlane.wordlist
 wc -l inlane.wordlist
 ```
+# Password Reuse / Default Passwords
+
+## Default Credentials and Credential Stuffing
+
+- **Common Issues**:
+  - Users and administrators often leave default credentials in place, forgetting to change them after installation.
+  - Easy-to-remember passwords are frequently reused, especially in large infrastructures with many interfaces.
+
+- **Credential Stuffing**:
+  - Involves using known default credentials to access services.
+  - Simpler than brute-forcing as it uses composite usernames and passwords from known lists.
+
+- **Default Credential Sources**:
+  - Common databases like the [DefaultCreds-Cheat-Sheet](https://github.com/ihebski/DefaultCreds-cheat-sheet) list known default credentials for various products.
+
+Default credentials can also be found in the product documentation, as they contain the steps necessary to set up the service successfully. Some devices/applications require the user to set up a password at install, but others use a default, weak password. Attacking those services with the default or obtained credentials is called Credential Stuffing.  we can create a new list that separates these composite credentials with a colon (username:password). In addition, we can select the passwords and mutate them by our rules to increase the probability of hits.
+
+- **Hydra Usage for Credential Stuffing**:
+- Create a list of composite credentials (username:password).
+- Use the following Hydra syntax to perform credential stuffing:
+  ```bash
+  hydra -C <user_pass.list> <protocol>://<IP>
+  ```
+- Example for SSH:
+  ```bash
+  hydra -C user_pass.list ssh://10.129.42.197
+  ```
+
+- **Role of OSINT**:
+- Helps understand company structure and infrastructure for better password and username combinations.
+- Useful for identifying hardcoded credentials in applications via Google searches.
+
+**Google Search - Default Credentials**
+![image](https://github.com/user-attachments/assets/f862824f-cf47-4c33-a32a-692371b1c6b5)
+
+In addition to application default credentials, there are [lists](https://www.softwaretestinghelp.com/default-router-username-and-password-list/) available specifically for routers. However, it's less common for router default credentials to remain unchanged since administrators usually prioritize securing these central network interfaces.
+
+
+
+
 
 
 

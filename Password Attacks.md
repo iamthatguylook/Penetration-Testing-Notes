@@ -506,3 +506,73 @@ crackmapexec smb 10.129.42.198 --local-auth -u bob -p HTB_@cademy_stdnt! --lsa
 ```
 crackmapexec smb 10.129.42.198 --local-auth -u bob -p HTB_@cademy_stdnt! --sam
 ```
+# Attacking LSASS
+ LSASS is a critical service that plays a central role in credential management and the authentication processes in all Windows operating systems.
+
+Upon initial logon, LSASS will:
+
+Cache credentials locally in memory
+Create access tokens
+Enforce security policies
+Write to Windows security log
+
+## Dumping LSASS Process Memory
+Similar to the process of attacking the SAM database, with LSASS, it would be wise for us first to create a copy of the contents of LSASS process memory via the generation of a memory dump. Creating a dump file lets us extract credentials offline using our attack host. Keep in mind conducting attacks offline gives us more flexibility in the speed of our attack and requires less time spent on the target system. 
+
+There are many techniques to create memory dump.
+
+### Task Manager Method
+Open Task Manager > Select the Processes tab > Find & right click the Local Security Authority Process > Select Create dump file
+
+lsass.DMP is created and saved in:
+```
+C:\Users\loggedonusersdirectory\AppData\Local\Temp
+```
+use the file transfer method discussed in the Attacking SAM
+
+### Rundll32.exe & Comsvcs.dll Method
+use an alternative method to dump LSASS process memory through a command-line utility called rundll32.exe. It is important to note that modern anti-virus tools recognize this method as malicious activity.
+
+determine what process ID (PID) is assigned to lsass.exe.
+**Finding LSASS PID in cmd**
+
+```
+tasklist /svc
+```
+**Finding LSASS PID in PowerShell**
+```
+Get-Process lsass
+```
+
+**Creating lsass.dmp using PowerShell**
+```
+rundll32 C:\windows\system32\comsvcs.dll, MiniDump 672 C:\lsass.dmp full
+```
+With this command, we are running rundll32.exe to call an exported function of comsvcs.dll which also calls the MiniDumpWriteDump (MiniDump) function to dump the LSASS process memory to a specified directory (C:\lsass.dmp).
+
+If the lsass.dmp file is generated we transfer it to attack host and extract the creds.
+
+
+### Using Pypykatz to Extract Credentials
+
+we can use a powerful tool called pypykatz to attempt to extract credentials from the .dmp file. Pypykatz is an implementation of Mimikatz written entirely in Python.Pypykatz an appealing alternative because all we need is a copy of the dump file, and we can run it offline from our Linux-based attack host. When we dumped LSASS process memory into the file, we essentially took a "snapshot" of what was in memory at that point in time. If there were any active logon sessions, the credentials used to establish them will be present. 
+
+**Running Pypykatz**
+The command initiates the use of pypykatz to parse the secrets hidden in the LSASS process memory dump. We use lsa in the command because LSASS is a subsystem of local security authority, then we specify the data source as a minidump file, proceeded by the path to the dump file (/home/peter/Documents/lsass.dmp) stored on our attack host. 
+```
+pypykatz lsa minidump /home/peter/Documents/lsass.dmp
+```
+We will get an output
+
+**MSV** MSV is an authentication package in Windows that LSA calls on to validate logon attempts against the SAM database.Pypykatz extracted the SID, Username, Domain, and even the NT & SHA1 password hashes associated with the bob user account's logon session stored in LSASS process memory. 
+
+**WDIGEST** - WDIGEST is an older authentication protocol enabled by default in Windows XP - Windows 8 and Windows Server 2003 - Windows Server 2012. LSASS caches credentials used by WDIGEST in clear-text. This means if we find ourselves targeting a Windows system with WDIGEST enabled, we will most likely see a password in clear-text
+
+**Kerberos** - Kerberos is a network authentication protocol used by Active Directory in Windows Domain environments. Domain user accounts are granted tickets upon authentication with Active Directory. LSASS caches passwords, ekeys, tickets, and pins associated with Kerberos. 
+
+**DPAPI** - The Data Protection Application Programming Interface or DPAPI is a set of APIs in Windows operating systems used to encrypt and decrypt DPAPI data blobs on a per-user basis for Windows OS features and various third-party applications.Mimikatz and Pypykatz can extract the DPAPI masterkey for the logged-on user whose data is present in LSASS process memory. This masterkey can then be used to decrypt the secrets associated with each of the applications using DPAPI and result in the capturing of credentials for various accounts. 
+## Cracking the NT Hash with Hashcat
+
+```
+sudo hashcat -m 1000 64f12cddaa88057e06a81b54e73b949b /usr/share/wordlists/rockyou.txt
+```

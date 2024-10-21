@@ -681,3 +681,59 @@ evil-winrm -i 10.129.201.57  -u  Administrator -H "64f12cddaa88057e06a81b54e73b9
 ```
 
 # Credential Hunting in Windows
+Credential Hunting is the process of performing detailed searches across the file system and through various applications to discover credentials. 
+
+## Search Centric
+A user may have documented their passwords somewhere on the system. There may even be default credentials that could be found in various files. It would be wise to base our search for credentials on what we know about how the target system is being used.
+
+### Key Terms to Search
+![image](https://github.com/user-attachments/assets/89344284-8cb1-4290-b527-7e06c2240c07)
+
+## Search Tools
+It is worth attempting to use Windows Search and use the keywords mentioned.
+By default, it will search various OS settings and the file system for files & applications containing the key term entered in the search bar.
+
+Take advantage of third-party tools like Lazagne to quickly discover credentials that web browsers or other installed applications may insecurely store.
+It would be beneficial to keep a standalone copy of Lazagne on our attack host so we can quickly transfer it over to the target. Lazagne.exe will do just fine for us in this scenario.
+
+### Running Lazagne All
+```
+start lazagne.exe all
+```
+-vv to study what it is doing in the background.
+### Using findstr
+```
+findstr /SIM /C:"password" *.txt *.ini *.cfg *.config *.xml *.git *.ps1 *.yml
+```
+
+## Key Considerations
+- **OS Type**: Approach differs for Windows Server vs. Windows Desktop.
+- **System Function**: Tailor your search based on the computer's role.
+- **Directory Navigation**: List directories to potentially uncover credentials.
+
+### Common Storage Locations for Credentials
+- **Group Policy**:
+  - Passwords in the SYSVOL share
+  - Scripts in the SYSVOL share
+
+- **IT Shares**:
+  - Passwords in scripts
+  - `web.config` files on development machines and IT shares
+
+- **Configuration Files**:
+  - `unattend.xml`
+
+- **Active Directory**:
+  - User or computer description fields
+
+- **Password Management**:
+  - KeePass databases (pull hash, crack for access)
+
+- **User Systems**:
+  - Look for files like:
+    - `pass.txt`
+    - `passwords.docx`
+    - `passwords.xlsx`
+  - Check user shares and SharePoint.
+
+

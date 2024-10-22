@@ -795,7 +795,11 @@ findstr /SIM /C:"password" *.txt *.ini *.cfg *.config *.xml *.git *.ps1 *.yml
 - **Potential Issue**: Credentials are sometimes embedded in cronjob scripts, exposing sensitive information.
 - **Search Locations**:
   - `/etc/cron.d/` contains system-wide cron jobs.
-  - Use `ls -la /etc/cron.*` to list cron directories and their contents.
+  - Use
+  ```
+    ls -la /etc/cron.*
+  ```
+to list cron directories and their contents.
 
 ## 2. SSH Keys
 - **Definition**: SSH keys are used for secure authentication in the SSH protocol. They come in pairs: public and private keys.

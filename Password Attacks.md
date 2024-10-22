@@ -873,3 +873,70 @@ to search for authentication-related events.
 - **LaZagne**: Supports multiple browsers for credential extraction.
 - **Potential Risk**: Stored credentials can be extracted and decrypted, exposing user accounts.
 
+# Passwd, Shadow, & Opasswd
+
+## Authentication Mechanism
+- **Linux systems** use **Pluggable Authentication Modules (PAM)** for authentication.
+- PAM modules, such as `pam_unix.so` or `pam_unix2.so`, are found in `/usr/lib/x86_x64-linux-gnu/security/` on Debian-based distributions.
+- PAM handles **user authentication**, **password management**, **sessions**, and **old passwords**.
+
+## Passwd File
+- Located at `/etc/passwd` and **readable by all users**.
+- Contains **user information** in seven fields, separated by colons `:`.
+    - Example: `cry0l1t3:x:1000:1000:cry0l1t3,,,:/home/cry0l1t3:/bin/bash`
+    - Fields: `Username : Password Info : UID : GID : Full Name : Home Directory : Shell`
+- Typically, the **password field** contains an `x`, indicating that passwords are stored in the `/etc/shadow` file.
+
+### Security Concerns
+- If `/etc/passwd` mistakenly has **write permissions**, it may allow password modification.
+- Example exploit:
+    - Change `root:x:0:0:root:/root:/bin/bash` to `root::0:0:root:/root:/bin/bash`.
+    - This change allows **login as root without a password**.
+
+## Shadow File
+- Located at `/etc/shadow` and **readable only by administrators**.
+- Stores **password hashes and expiration data** in nine fields.
+    - Example: `cry0l1t3:$6$wBRzy$...SNIP...x9cDWUxW1:18937:0:99999:7:::`
+    - Fields: `Username : Encrypted Password : Last Password Change : Min Age : Max Age : Warning Period : Inactivity Period : Expiration Date : Unused`
+- Password format: `$<type>$<salt>$<hashed>`
+    - **Algorithm Types**:
+        - `$1$` – MD5
+        - `$2a$` – Blowfish
+        - `$5$` – SHA-256
+        - `$6$` – SHA-512 (default)
+
+### Special Cases
+- Characters `!` or `*` in the password field **disable login** via Unix passwords (kerberos or key based auth) 
+## Opasswd File
+- Located at `/etc/security/opasswd`, it stores **old passwords**.
+- Requires **admin permissions** to access.
+- Hashing algorithm used here may reveal **older, weaker encryption**, such as **MD5 ($1$)**.
+
+## Cracking Linux Credentials
+
+### Unshadow
+1. Backup the original files:
+    ```bash
+    sudo cp /etc/passwd /tmp/passwd.bak
+    sudo cp /etc/shadow /tmp/shadow.bak
+    ```
+2. **Combine** `/etc/passwd` and `/etc/shadow` into a **single file**:
+    ```bash
+    unshadow /tmp/passwd.bak /tmp/shadow.bak > /tmp/unshadowed.hashes
+    ```
+
+### Hashcat
+- **Crack unshadowed hashes** using a dictionary attack:
+    ```bash
+    hashcat -m 1800 -a 0 /tmp/unshadowed.hashes rockyou.txt -o /tmp/unshadowed.cracked
+    ```
+    - `-m 1800`: SHA-512 Crypt
+    - `-a 0`: Dictionary attack
+
+### Cracking MD5 Hashes
+1. Prepare the list of MD5 hashes (example file: `md5-hashes.list`).
+2. Run Hashcat:
+    ```bash
+    hashcat -m 500 -a 0 md5-hashes.list rockyou.txt
+    ```
+    - `-m 500`: MD5 Crypt

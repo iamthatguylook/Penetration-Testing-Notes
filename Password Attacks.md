@@ -1385,4 +1385,66 @@ wget https://raw.githubusercontent.com/CiscoCXSecurity/linikatz/master/linikatz.
 ```
 /opt/linikatz.sh
 ```
+# Protected files
+encryption methods like AES-256 for file storage and asymmetric encryption for file transmission are still necessary to protect sensitive data. Asymmetric encryption uses a recipient's public key to encrypt files, which only they can decrypt with their private key, offering stronger protection than the more easily intercepted plaintext emails.
+## Hunting for Encoded Files
+different file extensions can identify these types of encrypted/encoded files. [FileInfo](https://fileinfo.com/filetypes/encoded)
+```
 
+for ext in $(echo ".xls .xls* .xltx .csv .od* .doc .doc* .pdf .pot .pot* .pp*");do echo -e "\nFile extension: " $ext; find / -name *$ext 2>/dev/null | grep -v "lib\|fonts\|share\|core" ;done
+```
+### Hunting for SSH Keys
+```
+ grep -rnw "PRIVATE KEY" /* 2>/dev/null | grep ":1"
+ ```
+Most SSH keys we will find nowadays are encrypted. We can recognize this by the header of the SSH key because this shows the encryption method in use.
+![image](https://github.com/user-attachments/assets/d6bcac53-a173-4adb-8759-d5276ac11d23)
+
+Cannot use encrypted ssh keys without having password. many are often careless in the password selection and its complexity because SSH is considered a secure protocol, and many do not know that even lightweight AES-128-CBC can be cracked.
+## Cracking with John
+John The Ripper has many different scripts to generate hashes from files that we can then use for cracking. 
+### John Hashing Scripts
+```
+locate *2john*
+```
+ convert many different formats into single hashes and try to crack the passwords with this. There is a Python script called **ssh2john.py** for SSH keys, which generates the corresponding hashes for encrypted SSH keys
+ ```
+ssh2john.py SSH.private > ssh.hash
+```
+```
+cat ssh.hash 
+```
+### Cracking SSH Keys
+```
+john --wordlist=rockyou.txt ssh.hash
+```
+```
+john ssh.hash --show
+```
+## Cracking Documents
+Documents can be password protected. John can be used to convert documents into hash(**office2john.py**) and crack them offline.
+### Cracking Microsoft Office Documents
+```
+office2john.py Protected.docx > protected-docx.hash
+```
+```
+cat protected-docx.hash
+```
+```
+ john --wordlist=rockyou.txt protected-docx.hash
+```
+```
+john protected-docx.hash --show
+```
+### Cracking PDFs
+```
+pdf2john.py PDF.pdf > pdf.hash
+cat pdf.hash
+```
+```
+john --wordlist=rockyou.txt pdf.hash
+```
+```
+john pdf.hash --show
+```
+A major challenge in cracking password-protected files and access points is generating effective password lists, as common lists are often blocked by security systems. Increasingly, longer, randomly generated passwords or passphrases make cracking attempts more time-consuming or even impractical.

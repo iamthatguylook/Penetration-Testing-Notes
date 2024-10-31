@@ -1448,3 +1448,107 @@ john --wordlist=rockyou.txt pdf.hash
 john pdf.hash --show
 ```
 A major challenge in cracking password-protected files and access points is generating effective password lists, as common lists are often blocked by security systems. Increasingly, longer, randomly generated passwords or passphrases make cracking attempts more time-consuming or even impractical.
+
+# Protected Archives
+Archieve or compressed files can be password protected. An extensive list of archive types can be found on FileInfo.com.
+### Download All File Extensions
+```
+curl -s https://fileinfo.com/filetypes/compressed | html2text | awk '{print tolower($1)}' | grep "\." | tee -a compressed_ext.txt
+```
+It is important to note that not all of the above archives support password protection. Other tools are often used to protect the corresponding archives with a password. For example, with tar, the tool openssl or gpg is used to encrypt the archives.
+## Cracking Archives
+For password-protected archives, we need certain scripts that allow us to extract the hashes from the protected files and use them to crack the password of those.The .zip format is often heavily used in Windows environments to compress many files into one file.
+### Cracking ZIP
+**Using zip2john**
+```
+zip2john ZIP.zip > zip.hash
+```
+**Viewing the Contents of zip.hash**
+```
+cat zip.hash 
+```
+**Cracking the Hash with John**
+```
+john --wordlist=rockyou.txt zip.hash
+```
+**Viewing the Cracked Hash**
+```
+john zip.hash --show
+```
+### Cracking OpenSSL Encrypted Archives
+It's not always clear if an archive is password-protected, especially with formats that don’t typically support it. Tools like **openssl** can encrypt **gzip** files, and the file command can help identify a file's format.
+
+**Listing the Files**
+```
+ls
+```
+**Using file**
+```
+file GZIP.gzip
+```
+When cracking OpenSSL-encrypted files, many incorrect guesses can lead to false positives or missed passwords. A reliable approach is to use an openssl command in a loop that repeatedly tries to extract files with each guessed password. While running, this will show a lot of errors (which can be ignored), and if the correct password is in the list, the file will eventually be extracted successfully.
+**Using a for-loop to Display Extracted Contents**
+```
+for i in $(cat rockyou.txt);do openssl enc -aes-256-cbc -d -in GZIP.gzip -k $i 2>/dev/null| tar xz;done
+```
+Once the for-loop has finished,look in the current folder again to check if the cracking of the archive was successful.
+
+## Cracking BitLocker Encrypted Drives
+BitLocker is a Microsoft encryption program for entire partitions and external drives, available since Windows Vista. It uses AES encryption with 128-bit or 256-bit keys and requires a password or PIN for access. If forgotten, a 48-digit recovery key generated during setup can be used to decrypt the drive. Virtual drives can store sensitive information to protect it from unauthorized access. To crack BitLocker passwords, we can use the script bitlocker2john to extract four different hashes, with the first hash corresponding to the BitLocker password for use with Hashcat.
+### Using bitlocker2john
+```
+bitlocker2john -i Backup.vhd > backup.hashes
+```
+```
+ grep "bitlocker\$0" backup.hashes > backup.hash
+```
+```
+cat backup.hash
+```
+### Using hashcat to Crack backup.hash
+The Hashcat mode for cracking BitLocker hashes is -m 22100. Provide Hashcat with the file with the one hash, specify our password list, and specify the hash mode. Since this is robust encryption (AES), cracking can take some time.
+```
+hashcat -m 22100 backup.hash /opt/useful/seclists/Passwords/Leaked-Databases/rockyou.txt -o backup.cracked
+```
+### Viewing the Cracked Hash
+```
+cat backup.cracked
+```
+### Windows - Mounting BitLocker VHD
+After cracking the password for a BitLocker-encrypted virtual drive, you can access it by moving the drive to a Windows computer. Simply double-clicking the drive will show an error because it's password protected. To open it, you'll need to double-click the drive again, and Windows will ask you for the password. Once you enter the correct password, the drive will be mounted and accessible.
+![image](https://github.com/user-attachments/assets/2a5f97c4-5f4c-4697-b848-76537eafe643)
+# Password Policies
+Password policies are essential for enhancing computer security by encouraging strong passwords and defining their entire lifecycle, including creation, storage, and transmission. Companies often follow IT security standards like NIST SP800-63B, CIS Password Policy Guide, and PCI DSS to guide these policies. Key recommendations for a password policy include a minimum length of eight characters, use of uppercase and lowercase letters, inclusion of numbers and special characters, and periodic changes every 60 days. It’s crucial to blacklist common words related to the company and easily guessable passwords. Enforcing the policy requires technical implementation, such as configuring Active Directory settings, and effective communication across the organization. Creating strong, memorable passwords can involve using phrases or tools for generation, while password managers can help maintain multiple secure passwords.
+
+# Password Managers
+
+## Overview
+- Passwords are essential for various accounts and services (Wi-Fi, social media, banking, etc.).
+- Average person has ~100 passwords, leading to password reuse or simplicity.
+- Password managers help store and manage unique, complex passwords securely.
+
+## How Password Managers Work
+- Most use a **master password** to encrypt a password database.
+- Use **cryptographic hash functions** and **key derivation functions** for security.
+- **Online Password Managers**: Sync passwords across multiple devices; include mobile apps and browser extensions.
+  - Examples: 1Password, Bitwarden, Dashlane, LastPass.
+- **Local Password Managers**: Store passwords locally, putting responsibility on the user for protection.
+  - Examples: KeePass, KWalletManager, Password Safe.
+
+## Features to Consider
+- 2FA support
+- Multi-platform compatibility (Android, iOS, Windows, Linux, Mac)
+- Browser extension
+- Login autocomplete
+- Import/export capabilities
+- Password generation
+
+## Alternatives to Passwords
+- **Multi-Factor Authentication (MFA)**
+- **FIDO2**: Use common devices (e.g., Yubikey) for authentication.
+- **One-Time Password (OTP)** and **Time-based One-Time Password (TOTP)**
+- **Passwordless Authentication**: Uses possession or inherent factors instead of passwords (e.g., Microsoft, Auth0, Okta).
+  
+## Conclusion
+- Choosing the right password management solution depends on individual or organizational needs.
+- Evaluate the options based on features, security, and usability.

@@ -180,4 +180,68 @@ Some reasons why we may not have access to a resource:
 - Firewall Rules
 - Protocol Support
 
-## The Concept of Attacks
+# The Concept of Attacks
+
+To effectively understand how different services can be attacked, it’s essential to develop a structured concept that categorizes potential attack points and highlights commonalities across various services. Just as the concept of building a house involves common elements like a foundation, walls, and a roof, the concept of attacking services requires a foundational understanding that can be adapted and expanded as needed.
+
+## Categorizing the Concept of Attacks
+
+Attacks on services can be conceptualized using a pattern template that includes four primary categories:
+
+1. **Source**
+2. **Process**
+3. **Privileges**
+4. **Destination**
+
+Each of these categories encompasses specific characteristics and functions that can be adapted to individual services, such as SSH, FTP, SMB, and HTTP. This template provides a structured way to identify and understand vulnerabilities.
+
+### 1. Source
+The Source refers to where the input or information originates. It is the initial entry point for data that will be processed, potentially exploited for vulnerabilities. Common types of Sources include:
+
+- **Code**: Results from program code that may pass information internally between functions.
+- **Libraries**: Collections of prebuilt code and resources that programs utilize.
+- **Configurations (Config)**: Preset values that define how a process operates.
+- **APIs**: Interfaces for data retrieval and manipulation.
+- **User Input**: Direct input from users that can be manipulated to exploit vulnerabilities.
+
+**Example – Log4j (CVE-2021-44228)**  
+In the Log4j vulnerability, attackers manipulated the HTTP User-Agent header by injecting a Java Naming and Directory Interface (JNDI) lookup command. This command was processed by the Log4j library instead of logging the string as expected, leading to remote code execution.
+
+### 2. Process
+The Process is where the received information is handled. It determines how input is processed, how variables are used, and how functions are executed.
+
+**Components of Processes**:
+- **PID (Process ID)**: Identifies specific processes.
+- **Input**: The data provided to the process, either by user interaction or preprogrammed functions.
+- **Data Processing**: The method through which data is handled and transformed.
+- **Variables**: Placeholders for data during the processing.
+- **Logging**: Recording of events or data points, often retained in files or registers.
+
+**Example – Log4j**  
+In the case of Log4j, the process was designed to log input strings, but due to a misinterpretation of the User-Agent header as executable code, the vulnerability allowed for a request to be executed instead of merely logged.
+
+### 3. Privileges
+Privileges control what a process can do within a system. They act as a permission set that dictates the extent of actions available to processes.
+
+**Types of Privileges**:
+- **System**: Highest-level permissions (e.g., ‘SYSTEM’ on Windows, ‘root’ on Linux).
+- **User**: Permissions assigned to individual users.
+- **Groups**: Shared permissions assigned to collections of users.
+- **Policies**: Rules that dictate what commands or actions users/groups can execute.
+- **Rules**: Application-specific permissions that determine which actions are permissible.
+
+**Example – Log4j**  
+The danger of the Log4j vulnerability was exacerbated by the elevated privileges often granted to logging processes. This allowed attackers to execute remote code with potentially high levels of access.
+
+### 4. Destination
+The Destination is the end goal of the process—whether that means computing data, transferring it, or storing it. Not all Destinations become new Sources; therefore, this stage is not always recursive.
+
+## Pattern Templates for Services
+Creating a pattern template for analyzing potential attack vectors involves:
+
+- Identifying the **Source** of input.
+- Understanding the **Process** that handles it.
+- Evaluating the **Privileges** under which the process runs.
+- Recognizing the **Destination** or intended outcome.
+
+By applying this structured approach, it becomes easier to pinpoint vulnerabilities across various services and implement defensive measures efficiently.

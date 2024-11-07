@@ -313,3 +313,53 @@ Each target is unique, so it’s essential to understand the target’s processe
 ## Key Elements for Finding Sensitive Information:
 1. Understand the service and its functionality.
 2. Know what information to search for.
+
+# Attacking FTP: Key Concepts
+
+## FTP Overview
+- **Port**: FTP typically runs on **TCP/21**.
+- **Functionality**: Transfers files between client and server, allowing directory operations (e.g., `ls`, `cd`, `put`, `get`).
+- **Authentication**:
+  - **Anonymous login**: Allows access without credentials (risky if permissions are not set properly).
+  - **User login**: Requires valid credentials.
+- **File Management**: FTP provides a hierarchical directory structure where users can store, move, and manipulate files.
+
+## Enumeration
+- **Nmap**: 
+  - `-sC` and `-sV` for default scripts and version enumeration.
+  - `ftp-anon` script checks if anonymous login is allowed.
+  - `-p 21` specifies FTP port.
+  
+  **Example**:
+  ```bash
+  sudo nmap -sC -sV -p 21 192.168.2.142
+  ```
+
+### Misconfigurations
+- **Anonymous Login**: Exploitable if permissions are not restricted.
+- **Accessing Files**: Use FTP commands (`ls`, `cd`, `get`, `put`) to interact with files and directories.
+  Example:
+  ```bash
+  ftp 192.168.2.142
+  ```
+
+### Brute Forcing
+- **Medusa**: Use for brute-force FTP login with a wordlist.
+  Example:
+  ```bash
+  medusa -u user -P /path/to/rockyou.txt -h 192.168.2.142 -M ftp
+  ```
+
+### FTP Bounce Attack
+- **Definition**: An FTP Bounce attack allows an attacker to use a vulnerable FTP server as a proxy to deliver traffic to other devices within the network, bypassing firewalls.
+- **How it works**: The attacker uses the FTP server's **PORT command** to tell the server to send data to an external target, effectively performing port scanning or other actions on a machine behind the FTP server.
+- **Targeting**: This attack is particularly useful when the attacker cannot directly reach a target machine due to network restrictions.
+- **Mitigation**: Modern FTP servers typically disable this feature, but if misconfigured, it can still be exploited.
+  
+  **Example with Nmap**:
+  ```bash
+  nmap -Pn -v -n -p80 -b anonymous:password@ftp_server_ip target_ip
+  ```
+
+### Conclusion
+- FTP can be vulnerable if misconfigured or exploited through brute-force, anonymous login, or FTP bounce attacks. Understanding how to interact with the FTP service and identifying misconfigurations can lead to successful exploitation.

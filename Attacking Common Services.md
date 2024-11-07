@@ -364,3 +364,5 @@ Many different attacks and methods are protocol-based. However, it is essential 
 
 ### Conclusion
 - FTP can be vulnerable if misconfigured or exploited through brute-force, anonymous login, or FTP bounce attacks. Understanding how to interact with the FTP service and identifying misconfigurations can lead to successful exploitation.
+
+# Attacking SMB

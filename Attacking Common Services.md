@@ -179,3 +179,5 @@ Some reasons why we may not have access to a resource:
 - Network Connection
 - Firewall Rules
 - Protocol Support
+
+## The Concept of Attacks

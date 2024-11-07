@@ -284,3 +284,32 @@ Service misconfigurations occur when systems are not set up securely, creating v
 - Check and secure cloud storage permissions and use automated verification tools.
 
 **Consistent configuration updates and monitoring are crucial to mitigate misconfiguration risks.**
+
+# Finding Sensitive Information
+When attacking a service, we act as detectives, gathering as much information as possible and observing details carefully. Every piece of information is crucial.
+
+Imagine an engagement scenario: we target email, FTP, databases, and storage, aiming for Remote Code Execution (RCE). During enumeration, we find that only the FTP service allows anonymous access. Although it seems empty, there is a file named `johnsmith`. Using `johnsmith` as the FTP user and password fails, but we try it on the email service and successfully log in. Searching emails for the keyword "password," we find several matches, including John's MSSQL database credentials. We use these to access the database, execute commands, and achieve RCE, meeting our goal.
+
+A misconfigured service revealed a piece of information—`johnsmith`—that appeared insignificant but led to RCE. This demonstrates the importance of paying attention to every detail during enumeration and service attacks.
+
+## Examples of Sensitive Information:
+- Usernames
+- Email Addresses
+- Passwords
+- DNS Records
+- IP Addresses
+- Source Code
+- Configuration Files
+- PII (Personally Identifiable Information)
+
+## Common Services to Explore:
+- File Shares
+- Email
+- Databases
+
+### Understanding What to Look for
+Each target is unique, so it’s essential to understand the target’s processes, procedures, business model, and purpose. This insight helps identify valuable information for attacks.
+
+## Key Elements for Finding Sensitive Information:
+1. Understand the service and its functionality.
+2. Know what information to search for.

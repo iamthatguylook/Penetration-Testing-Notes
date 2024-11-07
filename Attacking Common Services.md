@@ -314,7 +314,7 @@ Each target is unique, so it’s essential to understand the target’s processe
 1. Understand the service and its functionality.
 2. Know what information to search for.
 
-# Attacking FTP: Key Concepts
+# Attacking FTP
 
 ## FTP Overview
 - **Port**: FTP typically runs on **TCP/21**.
@@ -342,7 +342,8 @@ Each target is unique, so it’s essential to understand the target’s processe
   ```bash
   ftp 192.168.2.142
   ```
-
+## Protocol Specifics Attacks
+Many different attacks and methods are protocol-based. However, it is essential to note that we are not attacking the individual protocols themselves but the services that use them. Since there are dozens of services for a single protocol and they process the corresponding information differently, we will look at some.
 ### Brute Forcing
 - **Medusa**: Use for brute-force FTP login with a wordlist.
   Example:

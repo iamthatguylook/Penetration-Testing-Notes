@@ -704,7 +704,6 @@ SELECT * FROM users
 GO
 ```
 ### Execute Commands
----
 **Command Execution via MSSQL:**
 
 - Command execution is crucial for controlling the operating system, provided appropriate privileges are in place.

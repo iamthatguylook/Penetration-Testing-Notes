@@ -561,3 +561,212 @@ Once the victim authenticates to our server, we poison the response and make it 
 use RPC to make changes to the system, such as:
 
 Change a user's password, Create a new domain user, Create a new shared folder.
+
+# Attacking SQL Databases
+MySQL and Microsoft SQL Server (MSSQL) are relational database management systems that store data in tables, columns, and rows.
+Databases hosts are considered to be high targets since they are responsible for storing all kinds of sensitive data, including, but not limited to, user credentials, Personal Identifiable Information (PII), business-related data, and payment information. (and service with high privledges)
+
+## Enumeration
+By default, MSSQL uses ports TCP/1433 and UDP/1434, and MySQL uses TCP/3306. However, when MSSQL operates in a "hidden" mode, it uses the TCP/2433 port.
+
+#### Banner Grabbing
+```
+nmap -Pn -sV -sC -p1433 10.10.10.125
+```
+The Nmap scan reveals essential information about the target, like the version and hostname, which we can use to identify common misconfigurations, specific attacks, or known vulnerabilities.
+
+## Authentication Mechanisms
+MSSQL supports two authentication modes
+
+**Windows authentication mode**	This is the default, often referred to as integrated security because the SQL Server security model is tightly integrated with Windows/Active Directory. Specific Windows user and group accounts are trusted to log in to SQL Server. Windows users who have already been authenticated do not have to present additional credentials.
+
+**Mixed mode**	Mixed mode supports authentication by Windows/Active Directory accounts and SQL Server. Username and password pairs are maintained within SQL Server.
+
+**1. MySQL Authentication:**
+- **Supports various methods:**
+  - **Username/Password:** The most common method, where a username and password are required.
+  - **Windows Authentication:** Requires a plugin and allows Windows user credentials to be used for authentication.
+- **Vulnerability (CVE-2012-2122):** Timing attack vulnerability where incorrect password attempts can eventually lead to authentication bypass.
+
+**2. SQL Server Authentication:**
+- **Misconfigurations:** Common issues that can allow unauthorized access include:
+  - **Anonymous Access:** Allowing access without credentials.
+  - **Users Without Passwords:** Accounts configured without passwords.
+  - **Improper Permissions:** Allowing access to users, groups, or machines without proper restrictions.
+
+**3. Privileges:**
+- **Depending on user privileges, possible actions include:**
+  - **Reading/Changing Database Contents:** Accessing and modifying the data within databases.
+  - **Modifying Server Configuration:** Making changes to the server's settings.
+  - **Executing Commands:** Running commands on the SQL server.
+  - **Reading Local Files:** Accessing files on the local machine.
+  - **Communicating with Other Databases:** Interacting with other databases in the network.
+  - **Capturing Local System Hash:** Gaining access to system hash information.
+  - **Impersonating Users:** Acting as another user within the system.
+  - **Accessing Other Networks:** Expanding access to other networks connected to the SQL server.
+
+### Commands for Connecting
+
+**MySQL:**
+```bash
+$ mysql -u julio -pPassword123 -h 10.129.20.13
+```
+- **Explanation:** This command connects to a MySQL server using the username `julio` and the password `Password123` at the IP address `10.129.20.13`.
+
+**SQL Server (using sqlcmd):**
+```bash
+C:\htb> sqlcmd -S SRVMSSQL -U julio -P 'MyPassword!' -y 30 -Y 30
+```
+- **Explanation:** This command connects to an SQL Server using the `sqlcmd` utility with the server name `SRVMSSQL`, username `julio`, and password `MyPassword!`. The `-y` and `-Y` parameters adjust the output width.
+
+**SQL Server (using sqsh on Linux):**
+```bash
+$ sqsh -S 10.129.203.7 -U julio -P 'MyPassword!' -h
+```
+- **Explanation:** This command connects to an SQL Server from a Linux machine using the `sqsh` utility with the server IP `10.129.203.7`, username `julio`, and password `MyPassword!`.
+
+**SQL Server (using mssqlclient.py):**
+```bash
+$ mssqlclient.py -p 1433 julio@10.129.203.7 
+```
+- **Explanation:** This command connects to an SQL Server using the `mssqlclient.py` script with the port `1433`, username `julio`, and the server IP `10.129.203.7`.
+
+**Windows Authentication (SQL Server):**
+```bash
+$ sqsh -S 10.129.203.7 -U .\\julio -P 'MyPassword!' -h
+```
+- **Explanation:** This command connects to an SQL Server using Windows Authentication with the `sqsh` utility, local machine account `julio`, and the server IP `10.129.203.7`.
+
+When using Windows Authentication, we need to specify the domain name or the hostname of the target machine. If we don't specify a domain or hostname, it will assume SQL Authentication and authenticate against the users created in the SQL Server. use **SERVERNAME\\accountname or .\\accountname**.
+
+### SQL Default Databases
+it is essential to know the default databases for MySQL and MSSQL. Those databases hold information about the database itself and help us enumerate database names, tables, columns, etc. With access to those databases, we can use some system stored procedures, but they usually don't contain company data.
+
+**MySQL Default System Schemas/Databases:**
+
+- **mysql:** The system database containing tables that store information required by the MySQL server.
+- **information_schema:** Provides access to database metadata.
+- **performance_schema:** A feature for monitoring MySQL Server execution at a low level.
+- **sys:** A set of objects that helps DBAs and developers interpret data collected by the Performance Schema.
+
+**MSSQL Default System Schemas/Databases:**
+
+- **master:** Keeps the information for an instance of SQL Server.
+- **msdb:** Used by SQL Server Agent.
+- **model:** A template database copied for each new database.
+- **resource:** A read-only database that keeps system objects visible in every database on the server in the sys schema.
+- **tempdb:** Keeps temporary objects for SQL queries.
+
+#### SQL Syntax
+**Show Databases**
+```
+SHOW DATABASES;
+```
+If we use sqlcmd, we will need to use GO after our query to execute the SQL syntax.
+
+```
+SELECT name FROM master.dbo.sysdatabases
+```
+```
+GO
+```
+**Select a Database**
+```
+USE htbusers;
+```
+sqlcmd
+```
+USE htbusers
+```
+```
+GO
+```
+**Show Tables**
+```
+SHOW TABLES;
+```
+sqlcmd
+```
+SELECT table_name FROM htbusers.INFORMATION_SCHEMA.TABLES
+```
+```
+GO
+```
+**Select all Data from Table "users"**
+```
+SELECT * FROM users;
+```
+sqlcmd
+```
+SELECT * FROM users
+```
+```
+GO
+```
+### Execute Commands
+Here's the summary in Markdown syntax:
+
+---
+
+**Command Execution via MSSQL:**
+
+- Command execution is crucial for controlling the operating system, provided appropriate privileges are in place.
+- MSSQL uses an extended stored procedure called `xp_cmdshell` to execute system commands through SQL.
+
+**Key Points about `xp_cmdshell`:**
+- **Powerful but Disabled by Default:** 
+  - This feature is disabled by default.
+  - It can be enabled using Policy-Based Management or by running `sp_configure`.
+- **Security Rights:**
+  - The Windows process spawned by `xp_cmdshell` has the same security rights as the SQL Server service account.
+- **Synchronous Operation:**
+  - `xp_cmdshell` operates synchronously, meaning control is not returned to the caller until the command-shell command completes.
+
+**XP_CMDSHELL**
+```
+xp_cmdshell 'whoami'
+```
+```
+GO
+```
+If xp_cmdshell is not enabled, we can enable it, if we have the appropriate privileges, using the following command:
+```
+-- To allow advanced options to be changed.  
+EXECUTE sp_configure 'show advanced options', 1
+GO
+
+-- To update the currently configured value for advanced options.  
+RECONFIGURE
+GO  
+
+-- To enable the feature.  
+EXECUTE sp_configure 'xp_cmdshell', 1
+GO  
+
+-- To update the currently configured value for this feature.  
+RECONFIGURE
+GO
+```
+
+**Other Command Execution Methods:**
+
+**SQL Server:**
+1. **Extended Stored Procedures:**
+   - These are custom procedures added to SQL Server that allow executing system-level commands. They extend the functionality of standard SQL procedures, enabling tasks beyond database operations.
+
+2. **CLR Assemblies:**
+   - With CLR (Common Language Runtime) integration, you can write code in .NET languages like C#. These assemblies can be loaded into SQL Server and called just like stored procedures or functions, which can include executing system commands.
+
+3. **SQL Server Agent Jobs:**
+   - SQL Server Agent is a scheduling tool for automating tasks. Jobs created here can run various scripts and commands at scheduled times, enabling automated command execution.
+
+4. **External Scripts:**
+   - SQL Server supports running scripts written in external languages (e.g., Python or R). These scripts can execute system commands, providing another method to control the operating system.
+
+5. **xp_regwrite:**
+   - This command writes entries to the Windows registry. By modifying the registry, it’s possible to elevate privileges or perform administrative tasks, making it a powerful tool for system control.
+
+**MySQL:** supports **User Defined Functions (UDFs):**
+   - UDFs allow you to write custom functions in C/C++ and load them into MySQL. These functions can be executed within SQL queries, and in some cases, they can execute system commands. While rare in production environments due to security risks, they are an important capability to be aware of.
+
+#### Write Local Files

@@ -704,10 +704,7 @@ SELECT * FROM users
 GO
 ```
 ### Execute Commands
-Here's the summary in Markdown syntax:
-
 ---
-
 **Command Execution via MSSQL:**
 
 - Command execution is crucial for controlling the operating system, provided appropriate privileges are in place.

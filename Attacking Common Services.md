@@ -1106,3 +1106,124 @@ Sure! Here are the notes in Markdown syntax:
 **Considerations:**
 - Not all Windows systems will be vulnerable.
 - Worth attempting if you have an NTLM hash, the user has RDP rights, and GUI access benefits the assessment.
+
+# Attacking DNS
+The Domain Name System (DNS) translates domain names (e.g., hackthebox.com) to the numerical IP addresses (e.g., 104.17.42.72). DNS is mostly UDP/53, but DNS will rely on TCP/53 more heavily as time progresses. 
+## Enumeration
+```
+ nmap -p53 -Pn -sV -sC 10.10.110.213
+```
+## DNS Zone Transfer
+A DNS zone is a portion of the DNS namespace that a specific organization or administrator manages. Since DNS comprises multiple DNS zones, DNS servers utilize DNS zone transfers to copy a portion of their database to another DNS server. Unless a DNS server is configured correctly (limiting which IPs can perform a DNS zone transfer), anyone can ask a DNS server for a copy of its zone information since DNS zone transfers do not require any authentication
+#### DIG - AXFR Zone Transfer
+```
+dig AXFR @ns1.inlanefreight.htb inlanefreight.htb
+```
+Tools like Fierce can also be used to enumerate all DNS servers of the root domain and scan for a DNS zone transfer:
+```
+fierce --domain zonetransfer.me
+```
+## Domain Takeovers & Subdomain Enumeration
+Domain takeover involves registering an expired or non-existent domain name to gain unauthorized control over another domain. Attackers can leverage this control to:
+- Host malicious content.
+- Send phishing emails leveraging the claimed domain.
+
+### Subdomain Takeover
+Subdomain takeover targets subdomains associated with CNAME (Canonical Name) records pointing to third-party services such as AWS, GitHub, Akamai, and CDNs. If a CNAME's target domain is unregistered or expired, an attacker can claim it to take over the subdomain.
+
+**Example:**
+```text
+sub.target.com.   60   IN   CNAME   anotherdomain.com
+```
+If `anotherdomain.com` is expired and claimed by an attacker, they gain control over `sub.target.com` until the DNS record is updated.
+
+### Subdomain Enumeration
+Enumerating subdomains is essential before attempting a subdomain takeover. Useful tools include:
+
+#### 1. Subfinder
+- Scrapes subdomains from public sources like DNSdumpster.
+- Command example:
+  ```bash
+  ./subfinder -d inlanefreight.com -v
+  ```
+
+**Output example:**
+```text
+[alienvault] www.inlanefreight.com
+[dnsdumpster] ns1.inlanefreight.com
+[dnsdumpster] ns2.inlanefreight.com
+...snip...
+[INF] Found 4 subdomains for inlanefreight.com in 20 seconds 11 milliseconds
+```
+
+#### 2. Sublist3r
+- Can brute-force subdomains with a pre-generated wordlist.
+
+#### 3. Subbrute
+- Allows custom resolvers and DNS brute-forcing, useful during internal pentests.
+- Installation and usage:
+  ```bash
+  git clone https://github.com/TheRook/subbrute.git
+  cd subbrute
+  echo "ns1.inlanefreight.com" > ./resolvers.txt
+  ./subbrute inlanefreight.com -s ./names.txt -r ./resolvers.txt
+  ```
+
+**Output example:**
+```text
+inlanefreight.com
+ns2.inlanefreight.com
+www.inlanefreight.com
+ms1.inlanefreight.com
+support.inlanefreight.com
+```
+
+### Verifying CNAME Records
+Using `nslookup` or `host` commands to check CNAME records:
+```bash
+host support.inlanefreight.com
+```
+**Output example:**
+```text
+support.inlanefreight.com is an alias for inlanefreight.s3.amazonaws.com
+```
+
+### Identifying Vulnerable Subdomains
+- Check if the CNAME record points to an unclaimed resource.
+- A URL returning an error like `NoSuchBucket` may indicate a potential subdomain takeover.
+- Example output:
+  ```text
+  https://support.inlanefreight.com shows a NoSuchBucket error
+  ```
+
+### Exploiting Subdomain Takeover
+1. Identify the subdomain with a CNAME record pointing to an unclaimed service.
+2. Register or claim the associated resource (e.g., create an AWS S3 bucket with the same subdomain name).
+3. Gain control over the subdomain and leverage it for further attacks.
+
+## DNS Spoofing
+- **DNS Spoofing (DNS Cache Poisoning)**: An attack where legitimate DNS records are altered with false data, redirecting traffic to a malicious site.
+
+### Attack Paths
+1. **Man-in-the-Middle (MITM)**: Intercepting communication between a user and DNS server to reroute traffic.
+2. **DNS Server Exploit**: Exploiting server vulnerabilities to gain control and modify DNS records.
+
+## Local DNS Cache Poisoning
+- **Tools**: Ettercap, Bettercap.
+
+### Steps with Ettercap:
+1. **Edit DNS Configuration**:
+   - Modify `/etc/ettercap/etter.dns`:
+     ```
+     inlanefreight.com      A   192.168.225.110
+     *.inlanefreight.com    A   192.168.225.110
+     ```
+2. **Launch Ettercap**:
+   - Navigate to `Hosts > Scan for Hosts`.
+   - Add target IP (e.g., `192.168.152.129`) to Target1.
+   - Add default gateway IP (e.g., `192.168.152.2`) to Target2.
+3. **Activate DNS Spoofing**:
+   - Go to `Plugins > Manage Plugins` and activate `dns_spoof`.
+
+### Results:
+- Target machine traffic to `inlanefreight.com` is redirected to attacker’s IP (`192.168.225.110`).

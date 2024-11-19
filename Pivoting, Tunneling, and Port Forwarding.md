@@ -233,4 +233,3 @@ The xfreerdp command will require an RDP certificate to be accepted before succe
 - **Firewall Considerations**: Windows machines may block ICMP (ping) by default, so host discovery checks (ping scans) might not be effective.
 
 This approach allows you to bypass firewall restrictions and scan the network behind the compromised host.
-

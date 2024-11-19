@@ -165,10 +165,72 @@ lo: inet 127.0.0.1 (Loopback)
 
 ---
 
-## Forward Multiple Ports  
+### Forward Multiple Ports  
 - Example: Forward MySQL (`3306`) and Apache (`80`).  
    ```bash
    ssh -L 1234:localhost:3306 -L 8080:localhost:80 ubuntu@10.129.202.64
    ```
 
 ---
+## Setting up to Pivot
+
+You're looking to set up a pivot using dynamic port forwarding through SSH and SOCKS tunneling to scan a network that is not directly accessible from your attack host. Here’s a summary of the steps you’ve outlined:
+
+#### 1. **Identify Interfaces**
+- Use `ifconfig` to identify the network interfaces.
+  - `ens192`: The interface connected to your attack host.
+  - `ens224`: The interface communicating with a different network (172.16.5.0/23).
+  - `lo`: The loopback interface.
+
+#### 2. **Setup SSH for Dynamic Port Forwarding**
+- On the compromised Ubuntu host (`WEB01`), establish an SSH connection with dynamic port forwarding using the `-D` option, which sets up a SOCKS proxy:
+  ```bash
+  ssh -D 9050 ubuntu@10.129.202.64
+  ```
+  - The `-D 9050` option tells the SSH server to listen on your local machine’s port 9050 and forward traffic via SSH to the 172.16.5.0/23 network.
+
+#### 3. **Configure Proxychains**
+- Modify the `/etc/proxychains.conf` file to route traffic through the SOCKS proxy:
+  ```bash
+  tail -4 /etc/proxychains.conf
+  socks4 127.0.0.1 9050
+  ```
+- This configuration ensures that any tools you use with proxychains will send their traffic through the SOCKS proxy on port 9050.
+
+#### 4. **Scan with Nmap via Proxychains**
+- Use proxychains with Nmap to perform a network scan over the SSH tunnel:
+  ```bash
+  proxychains nmap -v -sn 172.16.5.1-200
+  ```
+  - The `-sn` flag tells Nmap to perform a ping scan (to find live hosts).
+  - The traffic will be forwarded via SSH to the remote network (172.16.5.0/23).
+
+#### 5. **Target Specific Host Scan**
+- If you know a specific host (e.g., `172.16.5.19`), you can perform a more detailed scan:
+  ```bash
+  proxychains nmap -v -Pn -sT 172.16.5.19
+  ```
+  - The `-Pn` flag disables host discovery, assuming the host is up.
+  - The `-sT` flag performs a full TCP connect scan.
+
+#### 6. **Use Metasploit via Proxychains**
+- You can also pivot traffic through Metasploit, using `proxychains`:
+  ```bash
+  proxychains msfconsole
+  ```
+  - This ensures that all Metasploit traffic is routed through the SOCKS proxy for attacks on the target network.
+
+use the **rdp_scanner auxiliary module** to check if the host on the internal network is listening on **3389**.
+
+#### Using xfreerdp with Proxychains
+```
+proxychains xfreerdp /v:172.16.5.19 /u:victor /p:pass@123
+```
+The xfreerdp command will require an RDP certificate to be accepted before successfully establishing the session. After accepting it, we should have an RDP session, pivoting via the Ubuntu server.
+
+### Additional Notes:
+- **Proxychains Limitations**: Proxychains only supports full TCP connect scans. If you use partial packet scans (like SYN scans), they may not work properly.
+- **Firewall Considerations**: Windows machines may block ICMP (ping) by default, so host discovery checks (ping scans) might not be effective.
+
+This approach allows you to bypass firewall restrictions and scan the network behind the compromised host.
+

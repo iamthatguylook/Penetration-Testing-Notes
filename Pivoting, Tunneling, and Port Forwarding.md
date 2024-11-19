@@ -105,3 +105,70 @@ lo: inet 127.0.0.1 (Loopback)
   - **Pivoting Tip:** Use firewall-allowed ports to create backdoors (e.g., reverse shells).
 
 ---
+
+# Port Forwarding and SSH Notes
+
+## What is Port Forwarding?  
+- Redirects traffic from one port to another.  
+- Uses **TCP** for communication.  
+- Encapsulates forwarded traffic using protocols like **SSH** or **SOCKS**.  
+- Helps bypass firewalls and pivot to other networks.
+
+---
+
+## SSH Local Port Forwarding  
+
+### Scenario:  
+- Attack host: `10.10.15.x`.  
+- Target server: `10.129.x.x`.  
+- **Goal**: Access MySQL (local to the server on port `3306`) from your machine.  
+
+### Steps:  
+
+1. **Scan Target for Open Ports**  
+   ```bash
+   nmap -sT -p22,3306 10.129.202.64
+   ```
+   - Output:  
+     - Port `22` (SSH): **Open**.  
+     - Port `3306` (MySQL): **Closed** for external access.  
+
+2. **Forward Local Port with SSH**  
+   ```bash
+   ssh -L 1234:localhost:3306 ubuntu@10.129.202.64
+   ```
+   - **Command Breakdown**:  
+     - `-L`: Forward local port.  
+     - `1234`: Local port on your machine.  
+     - `localhost:3306`: Target's MySQL port.  
+
+3. **Verify Forwarding**  
+   - Check using `netstat`:  
+     ```bash
+     netstat -antp | grep 1234
+     ```
+   - Verify with `nmap`:  
+     ```bash
+     nmap -v -sV -p1234 localhost
+     ```
+     - Output: Port `1234/tcp` now connects to MySQL.
+
+4. **Access MySQL Locally**  
+   - Use `127.0.0.1:1234` to connect.  
+
+---
+
+## Why Port Forward?  
+- **MySQL is local to the target** (binds to `localhost`).  
+- Without forwarding, remote exploits/tools can’t access it.  
+- Forwarding makes MySQL accessible on your local machine.
+
+---
+
+## Forward Multiple Ports  
+- Example: Forward MySQL (`3306`) and Apache (`80`).  
+   ```bash
+   ssh -L 1234:localhost:3306 -L 8080:localhost:80 ubuntu@10.129.202.64
+   ```
+
+---

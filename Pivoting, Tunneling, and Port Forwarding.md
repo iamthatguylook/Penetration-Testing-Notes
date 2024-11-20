@@ -39,9 +39,6 @@
 
 ---
 # The Networking Behind Pivoting
-
-# Networking Concepts for Pivoting
-
 ## IP Addressing & NICs
 - **IP Address:** Essential for communication on any network.
   - **Dynamic IPs**: Assigned by DHCP servers.
@@ -106,7 +103,7 @@ lo: inet 127.0.0.1 (Loopback)
 
 ---
 
-# Port Forwarding and SSH Notes
+# Dynamic Port Forwarding with SSH and SOCKS Tunneling
 
 ## What is Port Forwarding?  
 - Redirects traffic from one port to another.  

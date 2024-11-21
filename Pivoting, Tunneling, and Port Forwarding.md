@@ -715,3 +715,38 @@ meterpreter > shell
 ---
 
 # SSH Pivoting with Sshuttle
+## **Overview**
+- **Sshuttle**: Python-based tool for SSH pivoting.
+- Automates iptables setup to route traffic via a pivot host.
+- Eliminates the need for Proxychains.
+
+---
+
+## **Steps**
+
+### **1. Install Sshuttle**
+```bash
+sudo apt-get install sshuttle
+```
+
+### **2. Set Up Pivot Routing**
+```bash
+sudo sshuttle -r ubuntu@10.129.202.64 172.16.5.0/23 -v
+```
+- `-r`: Remote SSH connection (`ubuntu@10.129.202.64`).
+- `172.16.5.0/23`: Subnet to route through the pivot.
+
+### **3. Scan or Connect**
+- Example using **Nmap**:
+  ```bash
+  nmap -v -sV -p3389 172.16.5.19 -A -Pn
+  ```
+- Use tools (e.g., RDP, Nmap) without Proxychains.
+
+---
+
+## **Benefits**
+- Streamlined SSH pivoting.
+- No need for additional proxy configurations.
+- Direct tool usage after setup.
+

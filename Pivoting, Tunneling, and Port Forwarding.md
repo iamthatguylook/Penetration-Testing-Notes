@@ -819,4 +819,51 @@ python client.py --server-ip <IPaddressofTargetWebServer> --server-port 8080 --n
 ## **Key Notes**
 - Rpivot establishes a SOCKS proxy tunnel through a compromised machine.
 - Allows access to internal web servers (e.g., `172.16.5.135:80`) from the attacker's machine using Proxychains.
+
+# Port Forwarding with Windows Netsh
+
+## **Overview**
+`netsh.exe` is a Windows command-line tool used for network configurations, including port forwarding. It enables attackers to pivot further within a compromised network.
+
+---
+
+## **Scenario**
+- **Compromised Host**: Windows 10 IT admin workstation.
+  - IPs: `10.129.15.150` (external), `172.16.5.25` (internal).
+- Goal: Forward traffic from port `8080` on the compromised host to port `3389` on the internal IP.
+
+---
+
+## **Steps**
+
+### **1. Configure Port Forwarding**
+Run the following command on the compromised host:
+```bash
+netsh.exe interface portproxy add v4tov4 listenport=8080 listenaddress=10.129.15.150 connectport=3389 connectaddress=172.16.5.25
+```
+
+- **`listenport`**: Port to listen on (e.g., `8080`).
+- **`listenaddress`**: External IP address of the compromised host (e.g., `10.129.15.150`).
+- **`connectport`**: Target port on the internal host (e.g., `3389`).
+- **`connectaddress`**: Internal host IP (e.g., `172.16.5.25`).
+
+### **2. Verify Configuration**
+Run this command:
+```bash
+netsh.exe interface portproxy show v4tov4
+```
+
+**Example Output:**
+```plaintext
+Listen on ipv4:             Connect to ipv4:
+
+Address         Port        Address         Port
+--------------- ----------  --------------- ----------
+10.129.15.150   8080        172.16.5.25     3389
+```
+
+### **3. Connect to Forwarded Port**
+From the **attack host**, connect using a tool like `xfreerdp`:
+```bash
+xfreerdp /u:<username> /p:<password> /v:10.129.15.150:8080
 ```

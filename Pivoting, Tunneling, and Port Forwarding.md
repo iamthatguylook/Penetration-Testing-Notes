@@ -846,7 +846,7 @@ netsh.exe interface portproxy add v4tov4 listenport=8080 listenaddress=10.129.15
 - **`listenaddress`**: External IP address of the compromised host (e.g., `10.129.15.150`).
 - **`connectport`**: Target port on the internal host (e.g., `3389`).
 - **`connectaddress`**: Internal host IP (e.g., `172.16.5.25`).
-
+- *v4tov4*: Stands for IPv4-to-IPv4 forwarding.
 ### **2. Verify Configuration**
 Run this command:
 ```bash

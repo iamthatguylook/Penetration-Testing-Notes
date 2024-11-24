@@ -1040,3 +1040,87 @@ window -i 1
 
 By setting up Chisel this way, you create a secure tunnel that allows you to navigate through network restrictions and reach internal services.
 
+# ICMP Tunneling with SOCKS
+
+**Overview**: 
+ICMP tunneling encapsulates traffic within ICMP packets (echo requests/responses). It’s useful for data exfiltration and creating pivot tunnels when ping responses are allowed through a firewall.
+
+### Steps to Setup & Use ptunnel-ng
+
+1. **Cloning ptunnel-ng**:
+   - **Command**:
+     ```
+     git clone https://github.com/utoni/ptunnel-ng.git
+     ```
+   - **Purpose**: Downloads the ptunnel-ng project repository from GitHub to your local machine.
+
+2. **Building ptunnel-ng**:
+   - **Commands**:
+     ```bash
+     cd ptunnel-ng
+     sudo ./autogen.sh
+     ```
+   - **Purpose**: 
+     - `cd ptunnel-ng`: Navigates to the ptunnel-ng directory.
+     - `sudo ./autogen.sh`: Runs the autogen.sh script, which prepares the build environment and compiles the ptunnel-ng source code into an executable.
+
+3. **Transferring ptunnel-ng to Pivot Host**:
+   - **Command**: 
+     ```bash
+     scp -r ptunnel-ng ubuntu@10.129.202.64:~/
+     ```
+   - **Purpose**: Securely copies the ptunnel-ng directory and its contents to the target host (pivot host) using SCP (Secure Copy Protocol).
+
+4. **Starting the ptunnel-ng Server on Pivot Host**:
+   - **Commands**: 
+     ```bash
+     cd ptunnel-ng/src
+     sudo ./ptunnel-ng -r10.129.202.64 -R22
+     ```
+   - **Purpose**: 
+     - `cd ptunnel-ng/src`: Navigates to the source directory where the ptunnel-ng executable is located.
+     - `sudo ./ptunnel-ng -r10.129.202.64 -R22`: Starts the ptunnel-ng server on the pivot host, which listens for ICMP packets and forwards them to the specified IP and port.
+
+5. **Connecting to ptunnel-ng Server from Attack Host**:
+   - **Command**: 
+     ```bash
+     sudo ./ptunnel-ng -p10.129.202.64 -l2222 -r10.129.202.64 -R22
+     ```
+   - **Purpose**: 
+     - Establishes a connection from the attack host to the ptunnel-ng server on the pivot host.
+     - The tunnel allows traffic to be sent through ICMP packets to the pivot host, which then forwards the traffic to the specified remote host and port.
+
+6. **Establishing SSH Connection through ICMP Tunnel**:
+   - **Command**: 
+     ```bash
+     ssh -p2222 -lubuntu 127.0.0.1
+     ```
+   - **Purpose**: 
+     - Establishes an SSH connection to the target through the ICMP tunnel by connecting to the local port 2222, which is mapped to the remote host and port via the tunnel.
+
+### Dynamic Port Forwarding & Proxychains
+
+1. **Enable Dynamic Port Forwarding**:
+   - **Command**: 
+     ```bash
+     ssh -D 9050 -p2222 -lubuntu 127.0.0.1
+     ```
+   - **Purpose**: 
+     - Creates a dynamic port forward on port 9050, allowing you to route traffic through the SSH connection using proxychains or other tools.
+
+2. **Using Proxychains with Nmap**:
+   - **Command**: 
+     ```bash
+     proxychains nmap -sV -sT 172.16.5.19 -p3389
+     ```
+   - **Purpose**: 
+     - Utilizes proxychains to route the Nmap scan through the dynamic port forward, enabling you to scan the internal network targets.
+
+### Network Traffic Analysis
+
+- **Tools**: Use packet analyzers like Wireshark to monitor and analyze the traffic passing through the ICMP tunnel, ensuring it behaves as expected.
+
+### Session Logs & Traffic Stats
+
+- **Monitoring**: ptunnel-ng provides session logs and traffic statistics, which help you confirm that the tunnel is correctly forwarding traffic.
+

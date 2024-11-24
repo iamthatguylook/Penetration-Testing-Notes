@@ -1124,3 +1124,52 @@ ICMP tunneling encapsulates traffic within ICMP packets (echo requests/responses
 
 - **Monitoring**: ptunnel-ng provides session logs and traffic statistics, which help you confirm that the tunnel is correctly forwarding traffic.
 
+# RDP and SOCKS Tunneling with SocksOverRDP
+
+## Overview
+During certain assessments, we might be limited to a Windows network and unable to use SSH for pivoting. In such cases, we rely on tools like SocksOverRDP, which uses Dynamic Virtual Channels (DVC) from the Windows Remote Desktop Service to tunnel packets over RDP connections.
+
+## Tools Needed
+- SocksOverRDP x64 Binaries
+- Proxifier Portable Binary (`ProxifierPE.zip`)
+
+## Steps to Setup SocksOverRDP
+
+### 1. Download Binaries
+Download the necessary binaries to the attack host:
+- SocksOverRDP x64 Binaries
+- Proxifier Portable Binary
+
+### 2. Transfer Files to Target
+Connect to the target using `xfreerdp` and copy `SocksOverRDPx64.zip` to the target.
+
+### 3. Load SocksOverRDP.dll
+On the Windows target, load the `SocksOverRDP.dll` using `regsvr32.exe`:
+```plaintext
+regsvr32.exe SocksOverRDP-Plugin.dll
+```
+
+### 4. Connect via RDP
+Connect to the target at `172.16.5.19` over RDP using `mstsc.exe` with credentials `victor:pass@123`. You should receive a prompt indicating the SocksOverRDP plugin is enabled and listening on `127.0.0.1:1080`.
+
+### 5. Start SocksOverRDP Server
+Transfer `SocksOverRDPx64.zip` or `SocksOverRDP-Server.exe` to `172.16.5.19` and start it with admin privileges:
+```plaintext
+SocksOverRDP-Server.exe
+```
+
+### 6. Confirm SOCKS Listener
+On the foothold target, check that the SOCKS listener is started using `netstat`:
+```plaintext
+netstat -antb | findstr 1080
+TCP 127.0.0.1:1080 0.0.0.0:0 LISTENING
+```
+
+### 7. Configure Proxifier
+Transfer Proxifier portable to the Windows 10 target on the `10.129.x.x` network. Configure Proxifier to forward all packets to `127.0.0.1:1080`. Proxifier will route traffic through the specified host and port.
+
+### 8. Route Traffic via Proxifier
+With Proxifier configured and running, start `mstsc.exe` to pivot traffic via `127.0.0.1:1080`, tunneling over RDP to `172.16.5.19`, and routing it to `172.16.6.155` using `SocksOverRDP-server.exe`.
+
+### RDP Performance Considerations
+When interacting with our RDP sessions on an engagement, there might be slow performance in a given session, especially if we are managing multiple RDP sessions simultaneously. If this is the case, we can access the Experience tab in mstsc.exe and set **Performance** to **Modem**.

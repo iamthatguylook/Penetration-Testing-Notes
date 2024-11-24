@@ -1173,3 +1173,34 @@ With Proxifier configured and running, start `mstsc.exe` to pivot traffic via `1
 
 ### RDP Performance Considerations
 When interacting with our RDP sessions on an engagement, there might be slow performance in a given session, especially if we are managing multiple RDP sessions simultaneously. If this is the case, we can access the Experience tab in mstsc.exe and set **Performance** to **Modem**.
+
+# Detection & Prevention Summary
+
+This section covers key measures for detecting and preventing threats in network environments, focusing on a holistic approach involving people, processes, and technology.
+
+## 1. Setting a Baseline
+- **Network Visibility**: Understanding and tracking everything in the network is essential for identifying anomalies like new devices or unusual traffic. Regular audits of DNS records, device backups, application inventories, and network configurations should be done.
+- **Network Diagram**: Tools like Netbrain or diagrams.net help visualize and maintain an up-to-date diagram of the network, aiding in troubleshooting and incident response.
+
+## 2. People
+- **Human Element**: Users are often the weakest link in security. Enforcing security practices and educating users, especially regarding Bring Your Own Device (BYOD) risks, is crucial. For example, personal devices used for work can introduce malware, compromising both the user and the organization.
+- **Authentication**: Multi-factor authentication is critical, especially for administrative access. Educating users on strong authentication practices helps prevent attacks.
+- **Security Operations Center (SOC)**: Large organizations should consider a SOC to monitor the network continuously and respond to incidents. A well-defined incident response plan is essential.
+
+## 3. Processes
+- **Policies and Procedures**: Defined policies and regular procedures (e.g., asset management, access control, host audits) help maintain network security and accountability.
+- **Access Control**: Proper policies for user account management, provisioning/de-provisioning, and multi-factor authentication are necessary.
+- **Change Management**: Formal processes for tracking changes in the environment help ensure security configurations are maintained.
+
+## 4. Technology
+- **Network Hardening**: Organizations should regularly check for misconfigurations, new vulnerabilities, and patch systems to prevent exploitation.
+- **Perimeter Defense**: Understand what needs protection and secure the perimeter. Technologies like next-gen firewalls, VPN access controls, and intrusion detection/prevention systems are key.
+- **Internal Defenses**: Segmentation, intrusion detection, and proper access controls can limit lateral movement for attackers. Host-based security measures like IDS/IPS and event logging are also vital for visibility.
+
+## 5. From the Outside Moving In
+- Assess security starting from the outside by understanding what is exposed to the internet and implementing strong defenses like firewalls and VPNs.
+- **Internal Network Segmentation**: Ensuring that sensitive internal resources are well protected and that only authorized users have access can stop attackers from exploiting vulnerabilities.
+
+---
+
+**In summary**, a robust security posture requires balancing technology, processes, and people. Regular audits, strong authentication, network segmentation, and continuous monitoring are essential for identifying and preventing attacks.

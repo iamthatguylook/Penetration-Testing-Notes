@@ -786,3 +786,35 @@ SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182
 - Use the free Microsoft tool Local Administrator Password Solution (LAPS) to manage local administrator passwords and enforce unique passwords on each host that rotate on a set interval.
 
 
+# Internal Password Spraying - from Windows
+
+## Using DomainPasswordSpray.ps1
+- **Tool**: DomainPasswordSpray.ps1
+- **Use Case**: Automatically generate a user list from AD, query password policy, and exclude near-lockout accounts.
+- **Command**:
+  ```shell
+  Import-Module .\DomainPasswordSpray.ps1
+   Invoke-DomainPasswordSpray -Password Welcome1 -OutFile spray_success -ErrorAction SilentlyContinue
+  ```
+- **Output**: Writes successes to `spray_success`.
+
+## Mitigations
+
+### Multi-Factor Authentication
+- **Description**: Reduces risk significantly.
+- **Example**: Push notifications, OTP, RSA keys, text message confirmations.
+
+### Restricting Access
+- **Description**: Limit application access to necessary users only.
+
+### Reducing Impact of Successful Exploitation
+- **Description**: Use separate admin accounts, application-specific permission levels, and network segmentation.
+
+### Password Hygiene
+- **Description**: Educate users on creating strong passwords, use password filters.
+
+## Other Considerations
+- **Password Lockout Policy**: Ensure it doesn’t increase DoS risks.
+- **Detection**: Monitor for event ID 4625 and 4771. Correlate many logon failures within a set time interval to trigger alerts. attacker may avoid SMB password spraying and instead target LDAP. 
+- **External Password Spraying**: Commonly targets Microsoft 0365, OWA, Skype for Business, Citrix portals, VPN portals, etc.
+

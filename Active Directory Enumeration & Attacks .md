@@ -628,7 +628,7 @@ To mount a successful password spraying attack, we need a list of valid domain u
 
 - Leverage an SMB NULL session to retrieve a complete list of domain users from the domain controller.
 - Utilize an LDAP anonymous bind to query LDAP anonymously and pull down the domain user list.
-- Use a tool such as Kerbrute to validate users utilizing a word list from sources such as the statistically-likely-usernames GitHub repo, or create a list of potentially valid users using tools like linkedin2username.
+- Use a tool such as Kerbrute to validate users utilizing a word list from sources such as the **statistically-likely-usernames GitHub repo**, or create a list of potentially valid users using tools like **linkedin2username**.
 - Use a set of credentials from a Linux or Windows attack system provided by our client or obtained through other means, such as LLMNR/NBT-NS response poisoning using Responder, or a successful password spray using a smaller wordlist.
 
 ### Domain Password Policy
@@ -674,7 +674,7 @@ rpcclient $> enumdomusers
 ```shell
  crackmapexec smb 172.16.5.5 --users
 ```
-
+This is a useful tool that will also show the badpwdcount (invalid login attempts), so we can remove any accounts from our list that are close to the lockout threshold. It also shows the baddpwdtime, which is the date and time of the last bad password attempt, so we can see how close an account is to having its badpwdcount reset.
 ### Gathering Users with LDAP Anonymous
 
 #### Using ldapsearch
@@ -703,7 +703,7 @@ With valid credentials, use any of the tools stated previously to build a user l
 
 ```shell
 # Using CrackMapExec with Valid Credentials
-$ sudo crackmapexec smb 172.16.5.5 -u htb-student -p Academy_student_AD! --users
+sudo crackmapexec smb 172.16.5.5 -u htb-student -p Academy_student_AD! --users
 ```
 
 

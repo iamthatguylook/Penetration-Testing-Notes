@@ -620,3 +620,90 @@ net accounts
 - **Password history size:** 24.
 
 if password policy is not retrieved rule of thumb is max tries is 3-5 and make sure not to lockout accounts.
+
+# Password Spraying - Making a Target User List
+
+## Detailed User Enumeration
+To mount a successful password spraying attack, we need a list of valid domain users to attempt to authenticate with. Here are several ways to gather a target list of valid users:
+
+- Leverage an SMB NULL session to retrieve a complete list of domain users from the domain controller.
+- Utilize an LDAP anonymous bind to query LDAP anonymously and pull down the domain user list.
+- Use a tool such as Kerbrute to validate users utilizing a word list from sources such as the statistically-likely-usernames GitHub repo, or create a list of potentially valid users using tools like linkedin2username.
+- Use a set of credentials from a Linux or Windows attack system provided by our client or obtained through other means, such as LLMNR/NBT-NS response poisoning using Responder, or a successful password spray using a smaller wordlist.
+
+### Domain Password Policy
+Consider the domain password policy:
+- If we have an SMB NULL session, LDAP anonymous bind, or a set of valid credentials, we can enumerate the password policy.
+- The policy includes minimum password length and whether password complexity is enabled, helping us formulate the list of passwords for spray attempts.
+- Knowing the account lockout threshold and bad password timer will inform us how many spray attempts we can make without locking out any accounts and the time to wait between attempts.
+
+If the password policy is unknown, we can:
+- Ask our client.
+- Try a targeted password spray as a "hail mary".
+- Perform one spray every few hours to avoid locking out accounts.
+
+Always log the activities:
+- Accounts targeted
+- Domain Controller used in the attack
+- Time and date of the spray
+- Password(s) attempted
+
+### Methods to Pull User List
+
+#### SMB NULL Session
+If we lack valid domain credentials, check for SMB NULL sessions or LDAP anonymous binds on Domain Controllers to obtain a list of all users within Active Directory and the password policy.
+
+Some tools that leverage SMB NULL sessions and LDAP anonymous binds:
+- enum4linux
+- rpcclient
+- CrackMapExec
+
+
+### Using enum4linux
+```shell
+ enum4linux -U 172.16.5.5 | grep "user:" | cut -f2 -d"[" | cut -f1 -d"]"
+```
+
+### Using rpcclient
+```shell
+ rpcclient -U "" -N 172.16.5.5
+rpcclient $> enumdomusers
+```
+
+### Using CrackMapExec with the --users flag
+```shell
+ crackmapexec smb 172.16.5.5 --users
+```
+
+### Gathering Users with LDAP Anonymous
+
+#### Using ldapsearch
+```shell
+ ldapsearch -h 172.16.5.5 -x -b "DC=INLANEFREIGHT,DC=LOCAL" -s sub "(&(objectclass=user))" | grep sAMAccountName: | cut -f2 -d" "
+```
+
+#### Using windapsearch
+```shell
+ ./windapsearch.py --dc-ip 172.16.5.5 -u "" -U
+```
+
+
+### Enumerating Users with Kerbrute
+- Uses Kerberos Pre-Authentication to enumerate valid AD accounts and for password spraying.
+- Does not generate Windows event ID 4625 (logon failure).
+- The tool sends TGT requests to the domain controller without Kerberos Pre-Authentication to perform username enumeration.
+
+```shell
+# Using Kerbrute User Enumeration
+kerbrute userenum -d inlanefreight.local --dc 172.16.5.5 /opt/jsmith.txt
+```
+
+### Credentialed Enumeration to Build User List
+With valid credentials, use any of the tools stated previously to build a user list. 
+
+```shell
+# Using CrackMapExec with Valid Credentials
+$ sudo crackmapexec smb 172.16.5.5 -u htb-student -p Academy_student_AD! --users
+```
+
+

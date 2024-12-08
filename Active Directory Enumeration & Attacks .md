@@ -818,3 +818,56 @@ SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182
 - **Detection**: Monitor for event ID 4625 and 4771. Correlate many logon failures within a set time interval to trigger alerts. attacker may avoid SMB password spraying and instead target LDAP. 
 - **External Password Spraying**: Commonly targets Microsoft 0365, OWA, Skype for Business, Citrix portals, VPN portals, etc.
 
+# Enumerating Security Controls
+
+## Purpose
+- **Goal**: Understand the security controls in place within an organization to inform decisions about tool usage during AD enumeration, exploitation, and post-exploitation.
+
+## Key Tools and Techniques
+
+### Windows Defender
+- **Tool**: Get-MpComputerStatus (PowerShell cmdlet).
+- **Function**: Check the current status of Windows Defender on a system.
+- **Example**:
+  ```shell
+  PS C:\htb> Get-MpComputerStatus
+  ```
+
+### AppLocker
+- **Purpose**: Application whitelisting solution to control which applications can run on a system.
+- **Tool**: Get-AppLockerPolicy (PowerShell cmdlet).
+- **Function**: Enumerate AppLocker policies.
+- **Example**:
+  ```shell
+   Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections
+  ```
+
+### PowerShell Constrained Language Mode
+- **Purpose**: Lock down PowerShell features to enhance security.
+- **Tool**: PowerShell command to check language mode.
+- **Function**: Determine if the system is in Full Language Mode or Constrained Language Mode.
+- **Example**:
+  ```shell
+   $ExecutionContext.SessionState.LanguageMode
+  ```
+
+### LAPS (Local Administrator Password Solution)
+- **Purpose**: Randomize and rotate local administrator passwords on Windows hosts.
+- **Tools**:
+  - **Find-LAPSDelegatedGroups**: Identify groups that can read LAPS passwords.
+  - **Find-AdmPwdExtendedRights**: Check rights on computers with LAPS enabled.
+  - **Get-LAPSComputers**: List computers with LAPS enabled and their passwords.
+- **Examples**:
+  ```shell
+   Find-LAPSDelegatedGroups
+  ```
+  ```
+   Find-AdmPwdExtendedRights
+  ```
+  ```
+   Get-LAPSComputers
+  ```
+
+## Importance
+- **Understand Protections**: Knowing the security controls helps avoid or modify tools and plan actions effectively.
+- **Target Specific Users**: Identify AD users who can read LAPS passwords for targeted actions.

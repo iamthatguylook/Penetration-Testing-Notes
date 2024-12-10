@@ -67,7 +67,9 @@
 4. **Stay In Scope:** Always ensure your actions are authorized and documented.
 
 This methodology ensures thorough preparation and minimizes the risk of errors during penetration testing. Let me know if you'd like more specific examples or a focus on tools for automation!
+
 ---
+
 # Initial Enumeration of the Domain
 ![image](https://github.com/user-attachments/assets/b35654f9-5fa7-4dba-8cbf-c916eb17b67b)
 
@@ -234,6 +236,7 @@ kerbrute userenum -d INLANEFREIGHT.LOCAL --dc 172.16.5.5 jsmith.txt -o valid_ad_
 ### Considerations for Stealth
 - **Non-evasive tests**: Higher noise and less concern for stealth.
 - **Evasive or red team engagements**: Stealth is critical. Using tools like **Nmap** or other noisy tools may trigger alerts. Always clarify the assessment's goals with the client.
+
 ---
 
 # LLMNR/NBT-NS Poisoning from Linux
@@ -324,6 +327,7 @@ kerbrute userenum -d INLANEFREIGHT.LOCAL --dc 172.16.5.5 jsmith.txt -o valid_ad_
 - **Further Use:** Utilize cleartext passwords for initial foothold or expanded access within the domain.
 
 ---
+
 # LLMNR/NBT-NS Poisoning - from Windows
 ### Overview
 Inveigh is a tool written in PowerShell and C# that can listen to multiple protocols, including LLMNR, DNS, mDNS, NBNS, and more. It's useful for capturing credentials on Windows hosts.
@@ -453,6 +457,7 @@ To prevent LLMNR and NBT-NS spoofing attacks, it's crucial to disable these prot
    - DWORD value `EnableMulticast`, where `0` indicates LLMNR is disabled
 
 ---
+
 # Password Spraying Overview
 
 **Password spraying** is trying a common password with a list of usernames to gain access without triggering account lockouts.
@@ -484,7 +489,9 @@ To prevent LLMNR and NBT-NS spoofing attacks, it's crucial to disable these prot
 - **Delays:** Wait hours between attempts.
 - **Client Communication:** Clarify password policies.
 - **Enumeration:** Use provided accounts to discover password policies.
+
 ---
+
 # Enumerating & Retrieving Password Policies
 
 In various IT security scenarios, enumerating and retrieving password policies are essential steps to understand and secure the domain environment. This process can vary depending on whether you have valid credentials or are attempting to access information without authentication.
@@ -606,7 +613,9 @@ net accounts
 - **Password history size:** 24.
 
 if password policy is not retrieved rule of thumb is max tries is 3-5 and make sure not to lockout accounts.
+
 ---
+
 # Password Spraying - Making a Target User List
 
 ## Detailed User Enumeration
@@ -691,7 +700,9 @@ With valid credentials, use any of the tools stated previously to build a user l
 # Using CrackMapExec with Valid Credentials
 sudo crackmapexec smb 172.16.5.5 -u htb-student -p Academy_student_AD! --users
 ```
+
 ---
+
 # Internal Password Spraying - from Linux
 
 ## Overview
@@ -772,6 +783,7 @@ SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182
 - Use the free Microsoft tool Local Administrator Password Solution (LAPS) to manage local administrator passwords and enforce unique passwords on each host that rotate on a set interval.
 
 ---
+
 # Internal Password Spraying - from Windows
 
 ## Using DomainPasswordSpray.ps1
@@ -857,7 +869,9 @@ RealTimeProtectionEnabled parameter is set to True, which means Defender is enab
 ## Importance
 - **Understand Protections**: Knowing the security controls helps avoid or modify tools and plan actions effectively.
 - **Target Specific Users**: Identify AD users who can read LAPS passwords for targeted actions.
+  
 ---
+
 # Credentialed Enumeration From Linux 
 
 Credentialed enumeration involves leveraging valid domain user credentials to gather detailed information about domain users, groups, permissions, and shares. Below are step-by-step notes and commands for conducting such enumeration.
@@ -1101,6 +1115,7 @@ ls
 - **Node Info Tab**: Search for specific nodes like Domain Users.
 - **Settings Menu**: Adjust how nodes and edges are displayed, enable query debug mode, and enable dark mode.
 ---
+
 # Living OFF the Land
 
 When traditional methods fail, "living off the land" utilizes native Windows tools and commands for stealthier enumeration. This approach minimizes log entries, reduces the chance of detection by monitoring tools, and aligns with scenarios where uploading external tools isn't feasible.
@@ -1294,7 +1309,9 @@ The **UserAccountControl (UAC)** attribute in Active Directory defines specific 
 ### **Combining UAC Values**
 - UAC values can combine to represent multiple properties. For example:
   - A disabled account (`2`) that does not require a password (`32`) would have a UAC value of `34` (`2 + 32`).
+    
 ---
+
 # Kerberoasting from Linux:
 
 #### **Overview**
@@ -1357,7 +1374,7 @@ Example Output:
 | `backupjob/veam001.inlanefreight.local`       | `BACKUPAGENT`    | `Domain Admins`       | `2022-02-15`      |
 | `sts/inlanefreight.local`                     | `SOLARWINDSMONITOR` | `Domain Admins`     | `2022-02-15`      |
 
----
+
 
 #### **3. Request TGS Tickets**
 Command:
@@ -1366,7 +1383,6 @@ Command:
 ```
 Output includes SPNs and encrypted TGS tickets (e.g., `$krb5tgs$23$...`).
 
----
 
 #### **4. Save Tickets to a File for Cracking**
 Command:
@@ -1594,7 +1610,6 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
 #### **Retrieve AES-Encrypted Tickets**
 - If the SPN account supports AES, tickets will begin with `$krb5tgs$18$*` (AES-256) or `$krb5tgs$17$*` (AES-128).
 
----
 
 ### **3. Cracking Kerberos Hashes**
 
@@ -1618,7 +1633,7 @@ PS C:\htb> .\Rubeus.exe kerberoast /user:testspn /tgtdeleg /nowrap
 ```
 - **Note**: This method doesn’t work against Windows Server 2019 DCs, which enforce the highest available encryption type.
 
----
+
 
 ### **5. Detection and Mitigation**
 

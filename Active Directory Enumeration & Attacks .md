@@ -67,7 +67,7 @@
 4. **Stay In Scope:** Always ensure your actions are authorized and documented.
 
 This methodology ensures thorough preparation and minimizes the risk of errors during penetration testing. Let me know if you'd like more specific examples or a focus on tools for automation!
-
+---
 # Initial Enumeration of the Domain
 ![image](https://github.com/user-attachments/assets/b35654f9-5fa7-4dba-8cbf-c916eb17b67b)
 

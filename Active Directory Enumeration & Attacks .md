@@ -1116,6 +1116,223 @@ ls
 - **Settings Menu**: Adjust how nodes and edges are displayed, enable query debug mode, and enable dark mode.
 ---
 
+# Credential enumeration from Windows
+
+This section explains the tools and commands for enumerating Active Directory (AD) environments from a **Windows attack host**. It includes key details, examples, and their relevance during an assessment, focusing on real-world scenarios.
+
+
+
+## **1. ActiveDirectory PowerShell Module**
+
+The **ActiveDirectory PowerShell Module** is a built-in PowerShell toolset for interacting with AD environments. It is particularly useful for stealthy enumeration as it blends with administrative tasks.
+
+### **Setup**
+- **Verify if the module is imported:**
+  ```powershell
+  Get-Module
+  ```
+  - Lists all loaded modules. If the `ActiveDirectory` module is not present, it needs to be imported.
+  - **Use Case:** This check ensures the module is ready for use and helps find any pre-installed custom scripts or tools.
+
+- **Import the module:**
+  ```powershell
+  Import-Module ActiveDirectory
+  ```
+  - Loads the `ActiveDirectory` cmdlets into the current session.
+
+
+
+### **Key Commands for Enumeration**
+
+#### **1.1 Get Domain Information**
+```powershell
+Get-ADDomain
+```
+- **Purpose:** Displays foundational details about the domain, such as:
+  - Domain SID
+  - Domain functional level (e.g., Windows Server 2016 or 2019)
+  - Child domains
+- **Importance:** Understanding the domain structure and functional level helps assess potential attack paths and compatibility for exploitation techniques.
+
+
+
+#### **1.2 Identify Kerberoasting Targets**
+```powershell
+Get-ADUser -Filter {ServicePrincipalName -ne "$null"} -Properties ServicePrincipalName
+```
+- **Purpose:** Finds user accounts with the `ServicePrincipalName (SPN)` attribute set, which indicates they may be vulnerable to **Kerberoasting**.
+  - Kerberoasting: A method of extracting service account credentials from the Kerberos authentication process.
+- **Importance:** These accounts often have elevated privileges and are high-value targets.
+
+
+
+#### **1.3 Enumerate Domain Trust Relationships**
+```powershell
+Get-ADTrust -Filter *
+```
+- **Purpose:** Lists trust relationships between the current domain and other domains.
+  - **Details Provided:**
+    - Trust type (e.g., external, parent-child, or forest)
+    - Direction of trust (incoming, outgoing, or bidirectional)
+    - Trusting domain names
+- **Importance:** Domain and forest trusts allow lateral or vertical movement across domains, making them critical to document during engagements.
+
+
+
+#### **1.4 Enumerate Groups**
+- **List all groups:**
+  ```powershell
+  Get-ADGroup -Filter * | Select-Object Name
+  ```
+  - Outputs a complete list of groups in the domain.
+
+- **Detailed information for a specific group:**
+  ```powershell
+  Get-ADGroup -Identity "Group Name"
+  ```
+  - **Details Provided:** Group properties like `description`, `group scope`, and `managed by`.
+  - **Example Use Case:** Use this to understand the purpose and role of a sensitive group (e.g., Backup Operators).
+
+- **List group members:**
+  ```powershell
+  Get-ADGroupMember -Identity "Group Name"
+  ```
+  - Outputs users or nested groups that are members of the specified group.
+  - **Relevance:** Helps identify accounts with high privileges (e.g., members of the Domain Admins group).
+
+
+
+### **Key Observations**
+- **Recursive Group Membership:** Some groups are part of others, creating nested privileges. Use group membership enumeration to find hidden relationships, e.g.,:
+  ```powershell
+  Get-ADGroupMember -Identity "Domain Admins" -Recurse
+  ```
+  - **Importance:** Identifies users/groups indirectly inheriting high privileges (e.g., through nested membership).
+
+- **Backup Operators Group:** Membership in this group could allow access to system backups, enabling privilege escalation.
+
+
+## **2. PowerView**
+
+**PowerView** is a powerful, open-source PowerShell toolkit for AD enumeration. It is part of the deprecated **PowerSploit** suite but remains highly effective. It offers more automation and functionality than the `ActiveDirectory` module.
+
+
+### **Key Commands in PowerView**
+
+#### **2.1 Enumerate Domain Users**
+```powershell
+Get-DomainUser -Identity username
+```
+- **Purpose:** Fetches information about a specific user, including:
+  - `samaccountname`, `description`, `memberof`, `whencreated`, `pwdlastset`, etc.
+- **Relevance:** Provides a detailed profile of users, including when their passwords were last set and whether their accounts are administrative.
+
+#### **2.2 Enumerate Group Memberships**
+```powershell
+Get-DomainGroupMember -Identity "Group Name" -Recurse
+```
+- **Purpose:** Lists all members of a specific group, including nested groups.
+
+
+
+#### **2.3 Identify Trust Relationships**
+```powershell
+Get-DomainTrustMapping
+```
+- **Purpose:** Displays domain trust relationships, similar to `Get-ADTrust`.
+
+
+
+#### **2.4 Local Admin Enumeration**
+```powershell
+Test-AdminAccess -ComputerName HOSTNAME
+```
+- **Purpose:** Checks if the current user has administrative privileges on a specified computer.
+- **Relevance:** Identifies potential hosts for lateral movement or privilege escalation.
+
+
+
+#### **2.5 File and Share Enumeration**
+- **Enumerate Shares:**
+  ```powershell
+  Find-DomainShare
+  ```
+  - Finds accessible shares within the domain.
+
+- **Search for sensitive files in shares:**
+  ```powershell
+  Find-InterestingDomainShareFile
+  ```
+  - Automates the search for files with names indicating sensitive data (e.g., files containing `password` or `config`).
+
+
+## **3. SharpView**
+
+**SharpView** is a .NET port of PowerView. It offers similar functionality while bypassing PowerShell-specific restrictions. SharpView can be particularly effective when PowerShell scripts are heavily monitored.
+
+### **Examples**
+- **User Enumeration:**
+  ```powershell
+  .\SharpView.exe Get-DomainUser -Identity username
+  ```
+- **Help Functionality:**
+  ```powershell
+  .\SharpView.exe Get-DomainUser -Help
+  ```
+
+
+
+## **4. Snaffler**
+
+**Snaffler** automates the discovery of sensitive data in shared directories. It is efficient for large environments.
+
+### **Example Usage**
+```bash
+Snaffler.exe -d DOMAIN -s -o output.log -v data
+```
+- **Key Options:**
+  - `-d`: Specifies the domain to search.
+  - `-s`: Prints results to the console.
+  - `-o`: Outputs results to a log file.
+  - `-v`: Sets verbosity level (e.g., `data`).
+
+- **Relevance:** Locates sensitive files such as configuration files, SSH keys, and plaintext passwords.
+
+
+## **5. BloodHound**
+
+**BloodHound** visualizes AD relationships and identifies attack paths by analyzing SharpHound-collected data.
+
+### **Steps:**
+1. **Data Collection:**
+   ```powershell
+   .\SharpHound.exe -c All --zipfilename OUTPUT_NAME
+   ```
+2. **Upload Data:**
+   - Import the `.zip` file into the BloodHound GUI.
+
+3. **Run Pre-Built Queries:**
+   - **Find Unsupported Operating Systems:** Locates outdated systems vulnerable to exploitation (e.g., Windows 7).
+   - **Domain Users with Local Admin Rights:** Reveals hosts where `Domain Users` have administrative privileges.
+
+
+### **Best Practices and Reporting**
+
+1. **Documentation:**
+   - Maintain detailed notes of findings, including command outputs and logs.
+   - Provide supplemental data like Snaffler logs to clients.
+
+2. **Cleanup:**
+   - Remove tools and artifacts introduced during assessments.
+   - Ensure actions comply with the agreed-upon scope.
+
+3. **Recommendations:**
+   - Restrict overly permissive shares.
+   - Limit legacy systems' exposure or recommend decommissioning.
+   - Minimize administrative privileges to essential personnel only.
+
+---
+
 # Living OFF the Land
 
 When traditional methods fail, "living off the land" utilizes native Windows tools and commands for stealthier enumeration. This approach minimizes log entries, reduces the chance of detection by monitoring tools, and aligns with scenarios where uploading external tools isn't feasible.

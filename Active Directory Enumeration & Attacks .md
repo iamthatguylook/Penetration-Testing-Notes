@@ -2570,11 +2570,9 @@ Bleeding-edge vulnerabilities represent newly discovered weaknesses in systems t
    - Communicate findings and risks clearly with stakeholders.
    - Respect organizational policies and avoid causing unintended disruptions.
 
----
+
 
 ## **Vulnerabilities Covered**
-
----
 
 #### **1. NoPac (SamAccountName Spoofing)**
 **Key Details:**
@@ -2628,7 +2626,7 @@ Bleeding-edge vulnerabilities represent newly discovered weaknesses in systems t
 - Set `ms-DS-MachineAccountQuota = 0` to prevent users from adding machine accounts.
 - Regularly audit and monitor Kerberos ticket activity for anomalies.
 
----
+
 
 #### **2. PrintNightmare**
 **Key Details:**
@@ -2673,7 +2671,7 @@ Bleeding-edge vulnerabilities represent newly discovered weaknesses in systems t
 - Disable the Print Spooler service on non-essential systems.
 - Apply the latest patches from Microsoft to secure the Print Spooler.
 
----
+
 ### PetitPotam (MS-EFSRPC)
  **Overview**
 

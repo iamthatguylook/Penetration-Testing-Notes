@@ -3213,3 +3213,174 @@ zip -r ilfreight_bh.zip *.json
 ### Analyze in BloodHound
 - **Analysis**: Users with Foreign Domain Group Membership.
 - **Source Domain**: INLANEFREIGHT.LOCAL.
+
+---
+
+# Active Directory Hardening Measures
+
+## Step One: Document and Audit
+- **Audit and Track**:
+  - **Naming conventions** (OUs, computers, users, groups)
+  - **DNS, network, and DHCP configurations**
+  - **GPOs** and their applied objects
+  - **FSMO roles** assignment
+  - **Application inventory**
+  - **Enterprise hosts and their locations**
+  - **Trust relationships** with other domains or entities
+  - **Privileged users** and permissions
+
+## People: Secure Human Element
+1. **Password Policies**:
+   - Enforce strong passwords, avoid common words.
+   - Use an enterprise password manager.
+   - Rotate service account passwords periodically.
+2. **Admin Access**:
+   - **Limit local admin access** to user workstations.
+   - **Disable default RID-500 local admin** account; use LAPS.
+3. **Admin Tiering**:
+   - Implement split-tier admin access to avoid using Domain Admins for regular tasks.
+   - Clean up **privileged groups** (limit membership in Domain/Enterprise Admins).
+4. **Protected Users Group**:
+   - Add high-value accounts to the **Protected Users group** to mitigate credential theft.
+   - Disable **Kerberos delegation** for admin accounts.
+
+## Processes: Policies & Procedures
+1. **Asset Management**:
+   - Use asset tags, conduct periodic host audits.
+2. **Access Control**:
+   - Implement user provisioning and de-provisioning processes.
+   - **Multi-factor Authentication (MFA)** for critical access.
+3. **Legacy Systems**:
+   - Ensure proper decommissioning of old systems (e.g., Exchange to Office 365).
+4. **Regular Audits**:
+   - **Audit users, groups, and hosts** periodically.
+
+## Technology: Defensive Tools & Configurations
+1. **Review AD Configuration**:
+   - Use tools like **BloodHound**, **PingCastle**, and **Grouper** to detect misconfigurations.
+2. **Service Accounts**:
+   - Use **gMSA** (Group Managed Service Accounts) and **MSA** to mitigate **Kerberoasting**.
+3. **SMB and NTLM**:
+   - **Disable NTLM** on Domain Controllers.
+   - Enable **SMB signing** and **LDAP signing**.
+4. **Harden Domain Controllers**:
+   - Use **jump hosts** for accessing Domain Controllers.
+5. **Security Protocols**:
+   - Use **Extended Protection for Authentication** and enforce **SSL-only** for sensitive services.
+6. **Protection Against Enumeration**:
+   - Set **RestrictNullSessAccess** to 1 to block null session enumeration.
+
+## MITRE ATT&CK TTPs & Mitigations
+- **T1589**: **External Reconnaissance** – Limit public exposure of information (e.g., job postings, metadata).
+- **T1595**: **Internal Reconnaissance** – Monitor network traffic for scanning activities.
+- **T1557**: **Poisoning** – Use **SMB message signing** and strong encryption to prevent MITM attacks.
+- **T1110/003**: **Password Spraying** – Enable strong password policies, **account lockout**, and **MFA**.
+- **TA0006**: **Credentialed Enumeration** – Monitor for suspicious user activity (e.g., abnormal commands or RDP traffic).
+- **T1558.003**: **Kerberoasting** – Use **strong Kerberos encryption** and **gMSA** for service accounts.
+
+## Additional Hardening Measures
+- **ms-DS-MachineAccountQuota** set to **0** to prevent unauthorized machine account additions.
+- **Disable the print spooler** service where possible.
+- **Test backups and disaster recovery plans** regularly.
+- Conduct **quarterly penetration tests** (or at least annually).
+- **Monitor for Kerberos abuse**, e.g., through **Kerberoasting** and **AS-REP Roasting**.
+
+---
+
+# Additional AD Auditing Techniques
+
+### 1. **Creating an AD Snapshot with Active Directory Explorer**
+
+**AD Explorer** (part of the Sysinternals suite) is a tool that allows you to view and interact with your Active Directory (AD) database. It can also create snapshots of AD to compare data over time.
+
+- **What it Does**:
+  - Allows exploration of AD objects, attributes, and permissions.
+  - Can take snapshots of AD and save them for offline analysis or comparison.
+  - Helps track changes to AD objects and permissions over time.
+
+- **How to Use**:
+  - **Login**: Login with any valid domain user.
+  - **Create Snapshot**: Go to **File → Create Snapshot** and save a snapshot.
+  - **Compare**: Use snapshots for offline analysis or compare snapshots to identify changes in objects or permissions.
+
+
+
+### 2. **PingCastle: Active Directory Security Assessment Tool**
+
+**PingCastle** is a security auditing tool that evaluates the security posture of an AD domain and generates visual reports on risks, vulnerabilities, and misconfigurations.
+
+- **Features**:
+  - **Healthcheck**: Provides a quick risk score of the domain based on AD misconfigurations and vulnerabilities.
+  - **Security Posture**: Reports on shares, trusts, delegation of permissions, and user/computer states.
+  - **Risk Assessment**: Uses the **Capability Maturity Model Integration (CMMI)** framework to generate a security maturity score.
+
+- **How to Use**:
+  - Run the tool from the command line (`PingCastle.exe`) and enter interactive mode.
+  - Use the following common options:
+    - `--server <server>`: Specify the domain controller.
+    - `--user <user>`: Specify a domain user for login.
+    - `--password <password>`: Provide the password securely.
+  - Perform a **Healthcheck** to generate a risk report for the domain.
+  - Explore the **Scanner** options to perform targeted security checks like `aclcheck`, `laps_bitlocker`, `smb`, `spooler`, etc.
+
+- **Interactive TUI**: The tool provides an interactive menu where you can run different scans and view reports on various domain configurations.
+
+
+### 3. **Group Policy Auditing with Group3r**
+
+**Group3r** is a tool designed to audit Group Policy Objects (GPOs) for potential vulnerabilities, misconfigurations, or insecure settings in AD.
+
+- **How to Use**:
+  - Run the tool from a domain-joined host using a domain user account.
+  - Example command: `group3r.exe -f <filepath-name.log>` to output the results to a file.
+
+- **Reading the Output**:
+  - The output is organized with indentation levels indicating GPOs, policy settings, and findings.
+  - Each finding will provide a description, the linked policy setting, and why it's a concern.
+
+- **Why Use It**:
+  - Group3r helps identify GPOs or settings that might be overlooked by other tools.
+  - It provides a focused look at Group Policy issues that could weaken the security of your AD environment.
+
+### 4. **ADRecon: Comprehensive AD Data Collection**
+
+**ADRecon** is a comprehensive tool for gathering large amounts of data from Active Directory. It helps with domain enumeration, auditing user, group, and GPO data, and more.
+
+- **Features**:
+  - Collects a wide range of AD data, such as domain controllers, users, groups, trusts, GPOs, DNS records, and more.
+  - Outputs results in both CSV and HTML formats for easier analysis.
+
+- **How to Use**:
+  - Run the tool via PowerShell: `.\ADRecon.ps1`.
+  - The tool will gather data on domains, trusts, users, computers, GPOs, and more.
+  - When the process is complete, the results are stored in a folder with CSV files and a report in HTML format.
+  
+- **Report Output**:
+  - The report includes details on GPOs, user and computer information, trusts, and DNS zones.
+  - You can run the tool again later with the `-GenExcel` switch to generate an Excel report if necessary.
+
+
+### 5. **Reporting and Analysis**
+
+After gathering data using tools like PingCastle, Group3r, and ADRecon, the next step is to create detailed reports and identify areas of concern.
+
+- **PingCastle**: The **Healthcheck** report provides a domain risk score and highlights potential vulnerabilities and misconfigurations.
+- **Group3r**: Offers a detailed report on Group Policy settings and vulnerabilities associated with them.
+- **ADRecon**: Generates an extensive AD report, providing information on domains, users, GPOs, DNS, and more.
+
+These reports can be used to:
+- **Validate security gaps**: Demonstrate areas where the domain may be vulnerable.
+- **Support remediation**: Provide evidence to justify the need for additional security measures.
+- **Prioritize fixes**: Identify which issues have the most significant security impact and should be addressed first.
+
+
+### Key Points for Customers
+
+1. **Evidence-Based Findings**: Using tools like PingCastle and ADRecon will help identify specific AD vulnerabilities that can be used to justify the need for improvements in domain security.
+   
+2. **Interactive Reports**: Tools provide visualizations like graphs and maps that are easy to interpret, even for non-technical stakeholders.
+
+3. **Comprehensive Coverage**: The combination of different tools (AD Explorer, PingCastle, Group3r, and ADRecon) ensures a thorough audit of AD configuration, security, and potential vulnerabilities.
+
+4. **Help with Funding**: Providing comprehensive reports with evidence of issues is a strong argument when requesting funding for remediation activities. Detailed reports support the business case for improving security.
+

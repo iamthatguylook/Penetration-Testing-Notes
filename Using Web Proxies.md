@@ -231,3 +231,62 @@ Just like requests, we can also modify HTTP responses automatically. This is use
 Now, after refreshing the page with `[CTRL+SHIFT+R]`, you’ll see that the changes you made to the response body are applied automatically. This ensures that modifications persist between page refreshes.
 
 By using these automatic modifications, you can save time and automate tasks like replacing headers or modifying response bodies without having to manually intercept and modify requests each time.
+
+
+# Repeating Requests
+
+#### Overview
+Repeating requests and utilizing request history are key features in Burp Suite and ZAP for performing web application penetration testing efficiently. These features help automate the process of re-sending and modifying HTTP requests without having to manually intercept and resend each one, saving significant time during testing and enumeration tasks.
+
+### **Proxy History** (Burp and ZAP)
+Both Burp Suite and ZAP maintain a **history** of HTTP requests that have passed through their proxies. This allows testers to view and modify requests they've already seen and interacted with.
+
+- **Burp Suite**:
+  - Navigate to **Proxy > HTTP History** to view all intercepted requests.
+  - Burp allows filtering and sorting of requests to help locate a specific one, especially useful when dealing with a large number of requests.
+  - Each request can be examined in detail, with the ability to view both the **original** and **edited** requests. If the request was modified, you can switch between these views.
+
+- **ZAP**:
+  - The **History pane** in ZAP shows the requests, which can be accessed from the bottom of the HUD or the main UI.
+  - Like Burp, ZAP offers filtering and sorting features for easier navigation through request history.
+  - ZAP maintains WebSockets history, which is useful for tracking real-time connections initiated by the web application (e.g., asynchronous updates, data fetching).
+
+#### **Request Repeating** (Burp Suite and ZAP)
+
+Repetition of requests is useful for quickly modifying and re-sending HTTP requests, without needing to manually re-intercept or rebuild requests.
+
+- **Burp Suite**:
+  - Once you locate the desired request in the **HTTP History**, you can **right-click** and select **Send to Repeater**, or use the shortcut **CTRL+R**.
+  - After sending it to the **Repeater** tab, you can modify the request and click **Send** to resend the modified request.
+  - Burp also allows you to change the HTTP method between **POST/GET** using **Change Request Method**, saving time when testing different request types.
+
+- **ZAP**:
+  - In **ZAP**, after finding the request in the history, right-click and choose **Open/Resend with Request Editor**.
+  - The **Request Editor** window will open, where you can modify the request and use the **Send** button to send the updated request.
+  - You can also easily switch HTTP methods (e.g., from GET to POST) using the **Method drop-down**.
+  - ZAP **HUD** (Heads-Up Display) lets you resend requests directly from the browser with **Replay in Console** for the response in the HUD or **Replay in Browser** to see the rendered response in the browser.
+
+#### **Modifying Requests**
+- **Modifying Requests in Burp Suite**:
+  - Once the request is in **Repeater**, you can modify its parameters (e.g., replacing payloads, changing headers, etc.).
+  - Burp Repeater allows quick testing and enumeration by modifying specific parts of the request and instantly viewing the results.
+  
+- **Modifying Requests in ZAP**:
+  - Similar to Burp, you can modify requests in the **Request Editor** and **HUD**.
+  - Changes can be made in specific fields of the request (like the body or headers), and you can resend it with the modified input.
+
+#### **URL-Encoding in POST Requests**
+- When working with HTTP requests, especially **POST** requests, data is often **URL-encoded** (for example, when sending form data).
+- URL encoding ensures that special characters (e.g., `&`, `=`, `#`) are encoded properly for transmission over HTTP.
+- This is crucial when modifying requests with custom payloads because you may need to ensure the new data is properly encoded (if needed).
+
+### **Practical Example:**
+For a command injection test:
+- **Intercept** the request with Burp Suite or ZAP.
+- **Modify** the body of the request (e.g., add a different payload).
+- **Repeat** the request using the **Repeater** or **Request Editor**.
+- **View** the response to check the outcome.
+- Using Burp or ZAP for repeating requests allows quick iterations of payload testing without needing to manually intercept each request.
+
+### **Conclusion:**
+By leveraging **Request History** and **Repeating Requests**, Burp Suite and ZAP make it easy to streamline repetitive testing tasks. These tools save significant time during security assessments, allowing testers to quickly adjust and send modified requests while examining the results. URL encoding plays an important role when modifying requests, ensuring the custom data is sent properly formatted.

@@ -289,4 +289,69 @@ For a command injection test:
 - **View** the response to check the outcome.
 - Using Burp or ZAP for repeating requests allows quick iterations of payload testing without needing to manually intercept each request.
 
+---
+
+# Encoding/Decoding 
+
+Encoding and decoding are essential for modifying and interacting with web requests properly during penetration testing. This ensures that the data is transmitted correctly and allows for effective manipulation of requests and responses.
+
+### **URL Encoding**
+
+- **Why URL Encoding is Important**:  
+  Certain characters in URLs need to be encoded, such as:
+  - **Spaces** → `%20`
+  - **`&`** → `%26`
+  - **`#`** → `%23`
+
+- **How to URL-encode in Burp**:
+  - Right-click the text in **Burp Repeater** and select **Convert Selection > URL > URL encode key characters** or use **CTRL+U**.
+  - Burp supports **auto URL encoding** while typing.
+
+- **How ZAP Handles URL Encoding**:
+  - ZAP automatically URL-encodes request data before sending.
+
+### **Decoding Data**
+
+- **Why Decoding is Important**:  
+  Web applications often encode data (e.g., cookies, tokens), and decoding allows you to view and manipulate the original content.
+
+- **Common Encoding Types**:
+  - **Base64** (e.g., for cookies)
+  - **URL Encoding**
+  - **HTML Encoding**
+  - **Unicode Encoding**
+
+### **Burp Suite: Encoding/Decoding Tools**
+
+- **Decoder Tab**:
+  - Use the **Decoder** tab in Burp to quickly encode or decode data (e.g., Base64, URL encoding).
+  - **Base64 Example**: Decode `eyJ1c2VybmFtZSI6Imd1ZXN0IiwgImlzX2FkbWluIjpmYWxzZX0=` to `{"username":"guest", "is_admin":false}`.
+
+- **Inspector Tool**:  
+  Available in Burp's **Proxy** and **Repeater**, this helps with encoding and decoding data quickly.
+
+### **ZAP: Encoding/Decoding Tools**
+
+- **Encoder/Decoder/Hash Tool**:  
+  ZAP allows for quick encoding and decoding (Base64, URL encoding, etc.) and supports custom tabs for different encoding methods.
+
+### **Encoding Example**
+
+1. **Base64 Example**:
+   - **Original**: `eyJ1c2VybmFtZSI6Imd1ZXN0IiwgImlzX2FkbWluIjpmYWxzZX0=`
+   - **Decoded**: `{"username":"guest", "is_admin":false}`
+   - **Modified**: `{"username":"admin", "is_admin":true}`
+   - **Re-encoded**: `eyJ1c2VybmFtZSI6ImFkbWluIiwgImlzX2FkbWluIjp0cnVlfQ==`
+
+2. **Testing**: Replace the old encoded string in your request to test changes like privilege escalation.
+
+### **Tips for Efficient Workflow**
+
+1. **Burp**:
+   - Use the **Decoder** tab and enable **auto URL encoding** while typing.
+   - **Burp Inspector** simplifies encoding/decoding across different modules.
+
+2. **ZAP**:
+   - Use **Encoder/Decoder/Hash** for various encodings and custom tabs for convenience.
+
 

@@ -176,6 +176,7 @@
    - **Unhide Hidden Form Fields**: Burp Suite has a feature under **Proxy > Options > Response Modification** called **Unhide hidden form fields**. When enabled, this feature will automatically unhide hidden fields in the response HTML, making it easier to interact with them during testing.
    - **HTML Comments**: Both Burp and ZAP allow you to view HTML comments that are normally hidden from the page's display but present in the source code. Burp offers a **Comments Button** in the **Proxy > Options** tab. Enabling it will allow you to identify where comments are located within the HTML and provide insight into potential points for testing or exploiting.
      - Clicking the **Comments Button** will display a visual indicator for any HTML comments in the source code, and hovering over the indicator reveals the comment content.
+---
 
 # Automatic Modification
 

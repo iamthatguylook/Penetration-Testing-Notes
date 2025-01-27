@@ -232,6 +232,7 @@ Now, after refreshing the page with `[CTRL+SHIFT+R]`, you’ll see that the chan
 
 By using these automatic modifications, you can save time and automate tasks like replacing headers or modifying response bodies without having to manually intercept and modify requests each time.
 
+---
 
 # Repeating Requests
 
@@ -288,5 +289,4 @@ For a command injection test:
 - **View** the response to check the outcome.
 - Using Burp or ZAP for repeating requests allows quick iterations of payload testing without needing to manually intercept each request.
 
-### **Conclusion:**
-By leveraging **Request History** and **Repeating Requests**, Burp Suite and ZAP make it easy to streamline repetitive testing tasks. These tools save significant time during security assessments, allowing testers to quickly adjust and send modified requests while examining the results. URL encoding plays an important role when modifying requests, ensuring the custom data is sent properly formatted.
+

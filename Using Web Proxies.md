@@ -177,3 +177,56 @@
    - **HTML Comments**: Both Burp and ZAP allow you to view HTML comments that are normally hidden from the page's display but present in the source code. Burp offers a **Comments Button** in the **Proxy > Options** tab. Enabling it will allow you to identify where comments are located within the HTML and provide insight into potential points for testing or exploiting.
      - Clicking the **Comments Button** will display a visual indicator for any HTML comments in the source code, and hovering over the indicator reveals the comment content.
 
+# Automatic Modification
+
+In certain situations, we may want to apply modifications automatically to all outgoing HTTP requests or all incoming HTTP responses. Web proxy tools like Burp Suite and ZAP allow us to set up rules for these automatic modifications.
+
+## Automatic Request Modification
+
+Let’s start with an example of automatic request modification. In this case, we want to replace the `User-Agent` string in all outgoing HTTP requests. This is useful when dealing with filters that block certain User-Agents.
+
+### Burp Suite: Match and Replace
+
+1. Go to `Proxy > Options > Match and Replace` and click on `Add`.
+2. Set the following options:
+   - **Type**: Request header (since the modification is in the request header, not the body)
+   - **Match**: `^User-Agent.*$` (regex pattern to match any User-Agent string)
+   - **Replace**: `User-Agent: HackTheBox Agent 1.0` (this is the value to replace the matched string)
+   - **Regex match**: True (since we’re using a regex pattern to match the User-Agent)
+3. Click `OK` to save the rule.
+
+Once added, this rule will automatically replace the `User-Agent` header with `HackTheBox Agent 1.0` in all outgoing requests.
+
+### ZAP: Replacer
+
+ZAP offers a similar feature called **Replacer**. Follow these steps to configure it:
+
+1. Press `[CTRL+R]` or go to the `Replacer` option in ZAP’s menu.
+2. Click `Add` and set the following:
+   - **Description**: HTB User-Agent.
+   - **Match Type**: Request Header (will be added if not present).
+   - **Match String**: User-Agent (select from the drop-down menu).
+   - **Replacement String**: `HackTheBox Agent 1.0`.
+   - **Enable**: True.
+3. You can also use a regex pattern here for more advanced matching.
+4. Set the **Initiators** option to apply the rule to all HTTP(S) messages by default.
+
+Now, whenever you visit a page using ZAP’s browser, the `User-Agent` will be automatically replaced.
+
+## Automatic Response Modification
+
+Just like requests, we can also modify HTTP responses automatically. This is useful for situations where changes made to the response body (e.g., altering input fields) need to persist across page refreshes.
+
+### Burp Suite: Response Body Match and Replace
+
+1. Go to `Proxy > Options > Match and Replace` in Burp.
+2. Add a new rule with the following settings:
+   - **Type**: Response body (since we want to modify the response body).
+   - **Match**: `type="number"` (the string to match in the response body).
+   - **Replace**: `type="text"` (the new value to replace the matched string).
+   - **Regex match**: False (since we’re using an exact match and not a regex).
+3. Optionally, add another rule to change `maxlength="3"` to `maxlength="100"`.
+
+Now, after refreshing the page with `[CTRL+SHIFT+R]`, you’ll see that the changes you made to the response body are applied automatically. This ensures that modifications persist between page refreshes.
+
+By using these automatic modifications, you can save time and automate tasks like replacing headers or modifying response bodies without having to manually intercept and modify requests each time.

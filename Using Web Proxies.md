@@ -135,5 +135,45 @@
 3. **Forward the Request**:
    - Once the request is forwarded, the response changes from the default ping output to the results of `ls` (command injection successful).
 
-#### Conclusion
-- **Intercepting & Manipulating Requests**: Crucial for web penetration testing, enabling the identification of vulnerabilities that would otherwise be difficult to detect. This process helps in testing how web applications handle various inputs, potentially exposing weaknesses.
+---
+
+# Intercepting Responses
+
+#### Purpose
+- **Intercepting HTTP Responses** allows penetration testers to modify the server’s response before it reaches the browser. This is useful for manipulating the content or behavior of a webpage, such as enabling disabled fields or revealing hidden fields, which could help identify vulnerabilities or facilitate exploiting certain web application behaviors.
+
+#### Burp Suite
+
+1. **Enable Response Interception**:
+   - Navigate to **Proxy > Options** in Burp Suite.
+   - In the **Intercept Server Responses** section, enable the **Intercept Responses** option. This ensures that responses from the server can be intercepted before being sent to the browser.
+   
+2. **Intercept & Modify the Response**:
+   - Once response interception is enabled, refresh the page in the pre-configured browser (`CTRL + SHIFT + R`), forcing a full reload of the page.
+   - Burp will intercept the request and show it in the **Intercept** tab.
+   - After forwarding the request, the **Intercepted Response** will appear. This allows us to inspect and modify the response before it reaches the browser.
+
+3. **Example Modification**:
+   - Suppose a page contains an input field that only accepts numeric values (type="number"). If we intercept the response, we can modify the field type from `type="number"` to `type="text"`. This would allow us to enter any value, bypassing the numeric input restriction.
+   - We can also modify attributes such as `maxlength="3"` to `maxlength="100"` to increase the allowed input length for the field. After making these changes, we can click **Forward** to send the modified response to the browser.
+   
+4. **Use Case**:
+   - This feature is especially useful for modifying how the page is rendered by the browser, allowing us to interact with form fields or buttons that might be disabled or hidden in the default view. For example, we could enable disabled HTML buttons, modify form validation rules, or show hidden fields that are not visible to the user by default.
+
+#### ZAP (OWASP)
+
+1. **Intercept Responses**:
+   - Like Burp, ZAP allows you to intercept responses. When requests are intercepted, you can click the **Step** button to send the request and automatically intercept the corresponding response.
+   - After the response is intercepted, you can modify it and click **Continue** to forward the modified response to the browser.
+   - This allows you to modify aspects of the page like field types or form validation rules before they are rendered to the user.
+
+2. **Enable Disabled Fields or Show Hidden Fields**:
+   - ZAP’s **Heads Up Display (HUD)** provides a feature that lets you manipulate form fields and elements directly in the browser, without needing to manually intercept the response and modify it.
+   - In the HUD, you can click the **light bulb icon** (third button from the top on the left) to enable or show disabled fields and hidden fields, bypassing the need for response interception.
+   - This feature makes it easier to directly interact with elements that would typically be hidden or disabled, making it a very useful tool for penetration testing.
+
+3. **Burp Similar Features**:
+   - **Unhide Hidden Form Fields**: Burp Suite has a feature under **Proxy > Options > Response Modification** called **Unhide hidden form fields**. When enabled, this feature will automatically unhide hidden fields in the response HTML, making it easier to interact with them during testing.
+   - **HTML Comments**: Both Burp and ZAP allow you to view HTML comments that are normally hidden from the page's display but present in the source code. Burp offers a **Comments Button** in the **Proxy > Options** tab. Enabling it will allow you to identify where comments are located within the HTML and provide insight into potential points for testing or exploiting.
+     - Clicking the **Comments Button** will display a visual indicator for any HTML comments in the source code, and hovering over the indicator reveals the comment content.
+

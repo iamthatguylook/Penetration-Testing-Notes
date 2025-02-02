@@ -503,3 +503,59 @@ Both Burp Suite and ZAP offer additional features beyond their default web proxy
 - **Free Version**: The free version of Burp Intruder is throttled to 1 request per second, which is slow for large wordlists. 
 - **Pro Version**: The Pro version removes the speed limit and provides additional features for larger-scale fuzzing.
 
+---
+
+# ZAP Fuzzer 
+
+ZAP's Fuzzer is a powerful tool for fuzzing web endpoints, offering advantages over Burp's free Intruder due to its lack of throttling on fuzzing speed. While ZAP Fuzzer may lack some of the advanced features of Burp Intruder, it is highly effective for web directory fuzzing and other types of fuzzing.
+
+## Setup and Configuration
+
+### Fuzzing Process
+To begin fuzzing with ZAP Fuzzer:
+1. Visit the target URL (e.g., `<http://SERVER_IP:PORT/test/>`) to capture a sample request.
+2. From the Proxy History, right-click on the request and select **Attack > Fuzz** to open the Fuzzer window.
+
+### Main Configuration Options
+
+#### Locations
+- **Fuzz Location**: This is similar to Burp's Payload Position, where you define where the payloads will be placed in the request.
+  - Select the target word (e.g., "test") and click **Add**.
+  - This will mark the selected word with a green marker and open the Payloads window to configure the attack payloads.
+
+#### Payloads
+- **Payload Types**: ZAP Fuzzer offers 8 different payload types:
+  - **File**: Select a wordlist from a file.
+  - **File Fuzzers**: Choose wordlists from built-in databases.
+  - **Numberzz**: Generates sequences of numbers with custom increments.
+- **Advantage**: ZAP Fuzzer includes built-in wordlists, eliminating the need to provide your own. Additional wordlists can be installed from the ZAP Marketplace.
+- For example, select **File Fuzzers** and choose a wordlist (e.g., from DirBuster).
+
+#### Processors
+- **Payload Processors**: Apply transformations to the payloads before sending them, including:
+  - **Base64 Decode/Encode**
+  - **MD5 Hash**
+  - **Postfix String / Prefix String**
+  - **SHA-1/256/512 Hash**
+  - **URL Decode/Encode**
+  - **Script**: Apply custom scripts to manipulate payloads.
+- **Processor Example**: Select **URL Encode** to ensure payloads with special characters are properly encoded, avoiding server errors.
+
+#### Options
+- **Concurrent Threads**: Set the number of threads for the scan. For fast fuzzing, set to **20** threads, depending on server and machine limits.
+- **Scan Mode**: Choose between **Depth first** (try all words for one payload position before moving to the next) or **Breadth first** (apply each word from the wordlist to all payload positions before moving to the next word).
+
+### Fuzzing Attack
+
+Once configured:
+1. Click **Start Fuzzer** to initiate the attack.
+2. **Results**: Sort results by **Response Code** to focus on those with HTTP code 200 (successful responses).
+   - For example, you may find a directory like `/skills/` which returns a 200 OK, indicating it exists on the server.
+
+### Analyzing Results
+- **Response Code**: Focus on responses with HTTP code **200 OK** to identify accessible directories or resources.
+- **Size Resp. Body**: Different page sizes may indicate unique responses, useful for detecting varying types of content.
+- **RTT (Round-Trip Time)**: Can be useful for attacks like time-based SQL injections, where the server response time is an indicator.
+
+## Conclusion
+ZAP Fuzzer is an effective tool for fuzzing web endpoints, especially with its speed advantage over Burp’s free version. While it lacks some of Burp's advanced features, ZAP Fuzzer's built-in wordlists and customizability through processors make it a strong choice for web directory fuzzing and other fuzzing tasks.

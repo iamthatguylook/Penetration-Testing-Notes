@@ -559,3 +559,92 @@ Once configured:
 
 ## Conclusion
 ZAP Fuzzer is an effective tool for fuzzing web endpoints, especially with its speed advantage over Burp’s free version. While it lacks some of Burp's advanced features, ZAP Fuzzer's built-in wordlists and customizability through processors make it a strong choice for web directory fuzzing and other fuzzing tasks.
+
+---
+
+
+# Burp Scanner
+
+Burp Scanner is a powerful feature available in **Burp Suite Pro** for scanning web vulnerabilities. It uses a **Crawler** to build a website structure and the **Scanner** for both passive and active scanning. Burp Scanner is only available in the Pro version and offers advanced scanning features making it suitable for enterprise-level use.
+
+## Target Scope
+
+To start a scan in Burp Suite, we have several options:
+- **Scan a specific request** from Proxy History.
+- **Start a new scan** on a set of targets.
+- **Scan in-scope items** defined in the Target Scope.
+
+### Configuring the Scope
+1. **Right-click on an item** in Proxy History and select **Scan** to configure or **Passive/Active Scan** to start the scan quickly.
+2. To scan a set of custom targets, go to **New Scan** in the Dashboard and configure the scan based on your in-scope targets.
+3. **Target Scope**: Limit scans to specific targets, which saves resources by ignoring out-of-scope URLs.
+4. Add items to scope by right-clicking on them and selecting **Add to scope**.
+5. **Excluding Items**: Right-click on any item to **Remove from scope**, such as login pages or session-ending items.
+6. **Advanced Scope Control**: Use regex patterns to include/exclude URLs in the **Target > Scope** section.
+
+### Example Workflow:
+- Go to **Target > Site map** to see directories/files Burp has detected.
+- Right-click on an item and **Add to scope** to include it for future scans.
+- Optionally, configure Burp to limit features to in-scope items only.
+
+## Crawler
+
+The **Crawler** maps the website by navigating links, accessing forms, and analyzing requests. It helps build a comprehensive map of the site for further scanning.
+
+- **Crawl and Audit**: Burp performs a crawl and then an audit (scanning for vulnerabilities).
+- **Crawl Only**: Only maps links and directories. For hidden pages (like those not referenced in links), use Burp Intruder or other content discovery tools, then add to scope.
+
+### Configuring a Crawl Scan:
+1. Click **New Scan** from the Dashboard.
+2. Select **Crawl and Audit** for a complete scan (crawl + vulnerability audit).
+3. Use preset configurations or create a custom configuration.
+4. **Crawl Strategy**: Choose a crawl speed and limit.
+5. **Login Configuration**: Add credentials if you need to access authenticated sections of the application.
+
+Once the scan starts, monitor progress in the **Dashboard > Tasks** tab.
+
+## Passive Scanner
+
+The **Passive Scanner** analyzes already-visited pages without sending new requests. It identifies vulnerabilities based on the data already retrieved during crawling.
+
+- **Vulnerabilities Detected**: Passive scan suggests vulnerabilities like missing HTML tags or potential DOM-based XSS.
+- **Confidence Level**: Provides confidence levels for each identified vulnerability to prioritize actions.
+  
+### Running a Passive Scan:
+1. Right-click on a request or target in **Target > Site map** and select **Do passive scan**.
+2. View identified vulnerabilities in the **Issue activity** tab of the Dashboard.
+
+## Active Scanner
+
+The **Active Scanner** is the most comprehensive scanning tool in Burp. It sends active requests to test for vulnerabilities such as XSS, SQL Injection, and Command Injection.
+
+### Active Scan Process:
+1. **Crawl**: Identifies all possible pages and performs a web fuzzing scan (like DirBuster).
+2. **Passive Scan**: Runs on all identified pages.
+3. **Vulnerability Verification**: Verifies vulnerabilities identified in the Passive Scan by sending specific requests to confirm their existence.
+4. **JavaScript Analysis**: Checks for vulnerabilities related to JavaScript.
+5. **Fuzzing**: Attempts to exploit vulnerabilities like XSS, Command Injection, SQL Injection, etc.
+
+### Configuring Active Scans:
+1. Choose **Crawl and Audit** in the scan configuration.
+2. Set the **Crawl Configuration** (speed, login details) and **Audit Configuration** (types of vulnerabilities).
+3. Select an **Audit Check** preset (e.g., **Critical issues only**).
+4. After starting the scan, monitor it through the **Tasks** tab in the Dashboard.
+
+### Viewing Active Scan Results:
+1. As the scan progresses, view the requests in the **Logger** tab.
+2. After completion, review vulnerabilities in the **Issue activity** pane.
+3. Filter results based on severity and confidence (e.g., **High Severity**, **Certain Confidence**).
+
+## Reporting
+
+After scanning is complete, export the results for documentation or client reporting.
+
+1. Right-click on the target in **Target > Site map** and select **Report issues for this host**.
+2. Choose the export format and customize the report content.
+3. Burp’s report includes detailed information on vulnerabilities, proof-of-concept exploitation, and remediation steps.
+
+### Key Features in Reporting:
+- **Vulnerability Details**: Lists severity, confidence, and detailed exploitation steps.
+- **Proof-of-Concept**: Provides evidence of exploitability.
+- **Remediation Steps**: Offers recommendations for fixing vulnerabilities.

@@ -454,3 +454,52 @@ After running the module, you can check the proxy history to see the requests ma
 ## Other Tools
 
 This method can be used with other command-line tools, scripts, and thick clients by configuring them to use the web proxy. By doing so, you can investigate and modify their requests during web application penetration testing.
+
+---
+
+# Burp Intruder
+
+Both Burp Suite and ZAP offer additional features beyond their default web proxy capabilities, which are essential for web application penetration testing. Among the most useful features are web fuzzers and web scanners. Burp's fuzzer is called **Burp Intruder** and serves as an alternative to CLI-based web fuzzing tools like ffuf, dirbuster, gobuster, and wfuzz.
+
+## Burp Intruder Features
+- **Web Fuzzing**: Allows you to fuzz web pages, directories, sub-domains, parameters, and values.
+- **Speed**: The free version of Burp Suite limits requests to 1 per second. The Pro version has unlimited speed, which makes it comparable to CLI-based fuzzers.
+- **Use Case**: Ideal for small fuzzing tasks or for those with Burp Pro.
+
+## Setup and Configuration
+### Target
+- **Sending Request to Intruder**: In Burp's Proxy History, locate a request and right-click to select **Send to Intruder**, or use **[CTRL+I]**.
+- **Intruder Tab**: Open the Intruder tab (**[CTRL+SHIFT+I]**), where you'll configure the attack.
+
+### Positions Tab
+- **Payload Position**: Specify where to insert the payloads. Select the part of the request you want to fuzz (e.g., directory names).
+- **Attack Type**: Select the type of attack. For simplicity, choose the **Sniper** attack type (single position).
+
+### Payloads Tab
+1. **Payload Sets**: This identifies the payload number based on the attack type.
+2. **Payload Options**: Configure the wordlist for the payload. Choose **Simple List** or a **Runtime file** to load a wordlist.
+   - Example: Load **/opt/useful/seclists/Discovery/Web-Content/common.txt**.
+3. **Payload Processing**: Apply rules to modify the wordlist before fuzzing. For example, use regex to skip lines starting with a dot (`^\..*$`).
+4. **Payload Encoding**: Enable URL encoding for payloads (usually enabled by default).
+
+### Options Tab
+- **Retry Options**: Set retries on failure and pause before retrying to 0.
+- **Grep - Match**: Configure rules to match responses with specific strings (e.g., HTTP 200 OK) to filter the results.
+- **Grep - Extract**: Useful for extracting specific parts of the response if needed.
+- **Resource Pool**: Define how much network resource to allocate for the attack (use default for smaller attacks).
+
+### Attack
+- **Start Attack**: Click **Start Attack** to initiate the fuzzing process.
+- **Results**: Review the results for hits (e.g., `/admin` directory).
+- **Sorting Results**: You can sort the results by status code (e.g., 200 OK), length, or other parameters.
+
+## Additional Uses
+- Burp Intruder is versatile for:
+  - Brute-forcing passwords.
+  - Fuzzing for PHP parameters.
+  - Password spraying for applications using Active Directory (AD) authentication, such as Outlook Web Access (OWA), SSL VPN portals, Remote Desktop Services (RDS), and Citrix.
+
+## Considerations
+- **Free Version**: The free version of Burp Intruder is throttled to 1 request per second, which is slow for large wordlists. 
+- **Pro Version**: The Pro version removes the speed limit and provides additional features for larger-scale fuzzing.
+

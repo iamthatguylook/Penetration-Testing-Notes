@@ -354,4 +354,103 @@ Encoding and decoding are essential for modifying and interacting with web reque
 2. **ZAP**:
    - Use **Encoder/Decoder/Hash** for various encodings and custom tabs for convenience.
 
+---
 
+# Proxying Tools
+
+An important aspect of using web proxies is enabling the interception of web requests made by command-line tools and thick client applications. This allows us to monitor the web requests and utilize proxy features with these tools.
+
+## Setup Web Proxy for Tools
+
+To route web requests from a tool through a web proxy, you need to set the proxy for each tool (e.g., `http://127.0.0.1:8080`). The process may vary depending on the tool, so you'll need to investigate how to configure the proxy for each.
+
+Note: Proxying tools often slows them down, so only proxy when necessary for investigating requests.
+
+## Proxychains
+
+Proxychains is a useful Linux tool that routes all traffic from command-line tools through any proxy we specify.
+
+### Setup Proxychains
+
+1. Edit `/etc/proxychains.conf`.
+2. Comment out the final line and add the following line at the end:
+   ```
+   http 127.0.0.1 8080
+   ```
+3. Uncomment `quiet_mode` to reduce noise.
+4. Use `proxychains` before any command to route its traffic through the proxy. For example, with `curl`:
+   ```
+   proxychains curl http://SERVER_IP:PORT
+   ```
+
+This routes the `curl` request through the web proxy, and you should see the request in the proxy tool (e.g., Burp or ZAP).
+
+### Example Output
+```
+ProxyChains-3.1 (http://proxychains.sf.net)
+<!DOCTYPE html>
+<html lang="en">
+  <head>...</head>
+  <body>...</body>
+</html>
+```
+
+## Nmap
+
+Nmap can also be proxied through a web proxy.
+
+### Use Proxy with Nmap
+
+1. To find out the proxy option, use the help page:
+   ```
+   nmap -h | grep -i prox
+   ```
+   This shows the `--proxies` option for HTTP/SOCKS4 proxies.
+
+2. Use `--proxies` flag to route Nmap traffic:
+   ```
+   nmap --proxies http://127.0.0.1:8080 SERVER_IP -pPORT -Pn -sC
+   ```
+
+### Example Output
+```
+Starting Nmap 7.91 ( https://nmap.org )
+Nmap scan report for SERVER_IP
+Host is up (0.11s latency).
+
+PORT      STATE SERVICE
+PORT/tcp open  unknown
+
+Nmap done: 1 IP address (1 host up) scanned in 0.49 seconds
+```
+
+If successful, you'll see Nmap requests in your proxy history. Note that Nmap's proxy support is still experimental, so some traffic may not be routed through the proxy. In that case, use Proxychains as a workaround.
+
+## Metasploit
+
+Metasploit also allows us to route web traffic through a proxy.
+
+### Setup Proxy for Metasploit
+
+1. Start Metasploit with `msfconsole`.
+2. Use the `set PROXIES` command to specify the proxy for any exploit. For example:
+   ```
+   msfconsole
+   msf6 > use auxiliary/scanner/http/robots_txt
+   msf6 auxiliary(scanner/http/robots_txt) > set PROXIES HTTP:127.0.0.1:8080
+   msf6 auxiliary(scanner/http/robots_txt) > set RHOST SERVER_IP
+   msf6 auxiliary(scanner/http/robots_txt) > set RPORT PORT
+   msf6 auxiliary(scanner/http/robots_txt) > run
+   ```
+
+### Example Output
+```
+[*] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```
+
+After running the module, you can check the proxy history to see the requests made by Metasploit.
+
+## Other Tools
+
+This method can be used with other command-line tools, scripts, and thick clients by configuring them to use the web proxy. By doing so, you can investigate and modify their requests during web application penetration testing.

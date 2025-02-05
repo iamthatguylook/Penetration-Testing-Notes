@@ -648,3 +648,67 @@ After scanning is complete, export the results for documentation or client repor
 - **Vulnerability Details**: Lists severity, confidence, and detailed exploitation steps.
 - **Proof-of-Concept**: Provides evidence of exploitability.
 - **Remediation Steps**: Offers recommendations for fixing vulnerabilities.
+
+---
+
+# ZAP Scanner Notes
+
+## Overview
+ZAP Scanner is a web application scanner similar to Burp Suite's scanner. It can:
+- Build site maps using **ZAP Spider**
+- Perform **passive** and **active scans** to identify vulnerabilities  
+
+---
+
+# ZAP Spider  
+- Similar to **Burp Crawler**  
+- Can be started from the **History tab** by selecting `(Attack > Spider)` or using the **HUD**  
+- Scans the target site for links and validates them  
+- Requires adding the target site to **Scope** before scanning  
+
+### Running ZAP Spider  
+1. Locate a request in **History tab**  
+2. Right-click and select `(Attack > Spider)`  
+3. Click **Spider Start** (second button on right pane in HUD)  
+4. If prompted, **add the target to Scope**  
+5. Click **Start** to begin scanning  
+
+### Site Map View  
+- Check **Sites tab** in ZAP UI to see discovered subdirectories  
+- Click the **Sites Tree button** (first button on right pane)  
+
+### **Ajax Spider**
+- Identifies **JavaScript AJAX-based** links  
+- Can be started from the **third button** on the right pane  
+- Run **after** normal Spider for better results  
+
+
+
+## Passive Scanner
+- **Automatically runs** alongside ZAP Spider  
+- Scans **responses** for potential issues like:
+  - **Missing security headers**  
+  - **DOM-based XSS** vulnerabilities  
+- Identified issues appear in:
+  - **Alerts button** (left pane for current page)  
+  - **Alerts tab** (right pane for all issues)  
+
+
+## Active Scanner
+- Click **Active Scan button** (right pane)  
+- If no Spider scan was run, **ZAP will first build the site tree**  
+- Actively **attacks** identified pages and HTTP parameters to find vulnerabilities  
+- **Takes longer** than passive scanning  
+
+### Viewing Scan Results
+- **Alerts button** will populate with more alerts as vulnerabilities are found  
+- **High Alerts** indicate **critical** vulnerabilities  
+- Click **High Alerts** for details  
+- View **request and response** in the alert details window  
+
+
+## Reporting
+- Generate a report via `(Report > Generate HTML Report)`  
+- Supports **HTML, XML, and Markdown** formats  
+- Useful for keeping logs of vulnerabilities found during testing  
+

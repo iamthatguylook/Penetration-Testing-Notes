@@ -651,16 +651,13 @@ After scanning is complete, export the results for documentation or client repor
 
 ---
 
-# ZAP Scanner Notes
+# ZAP Scanner
 
-## Overview
 ZAP Scanner is a web application scanner similar to Burp Suite's scanner. It can:
 - Build site maps using **ZAP Spider**
 - Perform **passive** and **active scans** to identify vulnerabilities  
 
----
-
-# ZAP Spider  
+## ZAP Spider  
 - Similar to **Burp Crawler**  
 - Can be started from the **History tab** by selecting `(Attack > Spider)` or using the **HUD**  
 - Scans the target site for links and validates them  

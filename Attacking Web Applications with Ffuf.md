@@ -218,4 +218,30 @@ In environments like HTB, private websites may not be accessible by public DNS. 
 
 ---
 
+# Sub-domain Fuzzing
+
+## Overview
+Sub-domain fuzzing helps identify sub-domains (e.g., `subdomain.website.com`) for a target domain by checking if they have a public DNS record.
+
+## Process
+
+1. **Prepare Tools and Wordlist**
+   - **Wordlist**: Use `subdomains-top1million-5000.txt` from SecLists (`/opt/useful/seclists/Discovery/DNS/`).
+   - **Target**: Run the scan on a domain (e.g., `inlanefreight.com`).
+
+2. **Fuzz for Sub-domains**
+   - Use ffuf to scan for sub-domains by placing the `FUZZ` keyword in place of the sub-domain part of the URL:
+   
+     ```bash
+     ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ -u https://FUZZ.inlanefreight.com/
+     ```
+
+3. **Results Example for `inlanefreight.com`**:
+   - The scan finds some sub-domains, such as `support.inlanefreight.com`, `ns3.inlanefreight.com`, etc.
+
+4. **Testing on `academy.htb`**
+   - When running the scan on `academy.htb`, no hits were returned. This indicates there are no public sub-domains available.
+
+5. **Explanation**
+   - The absence of results for `academy.htb` means that it does not have any public DNS records for sub-domains. Although `academy.htb` was added to `/etc/hosts`, ffuf looks for sub-domains that aren’t listed, and without DNS records, it cannot find them.
 

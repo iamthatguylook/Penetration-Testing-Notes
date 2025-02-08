@@ -312,4 +312,32 @@ ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ 
 - Perform a recursive scan on `admin.academy.htb` to explore further pages.
 
 ---
+# Parameter Fuzzing - GET
+
+- Parameter fuzzing helps identify hidden or unpublished parameters that may be used to interact with a page.
+- This is important because such parameters might expose vulnerabilities or give access to sensitive data.
+
+**GET Request Fuzzing:**
+- Parameters in a GET request are typically passed after the URL with a `?`, e.g., `http://example.com/page.php?param1=value`.
+- To fuzz for parameters, we replace the parameter with `FUZZ` and run the scan using `ffuf`.
+
+**Steps for Fuzzing GET Parameters:**
+1. **Choose a wordlist**: 
+   - Use `burp-parameter-names.txt` from SecLists, located at `/opt/useful/seclists/Discovery/Web-Content/`.
+   
+2. **Run `ffuf` with GET request fuzzing:**
+   ```bash
+   ffuf -w /opt/useful/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php?FUZZ=key -fs xxx
+   ```
+   - `FUZZ` is replaced with each word in the wordlist to test different parameters.
+
+3. **Filter Results**:
+   - Use `-fs` to filter responses based on size to exclude default responses.
+
+**Expected Results:**
+- The scan will return different parameters. If any parameter changes the page’s response or exposes new functionality, it could be an entry point.
+
+**Example of Result:**
+- A hit might look like this: `http://admin.academy.htb:PORT/admin/admin.php?REDACTED=key`.
+- After adding the parameter to the URL, if it’s valid, you may gain access to the flag or other resources.
 

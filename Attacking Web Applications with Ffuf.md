@@ -145,4 +145,45 @@ This command will test for pages like `index.php`, `login.php`, etc.
 
 ---
 
+# Recursive Fuzzing
 
+## Overview
+
+Recursive fuzzing allows us to automate the process of scanning directories and subdirectories for hidden files and pages. When scanning large websites with complex directory structures, recursive fuzzing can help us reach deeper levels without manually specifying each subdirectory.
+
+## Recursive Flags in ffuf
+
+To enable recursive scanning, use the following flags:
+- `-recursion`: Enables recursion to scan newly identified directories.
+- `-recursion-depth`: Specifies how deep the scan should go. For example, `-recursion-depth 1` will only scan the main directories and their immediate subdirectories.
+- `-e .php`: Specifies the file extension (e.g., `.php`) to be used for fuzzing pages.
+- `-v`: Outputs full URLs for better visibility of scanned paths.
+
+### Example Command for Recursive Fuzzing:
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://SERVER_IP:PORT/FUZZ -recursion -recursion-depth 1 -e .php -v
+```
+
+## Results of Recursive Fuzzing
+
+The recursion will automatically identify new subdirectories (e.g., `/forum`, `/blog`) and continue scanning them for pages and files. The scan output will list all URLs it discovers, including those it recursively finds under directories.
+
+### Example Output:
+
+```bash
+[Status: 200, Size: 986, Words: 423, Lines: 56] | URL | http://SERVER_IP:PORT/
+[INFO] Adding a new job to the queue: http://SERVER_IP:PORT/forum/FUZZ
+[Status: 200, Size: 986, Words: 423, Lines: 56] | URL | http://SERVER_IP:PORT/index.php
+[Status: 301, Size: 326, Words: 20, Lines: 10] | URL | http://SERVER_IP:PORT/blog
+[Status: 200, Size: 0, Words: 1, Lines: 1] | URL | http://SERVER_IP:PORT/blog/index.php
+```
+
+In this example:
+- The scan identifies multiple directories like `/blog` and `/forum`.
+- The `index.php` page under `/blog` was identified.
+- A large number of requests were sent, with results showing both base URLs and their recursive directories.
+
+### Key Observations:
+- Recursive fuzzing can discover a lot of hidden content with minimal effort.
+- Specifying the recursion depth helps manage the scope of the scan, ensuring it doesn't go too deep.
+- The `-v` flag provides detailed information on the exact URL paths discovered.

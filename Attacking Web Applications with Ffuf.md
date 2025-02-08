@@ -245,3 +245,29 @@ Sub-domain fuzzing helps identify sub-domains (e.g., `subdomain.website.com`) fo
 5. **Explanation**
    - The absence of results for `academy.htb` means that it does not have any public DNS records for sub-domains. Although `academy.htb` was added to `/etc/hosts`, ffuf looks for sub-domains that aren’t listed, and without DNS records, it cannot find them.
 
+
+---
+
+# Vhost Fuzzing
+
+**VHosts vs Sub-domains:**
+- **VHosts (Virtual Hosts)** refer to different websites hosted on the same server/IP, often using the same domain but with different sub-domains.
+- A key difference is that VHosts may or may not have public DNS records, unlike public sub-domains that are mapped via DNS.
+- **VHost Fuzzing** allows testing for both public and non-public sub-domains on a server by manipulating the `Host` header in HTTP requests, even without DNS records.
+
+**VHost Fuzzing Process:**
+1. **Tools Required:**
+   - Fuzzing is performed using `ffuf` with a wordlist containing common sub-domain names.
+   - The `-H` flag is used to specify the custom `Host` header to test VHosts.
+   
+2. **Command for VHost Fuzzing:**
+   ```bash
+   ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:PORT/ -H 'Host: FUZZ.academy.htb'
+   ```
+
+3. **Expected Results:**
+   - The scan returns **200 OK** for each entry in the wordlist.
+   - Different VHosts should show variations in response size if they point to unique web pages or content. If no VHost exists, the page may look identical to the main domain.
+
+4. **Key Takeaway:**
+   - By fuzzing the `Host` header, you can discover hidden VHosts on the target server, even if they don't have a public DNS record. If a VHost is valid, the response will differ, indicating the presence of a new site or resource under that sub-domain.

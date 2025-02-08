@@ -271,3 +271,45 @@ Sub-domain fuzzing helps identify sub-domains (e.g., `subdomain.website.com`) fo
 
 4. **Key Takeaway:**
    - By fuzzing the `Host` header, you can discover hidden VHosts on the target server, even if they don't have a public DNS record. If a VHost is valid, the response will differ, indicating the presence of a new site or resource under that sub-domain.
+
+---
+
+# Filtering Results
+
+- When fuzzing with `ffuf`, we often get many results with HTTP status code 200 (OK). To narrow down results, we can apply filters based on response size, number of words, or HTTP status codes.
+
+**Filtering Options:**
+- `-mc`: Match HTTP status codes (default: 200,204,301,302,307,401,403).
+- `-ml`: Match number of lines in response.
+- `-mr`: Match a regular expression in the response.
+- `-ms`: Match HTTP response size.
+- `-mw`: Match number of words in the response.
+- **Filter options**:
+  - `-fc`: Filter HTTP status codes.
+  - `-fl`: Filter by the number of lines in the response.
+  - `-fr`: Filter using regular expressions.
+  - `-fs`: Filter by response size (in bytes).
+  - `-fw`: Filter by the number of words in the response.
+
+**Example of Filtering Response Size:**
+- In this case, to avoid results with size 900 (non-relevant responses), we can use `-fs 900` to filter them out.
+
+**Command to Filter Results:**
+```bash
+ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ -u http://academy.htb:PORT/ -H 'Host: FUZZ.academy.htb' -fs 900
+```
+
+**Expected Results:**
+- The filter ensures that responses with a size of 900 bytes are excluded.
+- After filtering, we can see a potential new VHost like `admin.academy.htb`.
+
+**Verification:**
+- Visit `https://admin.academy.htb:PORT/` (don't forget to add it to `/etc/hosts`) to check the page.
+- The page appears empty, confirming it's a different VHost.
+- Trying `https://admin.academy.htb:PORT/blog/index.php` returns a 404, verifying the page is on a separate VHost.
+
+**Next Step:**
+- Perform a recursive scan on `admin.academy.htb` to explore further pages.
+
+---
+

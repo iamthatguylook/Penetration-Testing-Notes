@@ -35,6 +35,47 @@ ffuf -u http://SERVER_IP:PORT/FUZZ -w /opt/useful/seclists/Discovery/Web-Content
 - `-w`: Path to the wordlist.
 - `-ic`: Ignore case (removes comments from the wordlist).
 
+---
+# Value Fuzzing
+
+**Overview:**
+- After successfully fuzzing for parameters, the next step is to fuzz for the **correct parameter values** that return the flag or the desired result.
+- This process is similar to fuzzing for parameters but focuses on finding the appropriate value for the parameter.
+
+**Custom Wordlist:**
+- For fuzzing parameter values, we may not always find pre-made wordlists, especially for custom parameters.
+- Common values, like usernames, may be found in existing wordlists, but for other parameters like IDs, we may need to generate our own list.
+- In this case, we are targeting the `id` parameter, which likely accepts a **numeric value**. We will create a custom wordlist with IDs ranging from 1 to 1000.
+
+**Creating the Wordlist:**
+- Use the following Bash command to generate a list of numbers from 1 to 1000:
+  ```bash
+  for i in $(seq 1 1000); do echo $i >> ids.txt; done
+  ```
+
+**Fuzzing the Values:**
+- Once the wordlist is created, we can start fuzzing the parameter values using the `ffuf` tool.
+- The command will be similar to the previous POST fuzzing, but this time the `FUZZ` keyword will be replaced with the list of IDs from the `ids.txt` file.
+
+**Example Command:**
+```bash
+ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded' -fs xxx
+```
+
+**Results:**
+- The tool will iterate through all the IDs and try them as the value for the `id` parameter.
+- Once a valid ID is found, a new response will be received, potentially giving us access to the flag.
+
+**Sending the Valid Request:**
+- Once a valid ID is found, use `curl` to send a POST request with the correct `id` value to retrieve the flag.
+
+**Example Using curl:**
+```bash
+curl http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=valid_id' -H 'Content-Type: application/x-www-form-urlencoded'
+```
+
+
+
 ### What Happens?
 
 ffuf sends requests with words from the wordlist and reports which pages exist (status code 200). This helps quickly identify valid directories.

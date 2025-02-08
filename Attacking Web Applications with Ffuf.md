@@ -341,3 +341,42 @@ ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ 
 - A hit might look like this: `http://admin.academy.htb:PORT/admin/admin.php?REDACTED=key`.
 - After adding the parameter to the URL, if it’s valid, you may gain access to the flag or other resources.
 
+---
+
+# Parameter Fuzzing - POST
+
+**Introduction:**
+- **POST requests** differ from GET requests in that they send data in the body of the request, not as part of the URL.
+- Fuzzing POST parameters helps find hidden inputs or endpoints not visible in the URL.
+
+**Fuzzing POST Parameters with ffuf:**
+1. **Key Setup:**
+   - Use `ffuf` with the `-d` flag to specify the data field for POST requests.
+   - Use `-X POST` to indicate a POST request method.
+   - Set the `Content-Type` to `application/x-www-form-urlencoded` for PHP compatibility.
+
+2. **Command Example:**
+   ```bash
+   ffuf -w /opt/useful/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'FUZZ=key' -H 'Content-Type: application/x-www-form-urlencoded' -fs xxx
+   ```
+   - `FUZZ` is replaced with each parameter name from the wordlist.
+   - Filter results by response size (`-fs xxx`) to avoid default responses.
+
+3. **Expected Results:**
+   - The scan returns any parameters that cause a difference in the response, indicating potential parameters to test.
+   - For example, if "id" is discovered as a parameter, it might be used for further interactions.
+
+**Example of Post Fuzzing Result:**
+- We get a hit for the parameter `id`.
+  - Test this by sending a POST request with `id=key`.
+  - Example using `curl`:
+    ```bash
+    curl http://admin.academy.htb:PORT/admin/admin.php -X POST -d 'id=key' -H 'Content-Type: application/x-www-form-urlencoded'
+    ```
+- The response:
+  ```html
+  <div class='center'><p>Invalid id!</p></div>
+  ```
+  - The server responds with "Invalid id!", indicating that the `id` parameter exists but requires valid data.
+
+

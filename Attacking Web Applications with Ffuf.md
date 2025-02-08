@@ -94,3 +94,55 @@ If a directory like `/blog` returns a status code 200 or 301 and doesn't show a 
 
 To speed up fuzzing, you can increase threads with the `-t` flag (e.g., `-t 200`), but avoid overdoing it to prevent overloading the server or causing disruptions.
 
+---
+
+# Page Fuzzing
+
+## Overview
+
+In this section, we will use **ffuf** to fuzz for hidden pages within a directory. After discovering a directory (e.g., `/blog`), we want to search for pages in that directory by guessing the file extensions.
+
+## Identifying File Extensions
+
+To begin, we need to identify which file extensions the website might use. For this, we can **fuzz for extensions** (e.g., `.php`, `.html`, `.aspx`). 
+
+To do this, we will use a wordlist of common file extensions. A helpful wordlist is `web-extensions.txt` from the SecLists repository.
+
+### Fuzzing Extensions
+
+The command below will fuzz the extensions of `index` (e.g., `index.php`, `index.html`) within the `/blog` directory:
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/web-extensions.txt:FUZZ -u http://SERVER_IP:PORT/blog/indexFUZZ
+```
+
+- `FUZZ` replaces the extension in the `indexFUZZ` URL, testing each extension in the wordlist.
+  
+### Example Output:
+
+```bash
+.php                    [Status: 200, Size: 0, Words: 1, Lines: 1]
+.phps                   [Status: 403, Size: 283, Words: 20, Lines: 10]
+```
+
+- `.php` returned a **200 OK** response, indicating it's a valid extension.
+- `.phps` returned a **403 Forbidden**, meaning it's not accessible.
+
+## Fuzzing Pages
+
+Once we identify the extension (e.g., `.php`), we can further fuzz for actual pages under the `/blog` directory.
+
+### Example Command for Page Fuzzing:
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://SERVER_IP:PORT/blog/FUZZ.php
+```
+
+This command will test for pages like `index.php`, `login.php`, etc.
+
+- `index.php` returned a **200 OK** but with **0 size**, indicating an empty page.
+- A different page, `REDACTED.php`, also returned **200 OK**, but with content.
+
+---
+
+

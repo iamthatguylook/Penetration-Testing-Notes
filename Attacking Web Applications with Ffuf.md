@@ -187,3 +187,35 @@ In this example:
 - Recursive fuzzing can discover a lot of hidden content with minimal effort.
 - Specifying the recursion depth helps manage the scope of the scan, ensuring it doesn't go too deep.
 - The `-v` flag provides detailed information on the exact URL paths discovered.
+
+---
+
+# DNS Records
+
+## Overview
+In environments like HTB, private websites may not be accessible by public DNS. To access them, you need to add local domain mappings in your `/etc/hosts` file.
+
+## Steps to Access a Local Website
+
+1. **Accessing `academy.htb`**
+   - Visiting `http://academy.htb:PORT` may fail because the domain isn’t resolved by your system.
+
+2. **Reason for Connection Failure**
+   - Since `academy.htb` is a local domain, it’s not found in public DNS servers or your local `/etc/hosts` file by default.
+
+3. **Solution: Add to `/etc/hosts`**
+   - Add the following entry to your `/etc/hosts` file to map `academy.htb` to the server’s IP:
+
+   ```bash
+   sudo sh -c 'echo "SERVER_IP  academy.htb" >> /etc/hosts'
+   ```
+
+4. **Access the Website**
+   - Once added, visit `http://academy.htb:PORT` to access the site.
+
+## Next Steps: Subdomain Enumeration
+- No "admin" or "panel" pages were found. The next step is to search for subdomains under `*.academy.htb`.
+
+---
+
+

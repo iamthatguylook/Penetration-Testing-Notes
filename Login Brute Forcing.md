@@ -194,3 +194,56 @@ for password in passwords:
 
 ---
 
+# Hybrid Attacks
+
+## What are Hybrid Attacks?
+Hybrid attacks combine dictionary and brute-force techniques to exploit predictable password modifications. Users often make small changes to their passwords (e.g., adding a number or special character), and hybrid attacks capitalize on these patterns by systematically testing both standard dictionary passwords and slight variations.
+
+### Example:
+1. **Dictionary Attack**: The attacker starts with a list of common passwords.
+2. **Brute-Force**: If the dictionary attack fails, it switches to modifying the dictionary words (e.g., appending numbers or special characters).
+
+## The Power of Hybrid Attacks
+Hybrid attacks are efficient because they leverage both dictionary attacks and brute-force strategies, adapting based on the results. They are particularly effective against predictable password changes, such as those triggered by password expiration policies.
+
+### Filtering Wordlists for Hybrid Attacks
+To optimize the attack, you can filter wordlists to match specific password policies:
+
+1. **Minimum Length**:
+   ```bash
+   $ grep -E '^.{8,}$' darkweb2017-top10000.txt > darkweb2017-minlength.txt
+   ```
+2. **At Least One Uppercase**:
+   ```bash
+   $ grep -E '[A-Z]' darkweb2017-minlength.txt > darkweb2017-uppercase.txt
+   ```
+3. **At Least One Lowercase**:
+   ```bash
+   $ grep -E '[a-z]' darkweb2017-uppercase.txt > darkweb2017-lowercase.txt
+   ```
+4. **At Least One Number**:
+   ```bash
+   $ grep -E '[0-9]' darkweb2017-lowercase.txt > darkweb2017-number.txt
+   ```
+
+These filters narrow down the search space, improving the efficiency of the attack.
+
+### Result of Filtering:
+By the end of the filtering process, you reduce the number of potential passwords to a manageable list, significantly improving attack speed and efficiency. 
+
+## Credential Stuffing: Exploiting Password Reuse
+
+### What is Credential Stuffing?
+Credential stuffing takes advantage of password reuse. Attackers use leaked password data from breaches to test against multiple online services. The goal is to gain unauthorized access to accounts using stolen usernames and passwords.
+
+### How It Works:
+1. **Acquisition**: Attackers obtain credential lists (e.g., from breaches).
+2. **Automated Attack**: Using tools or scripts, they test these credentials against various sites.
+3. **Success**: If credentials match, attackers gain access to sensitive data or accounts.
+
+### The Problem of Password Reuse:
+Password reuse is a major risk. If a user’s password is compromised on one platform, all other accounts using the same password are vulnerable.
+
+---
+
+

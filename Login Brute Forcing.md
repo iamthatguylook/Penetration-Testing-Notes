@@ -404,3 +404,160 @@ hydra -l basic-auth-user -P 2023-200_most_used_passwords.txt 127.0.0.1 http-get 
   ```
   [81][http-get] host: 127.0.0.1   login: basic-auth-user   password: found-password
   ```
+
+---
+
+# Login Forms 
+## Understanding Login Forms
+Login forms are a common authentication mechanism in web applications. They are typically built using HTML and interact with the backend via HTTP requests.
+
+### Basic Login Form Example
+```html
+<form action="/login" method="post">
+  <label for="username">Username:</label>
+  <input type="text" id="username" name="username"><br><br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" name="password"><br><br>
+  <input type="submit" value="Submit">
+</form>
+```
+
+### Corresponding HTTP POST Request
+```http
+POST /login HTTP/1.1
+Host: www.example.com
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 29
+
+username=john&password=secret123
+```
+
+## Using Hydra for Brute Forcing Login Forms
+Hydra's `http-post-form` module automates POST requests and inserts username/password combinations dynamically.
+
+### Hydra Command Structure
+```bash
+hydra [options] target http-post-form "path:params:condition_string"
+```
+
+### Condition String
+- **Failure Condition (`F=...`)**: Detects failed login attempts by checking for an error message.
+- **Success Condition (`S=...`)**: Identifies successful logins based on redirects (302) or content like "Dashboard".
+
+#### Example Commands:
+Using a failure condition:
+```bash
+hydra -L users.txt -P passwords.txt target http-post-form "/login:user=^USER^&pass=^PASS^:F=Invalid credentials"
+```
+Using a success condition:
+```bash
+hydra -L users.txt -P passwords.txt target http-post-form "/login:user=^USER^&pass=^PASS^:S=302"
+```
+
+## Gathering Login Form Parameters
+### Manual Inspection
+1. Open Developer Tools (F12 in most browsers).
+2. Inspect the login form HTML to find:
+   - **Form submission path** (e.g., `/login` or `/`)
+   - **Username field name** (e.g., `username`)
+   - **Password field name** (e.g., `password`)
+   - **Error messages** (e.g., "Invalid credentials")
+
+### Using Proxy Tools (Burp Suite / OWASP ZAP)
+1. Configure your browser to route traffic through the proxy.
+2. Capture and analyze the login request.
+3. Extract the exact parameters used for authentication.
+
+## Constructing the Hydra Parameters String
+Identified:
+- Form submits data to `/`
+- Username field: `username`
+- Password field: `password`
+- Failure message: `Invalid credentials`
+
+### Final Hydra Command
+```bash
+hydra -L top-usernames-shortlist.txt -P 2023-200_most_used_passwords.txt -f IP -s 5000 http-post-form "/:username=^USER^&password=^PASS^:F=Invalid credentials"
+```
+
+### Explanation
+- `-L top-usernames-shortlist.txt` → Username list
+- `-P 2023-200_most_used_passwords.txt` → Password list
+- `-f` → Stops after finding the first valid login
+- `IP -s 5000` → Target server IP and port
+- `http-post-form` → Attack module for login forms
+- `"/:username=^USER^&password=^PASS^:F=Invalid credentials"` → Form structure and failure condition
+
+---
+
+# Medusa
+
+## Overview
+Medusa is a powerful tool designed for fast, parallel, and modular login brute-forcing. It supports various authentication services, allowing penetration testers to assess login system resilience against brute-force attacks.
+
+
+## Command Syntax
+The basic syntax of Medusa:
+```bash
+medusa [target_options] [credential_options] -M module [module_options]
+```
+
+### Common Parameters
+| Parameter | Explanation | Example |
+|-----------|------------|---------|
+| `-h HOST` or `-H FILE` | Specify a target hostname/IP (`-h`) or a file containing targets (`-H`). | `medusa -h 192.168.1.10` or `medusa -H targets.txt` |
+| `-u USERNAME` or `-U FILE` | Provide a single username (`-u`) or a file of usernames (`-U`). | `medusa -u admin` or `medusa -U users.txt` |
+| `-p PASSWORD` or `-P FILE` | Specify a single password (`-p`) or a file of passwords (`-P`). | `medusa -p password123` or `medusa -P passwords.txt` |
+| `-M MODULE` | Define the module for the attack (e.g., ssh, ftp, http). | `medusa -M ssh` |
+| `-m "MODULE_OPTION"` | Provide additional module parameters. | `medusa -M http -m "POST /login.php ..."` |
+| `-t TASKS` | Number of parallel login attempts. | `medusa -t 4` |
+| `-f` or `-F` | Stop after first successful login (current host: `-f`, any host: `-F`). | `medusa -f` or `medusa -F` |
+| `-n PORT` | Specify a non-default port. | `medusa -n 2222` |
+| `-v LEVEL` | Verbose output level (max: 6). | `medusa -v 4` |
+
+
+
+## Medusa Modules
+Each module targets a specific authentication service.
+
+| Module | Service | Usage Example |
+|--------|---------|--------------|
+| `ftp` | FTP | `medusa -M ftp -h 192.168.1.100 -u admin -P passwords.txt` |
+| `http` | HTTP Web Login | `medusa -M http -h www.example.com -U users.txt -P passwords.txt -m DIR:/login.php -m FORM:username=^USER^&password=^PASS^` |
+| `imap` | IMAP (Email) | `medusa -M imap -h mail.example.com -U users.txt -P passwords.txt` |
+| `mysql` | MySQL Database | `medusa -M mysql -h 192.168.1.100 -u root -P passwords.txt` |
+| `pop3` | POP3 (Email) | `medusa -M pop3 -h mail.example.com -U users.txt -P passwords.txt` |
+| `rdp` | Remote Desktop | `medusa -M rdp -h 192.168.1.100 -u admin -P passwords.txt` |
+| `ssh` | SSH | `medusa -M ssh -h 192.168.1.100 -u root -P passwords.txt` |
+| `svn` | Subversion (SVN) | `medusa -M svn -h 192.168.1.100 -u admin -P passwords.txt` |
+| `telnet` | Telnet | `medusa -M telnet -h 192.168.1.100 -u admin -P passwords.txt` |
+| `vnc` | Virtual Network Computing | `medusa -M vnc -h 192.168.1.100 -P passwords.txt` |
+| `web-form` | Web Login Forms | `medusa -M web-form -h www.example.com -U users.txt -P passwords.txt -m FORM:"username=^USER^&password=^PASS^:F=Invalid"` |
+
+## Example Usage
+
+### Targeting an SSH Server
+Brute-force an SSH server at `192.168.0.100` using a list of usernames and passwords:
+```bash
+medusa -h 192.168.0.100 -U usernames.txt -P passwords.txt -M ssh
+```
+
+### Targeting Multiple Web Servers with Basic HTTP Authentication
+Brute-force authentication across multiple web servers:
+```bash
+medusa -H web_servers.txt -U usernames.txt -P passwords.txt -M http -m GET
+```
+
+### Testing for Empty or Default Passwords
+Check for accounts with empty or username-matching passwords on `10.0.0.5`:
+```bash
+medusa -h 10.0.0.5 -U usernames.txt -e ns -M service_name
+```
+- `-e n` → Tests empty passwords
+- `-e s` → Tests password matching the username
+
+---
+
+
+
+

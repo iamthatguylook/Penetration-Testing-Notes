@@ -368,7 +368,7 @@ hydra -l administrator -x 6:8:abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWX
 
 ---
 
-# **Basic HTTP Authentication & Hydra Brute-Forcing**
+# Basic HTTP Authentication
 
 ## **Understanding Basic Auth**
 - A simple authentication method where credentials (username:password) are encoded in Base64.

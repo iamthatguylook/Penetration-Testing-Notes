@@ -293,3 +293,64 @@ mysql> SELECT * FROM logins;
 
 ---
 
+
+# Query Results
+
+This section explains how to control and manipulate query results in MySQL.
+
+## Sorting Results
+
+You can sort the results of a query using the `ORDER BY` clause and specify the column to sort by.
+
+### Syntax:
+```sql
+SELECT * FROM table_name ORDER BY column_name;
+```
+
+- By default, the sort order is **ascending (ASC)**. You can explicitly specify ascending or descending order.
+
+- Sorting by multiple columns (secondary sort) is also possible.
+
+## LIMIT Results
+
+To control the number of records returned, use the `LIMIT` clause.
+
+### Syntax:
+```sql
+SELECT * FROM table_name LIMIT number_of_records;
+```
+
+- You can specify an **offset** and limit the results starting from a certain record.
+
+### Example:
+```sql
+SELECT * FROM table_name LIMIT offset, count;
+```
+
+## WHERE Clause
+
+The `WHERE` clause is used to filter records based on a specified condition.
+
+### Syntax:
+```sql
+SELECT * FROM table_name WHERE condition;
+```
+
+- Conditions can be used to filter records by values in a specific column.
+
+## LIKE Clause
+
+The `LIKE` clause allows pattern matching for string values.
+
+- The `%` symbol matches any sequence of characters.
+- The `_` symbol matches exactly one character.
+
+### Syntax:
+```sql
+SELECT * FROM table_name WHERE column_name LIKE 'pattern';
+```
+
+- `LIKE` is useful when searching for records that match a certain pattern in string columns.
+
+---
+

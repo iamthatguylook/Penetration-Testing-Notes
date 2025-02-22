@@ -496,4 +496,50 @@ SELECT * FROM logins WHERE username != 'tom' AND id > 3 - 2;
 
 ---
 
+# Introduction to SQL Injections
+
+## Use of SQL in Web Applications
+Web applications interact with MySQL to store and retrieve data. Here's an example in PHP:
+
+```php
+$conn = new mysqli("localhost", "root", "password", "users");
+$query = "select * from logins";
+$result = $conn->query($query);
+```
+
+User input is often passed into SQL queries. For example:
+
+```php
+$searchInput = $_POST['findUser'];
+$query = "select * from logins where username like '%$searchInput'";
+$result = $conn->query($query);
+```
+
+## What is SQL Injection?
+SQL injection occurs when user input is directly passed into SQL queries without sanitization, allowing attackers to manipulate the query.
+
+### Example:
+If input is not sanitized, an attacker can input something like:
+```sql
+1'; DROP TABLE users;
+```
+This could delete the `users` table by modifying the query:
+```sql
+select * from logins where username like '%1'; DROP TABLE users;';
+```
+
+## Types of SQL Injections
+
+### 1. **In-band SQL Injection**  
+The output is printed directly on the web page. It has two types:
+- **Union-Based**: Combines results from multiple queries and directs them to the page.
+- **Error-Based**: Relies on errors that reveal database structure.
+
+### 2. **Blind SQL Injection**  
+No direct output. The attacker infers data using:
+- **Boolean-Based**: Uses true/false conditions to determine data.
+- **Time-Based**: Delays the page response to infer data.
+
+### 3. **Out-of-Band SQL Injection**  
+The attacker sends data to a remote location (like a DNS server) and retrieves it from there.
 

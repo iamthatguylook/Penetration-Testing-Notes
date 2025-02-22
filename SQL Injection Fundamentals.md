@@ -354,3 +354,146 @@ SELECT * FROM table_name WHERE column_name LIKE 'pattern';
 
 ---
 
+# SQL Operators
+
+In SQL, operators allow us to manipulate and filter data based on multiple conditions. The most common logical operators include `AND`, `OR`, and `NOT`. These operators enable the combination of multiple conditions in a query.
+
+## AND Operator
+
+The `AND` operator combines two conditions and returns `true` only if both conditions are `true`. For example:
+
+```sql
+condition1 AND condition2
+```
+
+- The result is `true` if both conditions evaluate to `true`.
+- The result is `false` if at least one condition evaluates to `false`.
+
+### Example:
+
+```sql
+SELECT 1 = 1 AND 'test' = 'test';
+-- Result: 1 (True)
+
+SELECT 1 = 1 AND 'test' = 'abc';
+-- Result: 0 (False)
+```
+
+- Any non-zero value is considered `true` (typically returns `1` for true).
+- `0` is considered `false`.
+
+## OR Operator
+
+The `OR` operator also combines two conditions, but it returns `true` if **at least one condition** evaluates to `true`. If both conditions are `false`, it returns `false`.
+
+```sql
+condition1 OR condition2
+```
+
+### Example:
+
+```sql
+SELECT 1 = 1 OR 'test' = 'abc';
+-- Result: 1 (True)
+
+SELECT 1 = 2 OR 'test' = 'abc';
+-- Result: 0 (False)
+```
+
+- In the first query, since `1 = 1` is `true`, the result is `true`.
+- In the second query, both conditions are `false`, so the result is `false`.
+
+## NOT Operator
+
+The `NOT` operator inverts the boolean value of a condition. If the condition is `true`, it becomes `false`, and vice versa.
+
+```sql
+NOT condition
+```
+
+### Example:
+
+```sql
+SELECT NOT 1 = 1;
+-- Result: 0 (False)
+
+SELECT NOT 1 = 2;
+-- Result: 1 (True)
+```
+
+## Symbol Operators
+
+Logical operators can also be represented by symbols:
+
+- `AND` can be written as `&&`
+- `OR` can be written as `||`
+- `NOT` can be written as `!`
+
+### Example:
+
+```sql
+SELECT 1 = 1 && 'test' = 'abc';
+-- Result: 0 (False)
+
+SELECT 1 = 1 || 'test' = 'abc';
+-- Result: 1 (True)
+
+SELECT 1 != 1;
+-- Result: 0 (False)
+```
+
+## Using Operators in Queries
+
+### `NOT` Operator Example:
+
+To select all records where the username is **not** "john":
+
+```sql
+SELECT * FROM logins WHERE username != 'john';
+```
+
+### `AND` Operator Example:
+
+To select users who have their `id` greater than 1 **and** the username is **not** "john":
+
+```sql
+SELECT * FROM logins WHERE username != 'john' AND id > 1;
+```
+
+## Operator Precedence
+
+When combining multiple operations in a query, SQL follows operator precedence to determine the order of evaluation. Here is a list of common operations in order of precedence (highest to lowest):
+
+1. Division (`/`), Multiplication (`*`), Modulus (`%`)
+2. Addition (`+`) and Subtraction (`-`)
+3. Comparison (`=`, `>`, `<`, `<=`, `>=`, `!=`, `LIKE`)
+4. `NOT` (`!`)
+5. `AND` (`&&`)
+6. `OR` (`||`)
+
+### Example:
+
+```sql
+SELECT * FROM logins WHERE username != 'tom' AND id > 3 - 2;
+```
+
+- `3 - 2` is evaluated first, resulting in `1`.
+- Then, the query checks for `username != 'tom'` and `id > 1`.
+- It will return records where the username is not "tom" **and** the `id` is greater than 1.
+
+### Example Output:
+
+```sql
+SELECT * FROM logins WHERE username != 'tom' AND id > 3 - 2;
+
+-- Result:
+| id  | username      | password   | date_of_joining     |
+|-----|---------------|------------|---------------------|
+| 2   | administrator | adm1n_p@ss | 2020-07-03 12:03:53 |
+| 3   | john          | john123!   | 2020-07-03 12:03:57 |
+```
+
+
+---
+
+

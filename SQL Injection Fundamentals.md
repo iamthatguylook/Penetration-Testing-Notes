@@ -169,3 +169,127 @@ This example:
 
 ---
 
+# SQL Statements
+
+This section covers some essential SQL statements and their uses in MySQL.
+
+## INSERT Statement
+
+The `INSERT` statement is used to add new records to a table.
+
+### Syntax:
+```sql
+INSERT INTO table_name VALUES (column1_value, column2_value, column3_value, ...);
+```
+
+- You must provide values for all columns in the table.
+  
+### Example:
+```sql
+mysql> INSERT INTO logins VALUES(1, 'admin', 'p@ssw0rd', '2020-07-02');
+Query OK, 1 row affected (0.00 sec)
+```
+
+- You can insert data into specific columns by specifying column names:
+```sql
+mysql> INSERT INTO logins(username, password) VALUES('administrator', 'adm1n_p@ss');
+Query OK, 1 row affected (0.00 sec)
+```
+
+- You can insert multiple records at once:
+```sql
+mysql> INSERT INTO logins(username, password) VALUES ('john', 'john123!'), ('tom', 'tom123!');
+Query OK, 2 rows affected (0.00 sec)
+```
+
+**Note:** Inserting cleartext passwords is not recommended for production environments.
+
+## SELECT Statement
+
+The `SELECT` statement retrieves data from a table.
+
+### Syntax:
+- To select all columns:
+```sql
+SELECT * FROM table_name;
+```
+
+- To select specific columns:
+```sql
+SELECT column1, column2 FROM table_name;
+```
+
+## DROP Statement
+
+The `DROP` statement removes a table or database.
+
+### Example:
+```sql
+mysql> DROP TABLE logins;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> SHOW TABLES;
+Empty set (0.00 sec)
+```
+
+- The `DROP` command permanently deletes a table with no confirmation, so use with caution.
+
+## ALTER Statement
+
+The `ALTER` statement is used to modify the structure of a table.
+
+### Common Uses:
+- **Add a new column**:
+```sql
+mysql> ALTER TABLE logins ADD newColumn INT;
+Query OK, 0 rows affected (0.01 sec)
+```
+
+- **Rename a column**:
+```sql
+mysql> ALTER TABLE logins RENAME COLUMN newColumn TO newerColumn;
+Query OK, 0 rows affected (0.01 sec)
+```
+
+- **Modify a column's datatype**:
+```sql
+mysql> ALTER TABLE logins MODIFY newerColumn DATE;
+Query OK, 0 rows affected (0.01 sec)
+```
+
+- **Drop a column**:
+```sql
+mysql> ALTER TABLE logins DROP newerColumn;
+Query OK, 0 rows affected (0.01 sec)
+```
+
+## UPDATE Statement
+
+The `UPDATE` statement is used to modify existing records in a table.
+
+### Syntax:
+```sql
+UPDATE table_name SET column1=newvalue1, column2=newvalue2, ... WHERE <condition>;
+```
+
+### Example:
+```sql
+mysql> UPDATE logins SET password = 'change_password' WHERE id > 1;
+Query OK, 3 rows affected (0.00 sec)
+
+mysql> SELECT * FROM logins;
++----+---------------+-----------------+---------------------+
+| id | username      | password        | date_of_joining     |
++----+---------------+-----------------+---------------------+
+|  1 | admin         | p@ssw0rd        | 2020-07-02 00:00:00 |
+|  2 | administrator | change_password | 2020-07-02 11:30:50 |
+|  3 | john          | change_password | 2020-07-02 11:47:16 |
+|  4 | tom           | change_password | 2020-07-02 11:47:16 |
++----+---------------+-----------------+---------------------+
+4 rows in set (0.00 sec)
+```
+
+- In the example above, all passwords for records where the `id` is greater than 1 are updated to `'change_password'`.
+
+---
+

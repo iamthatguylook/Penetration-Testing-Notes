@@ -967,3 +967,67 @@ SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND
   - **Output**: Displays the result of the `id` command, confirming code execution.
 
 ---
+
+# Mitigating SQL Injection
+
+#### Input Sanitization
+- **Purpose**: Escape special characters to prevent injection.
+- **Example**:
+  ```php
+  $username = mysqli_real_escape_string($conn, $_POST['username']);
+  $password = mysqli_real_escape_string($conn, $_POST['password']);
+  
+  $query = "SELECT * FROM logins WHERE username='". $username. "' AND password = '" . $password . "';" ;
+  ```
+
+#### Input Validation
+- **Purpose**: Ensure input matches expected format.
+- **Example**:
+  ```php
+  $pattern = "/^[A-Za-z\s]+$/";
+  $code = $_GET["port_code"];
+  
+  if(!preg_match($pattern, $code)) {
+    die("Invalid input! Please try again.");
+  }
+  
+  $q = "Select * from ports where port_code ilike '%" . $code . "%'";
+  ```
+
+#### User Privileges
+- **Purpose**: Limit database user permissions.
+- **Example**:
+  ```sql
+  CREATE USER 'reader'@'localhost';
+  GRANT SELECT ON ilfreight.ports TO 'reader'@'localhost' IDENTIFIED BY 'p@ssw0Rd!!';
+  ```
+- **Verification**:
+  ```sql
+  mysql -u reader -p
+  SHOW TABLES;
+  SELECT * FROM ilfreight.credentials;
+  ```
+
+#### Web Application Firewall (WAF)
+- **Purpose**: Detect and block malicious input.
+- **Examples**: ModSecurity, Cloudflare.
+- **Default Rules**: Block common attack patterns like `INFORMATION_SCHEMA`.
+
+#### Parameterized Queries
+- **Purpose**: Use placeholders to prevent injection.
+- **Example**:
+  ```php
+  $username = $_POST['username'];
+  $password = $_POST['password'];
+  
+  $query = "SELECT * FROM logins WHERE username=? AND password = ?" ;
+  $stmt = mysqli_prepare($conn, $query);
+  mysqli_stmt_bind_param($stmt, 'ss', $username, $password);
+  mysqli_stmt_execute($stmt);
+  $result = mysqli_stmt_get_result($stmt);
+  
+  $row = mysqli_fetch_array($result);
+  mysqli_stmt_close($stmt);
+  ```
+
+

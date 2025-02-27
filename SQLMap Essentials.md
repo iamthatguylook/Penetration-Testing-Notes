@@ -137,3 +137,189 @@ sqlmap -u "http://example.com/vuln.php?id=1" --batch
 - **Testing**: SQLMap checks for vulnerabilities in the URL.
 - **Injection Points**: Identifies if parameters (like `id`) are vulnerable to SQLi.
 - **Payloads**: Tests various SQLi payloads like boolean-based, time-based, or error-based.
+
+---
+
+# SQLMap Output Messages Description
+
+## Common Log Messages
+
+### 1. **Target URL Content is Stable**
+   - **Message**: "target URL content is stable"
+   - **Meaning**: The response to requests remains consistent, making it easier to spot changes caused by SQLi attempts.
+
+### 2. **Parameter Appears to be Dynamic**
+   - **Message**: "GET parameter 'id' appears to be dynamic"
+   - **Meaning**: The parameter's value changes with each request, indicating it may interact with a database.
+
+### 3. **Parameter Might be Injectable**
+   - **Message**: "heuristic (basic) test shows that GET parameter 'id' might be injectable (possible DBMS: 'MySQL')"
+   - **Meaning**: The parameter shows signs of potential SQL injection, typically identified by DBMS errors.
+
+### 4. **Parameter Vulnerable to XSS**
+   - **Message**: "heuristic (XSS) test shows that GET parameter 'id' might be vulnerable to cross-site scripting (XSS) attacks"
+   - **Meaning**: SQLMap also checks for XSS vulnerabilities alongside SQLi vulnerabilities.
+
+### 5. **Back-end DBMS Identified**
+   - **Message**: "it looks like the back-end DBMS is 'MySQL'."
+   - **Meaning**: The target is identified as using MySQL, allowing SQLMap to focus payloads specific to this DBMS.
+
+### 6. **Level/Risk Values**
+   - **Message**: "Do you want to include all tests for 'MySQL' extending provided level (1) and risk (1) values?"
+   - **Meaning**: Option to extend SQLMap's tests for MySQL based on detected risk level.
+
+### 7. **Reflective Values Found**
+   - **Message**: "reflective value(s) found and filtering out"
+   - **Meaning**: Potential junk found in the response, which SQLMap filters out to ensure accurate results.
+
+### 8. **Injection Point Appears Usable**
+   - **Message**: "GET parameter 'id' appears to be 'AND boolean-based blind - WHERE or HAVING clause' injectable"
+   - **Meaning**: Indicates the parameter is vulnerable to SQL injection, with the specified technique.
+
+### 9. **Time-Based Comparison Model**
+   - **Message**: "time-based comparison requires a larger statistical model, please wait"
+   - **Meaning**: SQLMap collects response data to recognize delays caused by time-based blind SQLi.
+
+### 10. **Extending UNION Query Tests**
+   - **Message**: "automatically extending ranges for UNION query injection technique tests"
+   - **Meaning**: SQLMap extends tests if multiple techniques are found, improving the chances of successful UNION SQLi detection.
+
+### 11. **Technique Usability Check**
+   - **Message**: "'ORDER BY' technique appears to be usable"
+   - **Meaning**: The 'ORDER BY' technique is usable to quickly identify the number of required UNION query columns.
+
+### 12. **Parameter is Vulnerable**
+   - **Message**: "GET parameter 'id' is vulnerable."
+   - **Meaning**: A key message indicating the parameter is indeed vulnerable to SQL injection.
+
+### 13. **Injection Points Identified**
+   - **Message**: "sqlmap identified the following injection point(s) with a total of 46 HTTP(s) requests"
+   - **Meaning**: SQLMap lists exploitable injection points found in the target URL.
+
+### 14. **Data Logged to Files**
+   - **Message**: "fetched data logged to text files under '/home/user/.sqlmap/output/www.example.com'"
+   - **Meaning**: SQLMap stores session data and output in the specified directory for future use.
+
+---
+
+# Running SQLMap on an HTTP Request
+
+## Introduction
+SQLMap allows for extensive customization when targeting HTTP requests for SQL injection testing. Below are key methods to configure and run SQLMap effectively using HTTP requests.
+
+## cURL Command Setup
+
+### Copy as cURL Feature
+- **How to use**: Copy the HTTP request from your browser's Developer Tools (e.g., Chrome, Firefox, Edge) and convert it into a SQLMap command.
+- **Example**:
+  ```bash
+  sqlmap 'http://www.example.com/?id=1' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0' -H 'Accept: image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Connection: keep-alive' -H 'DNT: 1'
+  ```
+
+## GET/POST Requests
+
+### GET Requests
+- Use the `-u`/`--url` flag to specify the URL with parameters.
+- **Example**:
+  ```bash
+  sqlmap 'http://www.example.com/?id=1'
+  ```
+
+### POST Requests
+- Use the `--data` flag to send POST data for testing.
+- **Example**:
+  ```bash
+  sqlmap 'http://www.example.com/' --data 'uid=1&name=test'
+  ```
+
+### Targeting Specific Parameters
+- Use `-p` to target specific parameters for SQLi testing.
+- **Example**:
+  ```bash
+  sqlmap 'http://www.example.com/' --data 'uid=1&name=test' -p uid
+  ```
+
+### Using Asterisk (*) in POST Data
+- Mark the parameter to be tested for SQLi with `*` in the data.
+- **Example**:
+  ```bash
+  sqlmap 'http://www.example.com/' --data 'uid=1*&name=test'
+  ```
+
+## Full HTTP Requests
+
+### Request File (-r)
+- Capture the full HTTP request (headers, method, body) using tools like Burp Suite or browser Developer Tools, and save it to a file.
+- **Example Request File**:
+  ```http
+  GET /?id=1 HTTP/1.1
+  Host: www.example.com
+  User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+  Accept-Language: en-US,en;q=0.5
+  ```
+- **Running SQLMap with the Request File**:
+  ```bash
+  sqlmap -r req.txt
+  ```
+
+### Custom Injection Mark in Request File
+- Mark the parameter for SQLi testing with `*` in the request file (e.g., `/?id=*`).
+
+## Custom SQLMap Requests
+
+### Using Cookies
+- Use `--cookie` to specify session cookie values.
+- **Example**:
+  ```bash
+  sqlmap ... --cookie='PHPSESSID=ab4530f4a7d10448457fa8b0eadac29c'
+  ```
+
+### Custom Headers
+- Use `-H`/`--header` to add custom HTTP headers.
+- **Example**:
+  ```bash
+  sqlmap ... -H='Cookie:PHPSESSID=ab4530f4a7d10448457fa8b0eadac29c'
+  ```
+
+### Random User-Agent
+- Use `--random-agent` to randomize the User-Agent header.
+- **Example**:
+  ```bash
+  sqlmap --random-agent
+  ```
+
+### Custom HTTP Methods
+- Use `--method` to specify HTTP methods like PUT.
+- **Example**:
+  ```bash
+  sqlmap -u www.target.com --data='id=1' --method PUT
+  ```
+
+## Custom HTTP Request Formats
+
+### JSON and XML Requests
+- SQLMap can handle POST data in JSON and XML formats. For complex requests, use the `-r` flag with a request file.
+  
+- **Example JSON Request**:
+  ```json
+  {
+    "data": [{
+      "type": "articles",
+      "id": "1",
+      "attributes": {
+        "title": "Example JSON",
+        "body": "Just an example"
+      }
+    }]
+  }
+  ```
+  
+- **Running SQLMap with JSON Request**:
+  ```bash
+  sqlmap -r req.txt
+  ```
+
+---
+
+

@@ -345,3 +345,63 @@ Use `--proxy` to route SQLMap's traffic through an external proxy (such as Burp 
 
 ---
 
+# SQLMap Attack Tuning – Short Notes
+
+SQLMap provides various options to fine-tune SQL injection (SQLi) attempts, improving detection and exploiting vulnerabilities. Below are the key options and techniques available:
+
+## 1. **Prefix and Suffix**
+   - **Purpose**: Use in special cases where the injection requires specific prefix or suffix formations.
+   - **Usage**: 
+     - `--prefix="<prefix>" --suffix="<suffix>"`
+     - Example: `sqlmap -u "www.example.com/?q=test" --prefix="%'))" --suffix="-- -"`
+   - **Example Query**:
+     - Vulnerable code: `SELECT id,name,surname FROM users WHERE id LIKE (('" . $_GET["q"] . "')) LIMIT 0,1`
+     - Injection: `SELECT id,name,surname FROM users WHERE id LIKE (('test%')) UNION ALL SELECT 1,2,VERSION()-- -')) LIMIT 0,1`
+
+## 2. **Level and Risk**
+   - **Purpose**: Adjust the set of vectors and boundaries used in detection.
+   - **Options**:
+     - `--level (1-5)`: Defines the depth of vectors and boundaries.
+     - `--risk (1-3)`: Modifies the risk level of using more dangerous payloads.
+   - **Default**: `--level=1 --risk=1`
+   - **Increased Levels**: At `--level=5 --risk=3`, the payloads increase to 7,865.
+   - **Verbosity**: Use `-v 3` to view used payloads and boundaries.
+
+## 3. **Advanced Tuning**
+   - **Status Codes**:
+     - Fixate detection of TRUE responses on specific HTTP codes: `--code=<code>`
+     - Example: `--code=200`
+   - **Titles**:
+     - Compare based on `<title>` tag in the HTML: `--titles`
+   - **Strings**:
+     - Detect based on a specific string in the response: `--string=<string>`
+     - Example: `--string="success"`
+   - **Text-only**:
+     - Remove HTML tags and compare only visible text: `--text-only`
+
+## 4. **Techniques**
+   - **Purpose**: Limit the SQLi techniques used.
+   - **Usage**: Use `--technique=<technique>` to specify certain types.
+   - **Examples**: 
+     - `--technique=BEU` (Boolean-based, Error-based, UNION-based)
+     - Skips time-based blind and stacked SQLi payloads.
+
+## 5. **UNION SQLi Tuning**
+   - **Purpose**: Fine-tune UNION-based SQLi payloads.
+   - **Options**:
+     - `--union-cols=<num>`: Manually specify the number of columns for UNION query.
+     - `--union-char=<char>`: Replace default dummy value (`NULL`) with a custom character.
+     - `--union-from=<table>`: Specify the table for UNION queries (e.g., `--union-from=users`).
+
+## Summary of Key Options:
+- **`--prefix`, `--suffix`**: Customize prefix and suffix for specific vulnerabilities.
+- **`--level`, `--risk`**: Control the depth and risk of the attack.
+- **`--code`, `--titles`, `--string`, `--text-only`**: Fine-tune the detection mechanism.
+- **`--technique`**: Specify the type of SQL injection payloads to use.
+- **`--union-cols`, `--union-char`, `--union-from`**: Tune UNION-based SQL injection payloads.
+
+## Recommendations:
+- **Default Usage**: Regular users should stick with default settings to avoid slowdowns.
+- **Advanced Tuning**: Adjust settings for specific vulnerabilities like login pages, complex databases, or unique SQLi cases.
+
+---

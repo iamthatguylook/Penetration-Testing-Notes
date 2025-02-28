@@ -322,4 +322,26 @@ SQLMap allows for extensive customization when targeting HTTP requests for SQL i
 
 ---
 
+# Handling SQLMap Errors
+
+## Display Errors
+Use `--parse-errors` to capture and display any DBMS error messages that occur during the scan. This can help you understand if there are issues with the SQL queries being executed, such as syntax errors or permission issues.
+
+## Store the Traffic
+Use `-t` to store all HTTP traffic (requests and responses) in a file. This allows you to manually review the traffic, which can help diagnose issues with how SQLMap is interacting with the target, or if there are any issues in the HTTP request/response process.
+```
+sqlmap -u "http://www.target.com/vuln.php?id=1" --batch -t /tmp/traffic.txt
+```
+
+## Verbose Output
+Use `-v` to increase the verbosity level of SQLMap's output. This will give you more detailed logs about the actions SQLMap is performing, including headers, responses, and debugging information. This is useful for identifying issues during the attack process.
+
+```
+sqlmap -u "http://www.target.com/vuln.php?id=1" -v 6 --batch
+```
+
+## Using Proxy
+Use `--proxy` to route SQLMap's traffic through an external proxy (such as Burp Suite). This allows you to inspect, modify, and replay requests and responses within the proxy, providing deeper insights into the traffic and interactions between SQLMap and the target.
+
+---
 

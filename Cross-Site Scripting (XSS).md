@@ -84,6 +84,29 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 
 ---
 
+### Reflected Cross-Site Scripting (XSS)
+
+- **Types of Non-Persistent XSS**: Reflected XSS involves the server processing the input and reflecting it back in the response. DOM-based XSS is entirely client-side and does not interact with the back-end server. Both types are non-persistent, meaning they are temporary and do not persist across page refreshes.
+  
+- **Characteristics of Reflected XSS**:
+  - The input is returned by the back-end server without proper filtering or sanitization.
+  - Commonly found in error or confirmation messages.
+  - Executes only when the user interacts with the crafted URL containing the malicious payload.
+
+- **Example Scenario**:
+  - Input (e.g., `test`) is reflected in the server's error message: *Task 'test' could not be added*.
+  - If input includes a script tag payload, e.g., `<script>alert(window.origin)</script>`, and the input is not sanitized, it could lead to XSS execution.
+
+- **How to Exploit**:
+  - Reflected XSS often involves GET requests, where input parameters are embedded in the URL.
+  - By sharing the crafted malicious URL with a target, the XSS payload can execute upon visiting the link.
+
+- **Notes**:
+  - Such attacks are limited to the session in which the malicious URL is executed.
+  - The vulnerability does not persist; once the user moves away from the page or refreshes, the payload no longer executes.
+
+--- 
+
 
 
 

@@ -81,7 +81,10 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 - **Stored XSS**: Persistent, affects multiple users.
 - Test by injecting payloads and refreshing.
 - **Sanitize inputs** to prevent XSS.
-```
+
+---
+
+
 
 
 

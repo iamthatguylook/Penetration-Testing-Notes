@@ -107,6 +107,40 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 
 --- 
 
+# XSS Discovery
+
+#### Overview
+- XSS vulnerabilities allow JavaScript injection into client-side pages, resulting in code execution.
+- Detecting XSS vulnerabilities can be as challenging as exploiting them due to varying application security levels.
+
+#### Automated Discovery
+- **Tools**:
+  - Paid Tools: Nessus, Burp Pro, ZAP (high accuracy, detect all XSS types).
+  - Open-Source Tools: XSStrike, Brute XSS, XSSer.
+- **Scanning Types**:
+  - **Passive Scan**: Analyzes client-side code for DOM-based vulnerabilities.
+  - **Active Scan**: Injects payloads to test for XSS in the page source.
+- **Example**: XSStrike
+  - Clone and run XSStrike to test payload injection for Reflected XSS.
+  - Outputs details like vulnerable parameters and generated payloads.
+
+#### Manual Discovery
+- **XSS Payloads**:
+  - Test input fields with basic `<script>` tags or other vectors (e.g., `<img>`, CSS attributes).
+  - Payload lists: *PayloadAllTheThings* and *PayloadBox*.
+  - XSS injection points can also be in HTTP headers (e.g., Cookie, User-Agent).
+- **Efficiency**:
+  - Writing Python scripts for automated testing and payload analysis can save time for large applications.
+
+#### Code Review
+- **Methodology**:
+  - Review both back-end and front-end code.
+  - Understand the flow of input data to identify vulnerabilities.
+  - Custom payloads can be crafted for specific web applications.
+- **Use Case**:
+  - Analyze the "Source and Sink" for DOM-based XSS vulnerabilities.
+
+---
 
 
 

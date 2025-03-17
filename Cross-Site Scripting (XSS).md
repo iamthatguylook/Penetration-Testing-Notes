@@ -84,7 +84,7 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 
 ---
 
-### Reflected Cross-Site Scripting (XSS)
+# Reflected Cross-Site Scripting (XSS)
 
 - **Types of Non-Persistent XSS**: Reflected XSS involves the server processing the input and reflecting it back in the response. DOM-based XSS is entirely client-side and does not interact with the back-end server. Both types are non-persistent, meaning they are temporary and do not persist across page refreshes.
   

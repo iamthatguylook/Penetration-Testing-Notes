@@ -105,6 +105,54 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
   - Such attacks are limited to the session in which the malicious URL is executed.
   - The vulnerability does not persist; once the user moves away from the page or refreshes, the payload no longer executes.
 
+---
+
+# DOM-based Cross-Site Scripting (XSS)
+
+#### Overview
+- **Definition**: A Non-Persistent XSS type processed entirely on the client side using JavaScript through the Document Object Model (DOM).
+- **Characteristics**:
+  - Input never reaches the back-end server; processed directly in the browser.
+  - Input may use a URL fragment (#) to modify the DOM, making it client-side only.
+  - Base page source does not display injected inputs; they only appear in the rendered DOM.
+
+#### Source & Sink
+- **Source**: The JavaScript object taking user input, e.g., a URL parameter or input field.
+- **Sink**: The function writing the input to a DOM object. Vulnerabilities occur if the Sink does not sanitize the input.
+- **Common Vulnerable Functions**:
+  - `document.write()`
+  - `DOM.innerHTML` and `DOM.outerHTML`
+  - jQuery functions: `add()`, `after()`, `append()`
+- **Example Code**:
+  - Input fetched from the `task` parameter:
+    ```javascript
+    var pos = document.URL.indexOf("task=");
+    var task = document.URL.substring(pos + 5, document.URL.length);
+    ```
+  - Output written to the DOM without sanitization:
+    ```javascript
+    document.getElementById("todo").innerHTML = "<b>Next Task:</b> " + decodeURIComponent(task);
+    ```
+
+#### DOM Attacks
+- **Challenges**:
+  - Functions like `innerHTML` prevent `<script>` tags from executing.
+- **Payload Example** (Avoiding `<script>` tags):
+  ```html
+  <img src="" onerror=alert(window.origin)>
+  ```
+  - This creates an image with an `onerror` attribute to execute JavaScript code.
+
+
+#### Exploitation
+- **Steps**:
+  - Use the vulnerable URL containing the payload.
+  - Share the crafted URL with the target; the JavaScript executes upon visiting it.
+  - Example URL:
+    ```
+    http://SERVER_IP:PORT/#task=<img src="" onerror=alert(window.origin)>
+    ```
+
 --- 
 
 # XSS Discovery

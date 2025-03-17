@@ -41,4 +41,47 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 
 ---
 
+# Stored XSS (Persistent XSS)
+
+## What is Stored XSS?
+- **Stored XSS** happens when malicious JavaScript is saved in the website's **backend database**.
+- The malicious code runs when the page is loaded by **any user** who visits the page.
+
+## Why is it Dangerous?
+- **Affects all users**: Every person visiting the page is vulnerable.
+- **Hard to remove**: The malicious code is stored in the database, so it needs to be manually deleted.
+
+## How to Test for Stored XSS?
+1. Add input to a page (like a To-Do List).
+2. **Inject a test payload**: 
+   ```html
+   <script>alert(window.origin)</script>
+ 
+   - This will show an alert with the page URL.
+
+## Example:
+- If the page doesn’t sanitize input, your payload will appear in the page source:
+   ```html
+   <ul><script>alert(window.origin)</script></ul>
+   ```
+
+## Checking Persistence:
+- **Refresh the page**: If the alert appears again, the XSS is stored in the backend (Persistent XSS).
+
+## Other Test Payloads:
+- **`<plaintext>`**: Renders HTML as plain text.
+- **`<script>print()</script>`**: Triggers the print dialog.
+
+## Iframes and XSS:
+- **Cross-domain iframes** can isolate XSS attacks to just the iframe.
+- To see which form is vulnerable, use the **`window.origin`** payload to show the current page's URL.
+
+
+### Key Points:
+- **Stored XSS**: Persistent, affects multiple users.
+- Test by injecting payloads and refreshing.
+- **Sanitize inputs** to prevent XSS.
+```
+
+
 

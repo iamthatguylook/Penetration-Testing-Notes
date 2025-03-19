@@ -23,3 +23,34 @@ if (isset($_GET['language'])) {
 | `fs.readFile()`, `sendFile()`| ✅            | ❌       | ❌          |
 | `@Html.Partial()`, `Response.WriteFile()` | ✅            | ❌       | ❌          |
 
+---
+
+# Local File Inclusion (LFI)=
+
+## What is LFI?
+- LFI occurs when web applications allow user input to specify file paths, potentially leading to the inclusion of unintended files (e.g., `/etc/passwd`), exposing sensitive data or enabling code execution.
+
+## LFI Exploitation Examples
+
+### 1. **Basic LFI**  
+URL: `http://<SERVER_IP>:<PORT>/index.php?language=es.php`  
+- **Vulnerability**: The web app includes files based on user input, allowing attackers to read sensitive files by changing the parameter, e.g., `/etc/passwd`.
+
+### 2. **Path Traversal**  
+- **Bypassing restrictions**: Use `../../../../` to traverse to the root directory and access files like `/etc/passwd`.  
+Example: `http://<SERVER_IP>:<PORT>/index.php?language=../../../../etc/passwd`
+
+### 3. **Filename Prefix**  
+- **Bypass with `/`**: When a prefix like `lang_` is added, prepend `/` to path traversal to bypass the prefix.  
+Example: `http://<SERVER_IP>:<PORT>/index.php?language=/../../../etc/passwd`
+
+### 4. **Appended Extensions**  
+- **File extension issues**: When `.php` is appended to the input, use techniques like `%00` (null byte) to bypass the extension filter and access files.  
+Example: `http://<SERVER_IP>:<PORT>/index.php?language=/etc/passwd%00`
+
+### 5. **Second-Order LFI Attacks**  
+- **Poisoning input**: Attackers can exploit LFI through indirect inputs, like user profiles, that are later used to load files (e.g., `/profile/$username/avatar.png`).  
+- **Exploit**: Poison a value (like username) to control what file is loaded later.
+
+---
+

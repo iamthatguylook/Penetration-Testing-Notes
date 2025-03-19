@@ -25,7 +25,7 @@ if (isset($_GET['language'])) {
 
 ---
 
-# Local File Inclusion (LFI)=
+# Local File Inclusion (LFI)
 
 ## What is LFI?
 - LFI occurs when web applications allow user input to specify file paths, potentially leading to the inclusion of unintended files (e.g., `/etc/passwd`), exposing sensitive data or enabling code execution.

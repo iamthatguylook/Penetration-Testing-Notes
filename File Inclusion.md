@@ -542,3 +542,38 @@ The **phar wrapper** can execute PHP code from a phar file.
   - Manual methods often yield better results in complex scenarios.
 
 ---
+# File inclusion Prevention
+
+File inclusion vulnerabilities, including Local File Inclusion (LFI) and Remote File Inclusion (RFI), occur when web applications improperly handle user-supplied input in file inclusion functions, potentially allowing attackers to execute arbitrary code or access sensitive files.
+
+**Prevention Strategies:**
+
+1. **Avoid User-Controlled Inputs in File Inclusion Functions:**
+   Design your application to prevent user input from directly influencing file inclusion functions. Where unavoidable, implement strict validation to ensure inputs correspond to intended files.
+
+2. **Implement a Whitelist of Allowed Files:**
+   Use a whitelist to map user inputs to specific files, ensuring only predefined files are included. This can be achieved through methods like database tables, case-match scripts, or static mappings.
+
+3. **Sanitize User Inputs to Prevent Directory Traversal:**
+   Remove or neutralize directory traversal sequences (e.g., `../`) from user inputs to prevent access to unintended directories. For example, recursively strip `../` substrings:
+
+   ```php
+   while (substr_count($input, '../', 0)) {
+       $input = str_replace('../', '', $input);
+   }
+   ```
+
+
+4. **Configure the Web Server Securely:**
+   - Disable the inclusion of remote files by setting `allow_url_fopen` and `allow_url_include` to Off in PHP.
+   - Restrict the application's file access to the web root directory using configurations like `open_basedir`.
+   - Disable potentially dangerous modules, such as `mod_userdir`.
+
+5. **Utilize a Web Application Firewall (WAF):**
+   Deploy a WAF, like ModSecurity, to filter and monitor HTTP requests, helping to detect and block malicious activities. Configure the WAF in permissive mode initially to fine-tune rules and minimize false positives.
+
+**Continuous Hardening:**
+
+Hardening is an ongoing process. Regularly update systems and applications, monitor logs for unusual activities, and test defenses, especially after security advisories or zero-day vulnerabilities are announced.
+
+By implementing these measures, you can significantly reduce the risk of file inclusion vulnerabilities and enhance the security posture of your web applications.

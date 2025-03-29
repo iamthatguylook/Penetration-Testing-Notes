@@ -94,3 +94,80 @@ File upload vulnerabilities pose significant risks to web applications, arising 
   - Necessary functions might be disabled, requiring alternative exploitation techniques.
 
 ---
+
+# Client-Side Validation
+
+### Overview
+- Some web applications rely on **client-side JavaScript** for file type validation.
+- **Issue**: Client-side validation can be easily bypassed since users have control over the front-end code.
+- Methods to bypass validation:
+  1. Modify the upload request directly.
+  2. Disable or alter the front-end validation code.
+
+
+
+#### Back-End Request Modification
+1. Capture a valid upload request using Burp Suite.
+   ```http
+   POST /upload.php HTTP/1.1
+   Host: SERVER_IP:PORT
+   Content-Type: multipart/form-data; boundary=---BOUNDARY
+
+   Content-Disposition: form-data; name="file"; filename="HTB.png"
+   <file content>
+   ```
+2. Modify the request:
+   - Change the `filename` to `shell.php`.
+   - Replace the file content with the PHP web shell.
+3. Send the modified request:
+   - Upon success, receive a response like `File successfully uploaded`.
+   - Access the uploaded file (e.g., `http://SERVER_IP:PORT/uploads/shell.php`) to interact with the shell.
+
+
+#### Disabling Front-End Validation
+1. **Inspect the HTML input field**:
+   - Use browser tools ([CTRL+SHIFT+C]) to locate:
+     ```html
+     <input type="file" name="uploadFile" id="uploadFile" onchange="checkFile(this)" accept=".jpg,.jpeg,.png">
+     ```
+   - Validation includes:
+     - `accept=".jpg,.jpeg,.png"`
+     - `onchange="checkFile(this)"` (runs JavaScript validation).
+
+2. **Modify the validation rules**:
+   - Remove `onchange="checkFile(this)"`.
+   - Remove or edit `accept=".jpg,.jpeg,.png"`.
+
+3. **Disable validation logic**:
+   - Locate the JavaScript function:
+     ```javascript
+     function checkFile(File) {
+         if (extension !== 'jpg' && extension !== 'jpeg' && extension !== 'png') {
+             $('#error_message').text("Only images are allowed!");
+             File.form.reset();
+             $("#submit").attr("disabled", true);
+         }
+     }
+     ```
+   - Edit the function or delete the extension check entirely.
+
+4. **Upload the web shell**:
+   - Without validation, select the web shell file and upload it successfully.
+
+
+#### Accessing the Uploaded Web Shell
+1. Once the shell is uploaded:
+   - Inspect the updated profile image with [CTRL+SHIFT+C].
+   - Locate the image source:
+     ```html
+     <img src="/profile_images/shell.php" class="profile-image" id="profile-image">
+     ```
+2. Visit the file's URL (e.g., `http://SERVER_IP:PORT/profile_images/shell.php`) to interact with the web shell.
+
+
+
+#### Key Notes
+- **Temporary Changes**: Front-end modifications do not persist through page refreshes.
+- **Back-End Security**: If the back-end does not validate files, attackers can bypass client-side restrictions entirely.
+
+---

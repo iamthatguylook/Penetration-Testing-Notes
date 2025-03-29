@@ -171,3 +171,60 @@ File upload vulnerabilities pose significant risks to web applications, arising 
 - **Back-End Security**: If the back-end does not validate files, attackers can bypass client-side restrictions entirely.
 
 ---
+
+# Blacklist Filters
+
+#### Overview
+- Blacklist validation involves rejecting files based on disallowed extensions.
+- **Issue**: Blacklists are often incomplete, allowing attackers to bypass restrictions.
+
+#### Blacklisting Extensions
+1. **Blacklisted Extensions Example**:
+   ```php
+   $fileName = basename($_FILES["uploadFile"]["name"]);
+   $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+   $blacklist = array('php', 'php7', 'phps');
+   if (in_array($extension, $blacklist)) {
+       echo "File type not allowed";
+       die();
+   }
+   ```
+   - Compares `$extension` (from `$fileName`) against `$blacklist`.
+   - **Weakness**: Limited list; other extensions may execute PHP code.
+   - **Case Sensitivity**: Blacklist may fail against mixed-case extensions (e.g., `pHp`).
+
+
+
+#### Fuzzing Extensions
+1. **Objective**: Identify non-blacklisted extensions for file uploads.
+2. **Steps**:
+   - Use extension lists from tools like PayloadsAllTheThings or SecLists.
+   - In Burp Suite:
+     - Locate `/upload.php` request and send to Intruder.
+     - Set fuzzing position at the file extension (e.g., `.php` in `filename="HTB.php"`).
+     - Load the extension list into Payloads.
+   - Start fuzzing and analyze responses:
+     - Sort by Content-Length to identify requests that passed validation.
+
+
+#### Non-Blacklisted Extensions
+1. **Testing PHP Code Execution**:
+   - Example: Use `.phtml` (commonly allowed on PHP servers).
+   - Modify file name and content to:
+     - Filename: `shell.phtml`.
+     - Content: PHP web shell (e.g., `<?php system($_REQUEST['cmd']); ?>`).
+2. **Upload Process**:
+   - Right-click valid `.phtml` request and send to Repeater.
+   - Execute the upload and verify success (e.g., `File successfully uploaded` response).
+
+#### Execution
+1. **Access Uploaded File**:
+   - Navigate to file URL (e.g., `/profile_images/shell.phtml`).
+2. **Test Commands**:
+   - Example: Append `?cmd=id` to execute shell commands.
+
+#### Key Notes
+- Blacklists are **insufficient** for robust security due to incomplete extension coverage.
+- **Recommendation**: Use whitelists or validate file content and type instead.
+
+---

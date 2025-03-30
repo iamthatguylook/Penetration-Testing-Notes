@@ -296,4 +296,64 @@ if (!preg_match('^.*\.(jpg|jpeg|png|gif)', $fileName)) {
     - This wordlist can be used with fuzzing tools (e.g., Burp Intruder) to identify server misconfigurations or outdated software.
 
 ---
+# File Type Filters
+
+## Introduction
+File type filters are essential to prevent file upload attacks. Traditional filters that only rely on file extensions (e.g., `shell.php.jpg`) are insufficient as attackers can exploit allowed extensions or other weaknesses. To strengthen security, modern web servers and applications often validate the **content** of uploaded files.
+
+## Methods of Content Validation
+1. **Content-Type Header Validation**
+    - The `Content-Type` header specifies the file type as determined by the browser.
+    - Example PHP code:
+    ```php
+    $type = $_FILES['uploadFile']['type'];
+
+    if (!in_array($type, array('image/jpg', 'image/jpeg', 'image/png', 'image/gif'))) {
+        echo "Only images are allowed";
+        die();
+    }
+    ```
+    - To bypass:
+      - Manipulate the `Content-Type` header using tools like Burp Intruder.
+      - Use wordlists (e.g., SecLists) to fuzz the `Content-Type` and test allowed values.
+
+2. **MIME-Type Validation**
+    - Determines file type based on its **magic bytes** or **file signature**.
+    - Example PHP code:
+    ```php
+    $type = mime_content_type($_FILES['uploadFile']['tmp_name']);
+
+    if (!in_array($type, array('image/jpg', 'image/jpeg', 'image/png', 'image/gif'))) {
+        echo "Only images are allowed";
+        die();
+    }
+    ```
+    - To bypass:
+      - Modify the file's magic bytes to imitate a valid MIME type (e.g., add `GIF8` for a GIF image).
+      - Example:
+      ```bash
+      $ echo "GIF8" > text.jpg
+      $ file text.jpg
+      text.jpg: GIF image data
+      ```
+
+## Combining Validation Methods
+By combining attacks, you can bypass robust filters. Examples include:
+- Using **Allowed MIME type** with a **disallowed Content-Type**.
+- Pairing **Allowed MIME/Content-Type** with a **disallowed extension**.
+- Employing **Disallowed MIME/Content-Type** with an **allowed extension**.
+
+## Practical Example
+- Add `GIF8` to the beginning of a PHP file while retaining the `.php` extension.
+- Upload the file to bypass the MIME-type validation and execute PHP commands successfully:
+    ```plaintext
+    http://SERVER_IP:PORT/profile_images/shell.php?cmd=id
+    ```
+
+## Notes
+- **Important:** Some servers validate both `Content-Type` and `MIME-Type`. Adjust file headers and magic bytes accordingly.
+- Robust filters may require advanced combinations to bypass, depending on the server's security configuration.
+
+---
+
 

@@ -228,3 +228,72 @@ File upload vulnerabilities pose significant risks to web applications, arising 
 - **Recommendation**: Use whitelists or validate file content and type instead.
 
 ---
+
+Got it! Here's an updated version of the notes with a bit more detail added to each section:
+
+---
+
+# File Upload Security: Whitelist Filters & Exploitation Techniques
+
+## Whitelist vs. Blacklist
+- **Whitelist**: Allows only specific file extensions (e.g., `.jpg`, `.png`). It reduces the attack surface by denying all extensions except for explicitly allowed ones. Whitelisting is considered more secure but restrictive.
+- **Blacklist**: Blocks specific file extensions (e.g., `.php`, `.exe`). It’s useful when a wide variety of file types need to be uploaded, such as in file managers. However, it is less secure since any non-blacklisted but malicious extensions can still slip through.
+- **Combination**: In some scenarios, both methods can be used together to balance security and usability.
+
+---
+
+# Whitelisting Filters
+### Example Code:
+```php
+$fileName = basename($_FILES["uploadFile"]["name"]);
+if (!preg_match('^.*\.(jpg|jpeg|png|gif)', $fileName)) {
+    echo "Only images are allowed";
+    die();
+}
+```
+- **Common Issue**: The regex does not ensure the extension is at the **end** of the filename. It only checks for the presence of an allowed extension.
+- **Exploitation**:
+  - **Double Extensions**: By appending an allowed extension to a malicious script (e.g., `shell.jpg.php`), the file passes validation while still containing executable PHP code.
+- **Fix**: A stricter regex pattern ensures the extension is at the **end** of the filename:
+  ```php
+  if (!preg_match('/^.*\.(jpg|jpeg|png|gif)$/', $fileName)) { ... }
+  ```
+
+## Reverse Double Extensions
+### Explanation:
+- Even with proper regex validation, misconfigured servers may still execute scripts based on intermediate extensions.
+- **Common Misconfiguration**:
+  ```xml
+  <FilesMatch ".+\.ph(ar|p|tml)">
+      SetHandler application/x-httpd-php
+  </FilesMatch>
+  ```
+- **Exploitation**:
+  - A file named `shell.php.jpg` would pass a whitelist check (since it ends with `.jpg`) but may still execute PHP code due to the server interpreting `.php` in the name.
+
+## Character Injection
+### Explanation:
+- Attackers can inject special characters into filenames to manipulate how web applications or servers interpret the file.
+- **Common Characters**:
+  - `%00` (Null byte): Causes PHP 5.X servers to truncate the filename at `%00`.
+  - `:` (Colon): Used on Windows servers to bypass validation (e.g., `shell.aspx:.jpg` is treated as `shell.aspx`).
+  - Others: `%20` (space), `/`, `.\`, `.`, `…` (Unicode ellipsis).
+
+### Exploitation:
+- Example filename: `shell.php%00.jpg` → Interpreted by vulnerable servers as `shell.php`.
+- **Wordlist Generation**:
+    - A custom wordlist can test for vulnerabilities:
+      ```bash
+      for char in '%20' '%0a' '%00' '%0d0a' '/' '.\\' '.' '…' ':'; do
+          for ext in '.php' '.phps'; do
+              echo "shell$char$ext.jpg" >> wordlist.txt
+              echo "shell$ext$char.jpg" >> wordlist.txt
+              echo "shell.jpg$char$ext" >> wordlist.txt
+              echo "shell.jpg$ext$char" >> wordlist.txt
+          done
+      done
+      ```
+    - This wordlist can be used with fuzzing tools (e.g., Burp Intruder) to identify server misconfigurations or outdated software.
+
+---
+

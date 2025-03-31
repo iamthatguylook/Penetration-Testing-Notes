@@ -429,5 +429,66 @@ Even with secure filters limiting file uploads to specific types, vulnerabilitie
    - Upload files to restricted directories (e.g., `../../../etc/passwd`) to crash the server.
 
 ---
+# Other File Upload Attacks
 
+## 1. Injections in File Name
+- Malicious strings in file names can be exploited if reflected in the web application.
+  - **Command Injection**: Example filenames like `file$(whoami).jpg` or `file.jpg||whoami` can lead to OS command execution.
+  - **XSS Payloads**: Using payloads like `<script>alert(window.origin);</script>` in file names can execute scripts on the target's machine.
+  - **SQL Injection**: Example filenames like `file';select+sleep(5);--.jpg` can lead to SQL injection.
 
+## 2. Upload Directory Disclosure
+- **Challenges**:
+  - Upload paths may not be disclosed directly (e.g., feedback forms).
+  - Exploits include:
+    - **Fuzzing**: Guessing the directory structure.
+    - **Forcing Errors**:
+      - Re-uploading files with existing names.
+      - Simultaneous duplicate requests.
+      - Overlong file names (e.g., 5,000 characters).
+    - Using LFI/XXE to analyze source code or find uploads.
+  - Errors may inadvertently disclose the uploads directory and file naming patterns.
+
+## 3. Windows-Specific Attacks
+- **Reserved Characters**: (`|`, `<`, `>`, `*`, `?`) may cause errors revealing sensitive information.
+- **Reserved Names**: (`CON`, `COM1`, `LPT1`, `NUL`) can result in upload issues, causing errors or disclosures.
+- **8.3 Filename Convention**:
+  - Exploiting short file naming format with `~` for overwriting or accessing files (e.g., `HAC~1.TXT` for `hackthebox.txt`).
+  - Can overwrite or replace sensitive files, causing:
+    - Information leaks.
+    - Denial-of-Service (DoS) attacks.
+    - Access to private files.
+
+## 4. Advanced File Upload Attacks
+- **Automatic Processing Exploits**:
+  - Libraries performing tasks like encoding, compressing, or renaming files may introduce vulnerabilities.
+  - Example: AVI upload vulnerability in ffmpeg leading to XXE.
+- **Custom Code**: Identifying vulnerabilities in custom libraries requires advanced techniques and expertise.
+- **Further Exploration**: Review bug bounty reports to learn about advanced file upload vulnerabilities.
+
+---
+# Prevent File Upload Vulnerabilities
+
+**1. Extension Validation**  
+- Use both *whitelists* (allowed extensions like `.jpg`, `.png`) and *blacklists* (dangerous extensions like `.php`, `.phtml`).  
+- Perform both *front-end* and *back-end* validation.  
+
+**2. Content Validation**  
+- Validate both the file extension and its content.  
+- Check the file's *MIME type* and *file signature* to ensure they match the expected format.  
+
+**3. Upload Disclosure**  
+- Hide the uploads directory from users; serve files through a secure *download script* instead.  
+- Randomize file names in storage and save original names securely in a database.  
+- Store uploaded files on a separate server or container for isolation.  
+
+**4. Further Security Measures**  
+- Disable risky server functions (e.g., `exec`, `shell_exec`).  
+- Avoid displaying system/server errors to prevent sensitive data leaks.  
+- Implement additional protections, such as:  
+  - Limiting file size.  
+  - Regularly updating libraries.  
+  - Scanning files for malware.  
+  - Using a Web Application Firewall (WAF).  
+
+---

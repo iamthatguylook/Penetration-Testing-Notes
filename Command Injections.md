@@ -92,4 +92,29 @@ if (strpos($_POST['ip'], $blacklist) !== false) {
 
 ---
 
+# Bypassing Space Filters in Command Injection
+
+## Detection & Bypassing Techniques
+- Web applications often blacklist characters to prevent injection attempts.
+- Learning bypass techniques helps in understanding and mitigating vulnerabilities.
+
+## Bypassing Blacklisted Operators
+- Operators like `;`, `&&`, and `||` are often blocked.
+- **New-line character (`%0a`)** can work as an injection operator.
+
+## Bypassing Blacklisted Spaces
+- Spaces may be blacklisted in certain inputs.
+- Alternatives to spaces:
+  - **Tabs (`%09`)**: Linux & Windows accept tabs between command arguments.
+  - **`$IFS` Variable**: Represents a space or tab in Linux.
+  - **Brace Expansion (`{cmd,arg}`)**: Automatically adds spaces between arguments in Bash.
+
+## Example Payloads
+```bash
+127.0.0.1%0a whoami     # Blocked due to space
+127.0.0.1%0a%09whoami   # Accepted using tab
+127.0.0.1%0a${IFS}whoami # Accepted using $IFS
+127.0.0.1%0a{ls,-la}    # Accepted using brace expansion
+```
+---
 

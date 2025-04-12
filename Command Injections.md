@@ -156,16 +156,14 @@ if (strpos($_POST['ip'], $blacklist) !== false) {
   ```
 - Use **Get-ChildItem Env:** to explore environment variables.
 
-### Using Substring Manipulation
-- Windows CMD allows substring manipulation:
-  ```cmd
-  echo %PROGRAMFILES:~10,1%  # Outputs ";"
-  ```
-- PowerShell arrays allow direct index selection:
-  ```powershell
-  $env:PROGRAMFILES[10]  # Outputs ";"
-  ```
+## Character Shifting
+There are other techniques to produce the required characters without using them, like shifting characters. For example, the following Linux command shifts the character we pass by 1. So, all we have to do is find the character in the ASCII table that is just before our needed character (we can get it with man ascii), then add it instead of [ in the below example. This way, the last printed character would be the one we need:
 
+  Bypassing Other Blacklisted Characters
+ ```
+man ascii     # \ is on 92, before it is [ on 91
+echo $(tr '!-}' '"-~'<<<[)
+```
 ## Additional Techniques
 - **String Concatenation**: Some filtered characters can be reconstructed from separate parts.
 - **Hex Encoding**: Some applications accept input encoded in hexadecimal rather than raw characters.

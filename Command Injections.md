@@ -171,3 +171,39 @@ echo $(tr '!-}' '"-~'<<<[)
 - **Variable Expansion**: Using indirect expansion to reference variables containing restricted characters.
 
 ---
+
+# Command Injection Prevention
+
+## System Commands
+- Avoid using functions that execute system commands, especially with user input.
+- Prefer built-in functions for necessary functionality.
+- If system commands must be executed, **validate and sanitize** user input.
+- Limit the use of system command execution functions whenever possible.
+
+## Input Validation
+- Validate user input both on **front-end** and **back-end**.
+- Use built-in validation functions:
+  - **PHP:** `filter_var($_GET['ip'], FILTER_VALIDATE_IP)`
+  - **JavaScript:** Regex validation or libraries like `is-ip`
+- Validate non-standard formats using **Regular Expressions (regex)**.
+
+## Input Sanitization
+- Remove unnecessary special characters from user input **after validation**.
+- Use built-in functions for sanitization:
+  - **PHP:** `preg_replace('/[^A-Za-z0-9.]/', '', $_GET['ip']);`
+  - **JavaScript:** `ip.replace(/[^A-Za-z0-9.]/g, '');`
+  - **NodeJS:** Use `DOMPurify.sanitize(ip);`
+- Avoid blacklisting characters; prefer **whitelisting allowed characters**.
+
+## Server Configuration
+- Use **Web Application Firewall (WAF)** (e.g., `mod_security`, Cloudflare).
+- Implement **Principle of Least Privilege (PoLP)** (run web server as low-privileged user).
+- Restrict dangerous functions (`disable_functions=system,` in PHP).
+- Limit web application access scope (`open_basedir = '/var/www/html'` in PHP).
+- Reject **double-encoded requests** and **non-ASCII characters** in URLs.
+- Avoid outdated/insecure modules (e.g., PHP CGI).
+
+## Security Testing
+- Perform **penetration testing** to detect vulnerabilities.
+- Complement secure coding practices with **continuous security audits**.
+

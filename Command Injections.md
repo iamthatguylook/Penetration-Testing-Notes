@@ -118,3 +118,58 @@ if (strpos($_POST['ip'], $blacklist) !== false) {
 ```
 ---
 
+# Bypassing Blacklisted Characters in Command Injection
+
+## Common Blacklisted Characters
+- **Slash (`/` and `\`)**: Required for specifying directories in Linux & Windows.
+- **Semi-colon (`;`)**: Often used to chain commands, making it a frequent target for filtering.
+
+## Linux Techniques
+### Using Environment Variables
+- Some environment variables contain useful characters that can be extracted.
+  - Extract `/` from `$PATH`:
+    ```bash
+    echo ${PATH:0:1}  # Outputs "/"
+    ```
+  - Extract `;` from `$LS_COLORS`:
+    ```bash
+    echo ${LS_COLORS:10:1}  # Outputs ";"
+    ```
+- The `printenv` command can display all environment variables to find useful ones.
+
+### Character Shifting
+- A technique using ASCII character shifting:
+  ```bash
+  echo $(tr '!-}' '"-~'<<<[)  # Converts "[" (ASCII 91) to "\"
+  ```
+- To find the ASCII value of characters, use `man ascii`.
+
+## Windows Techniques
+### Using Environment Variables
+- Extract `\` using `%HOMEPATH%`:
+  ```cmd
+  echo %HOMEPATH:~6,-11%  # Outputs "\"
+  ```
+- PowerShell equivalent:
+  ```powershell
+  $env:HOMEPATH[0]  # Outputs "\"
+  ```
+- Use **Get-ChildItem Env:** to explore environment variables.
+
+### Using Substring Manipulation
+- Windows CMD allows substring manipulation:
+  ```cmd
+  echo %PROGRAMFILES:~10,1%  # Outputs ";"
+  ```
+- PowerShell arrays allow direct index selection:
+  ```powershell
+  $env:PROGRAMFILES[10]  # Outputs ";"
+  ```
+
+## Additional Techniques
+- **String Concatenation**: Some filtered characters can be reconstructed from separate parts.
+- **Hex Encoding**: Some applications accept input encoded in hexadecimal rather than raw characters.
+- **Base64 Encoding**: Some commands can be encoded in Base64 and decoded dynamically.
+- **Variable Expansion**: Using indirect expansion to reference variables containing restricted characters.
+
+---

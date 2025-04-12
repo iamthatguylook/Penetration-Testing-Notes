@@ -63,3 +63,33 @@ app.get("/createfile", function(req, res){
 
 ---
 
+# Identifying Filters in Web Applications
+
+## Injection Mitigation
+- Blacklisted characters/words block suspicious requests.
+- Web Application Firewalls (WAFs) prevent attacks like SQL injection and XSS.
+
+## Detecting Filters/WAF
+- Operators like `;`, `&&`, and `||` may trigger an error.
+- Errors in the output field → Web app filter.
+- Redirected error page → Likely a WAF.
+
+## Example Payload
+```bash
+127.0.0.1; whoami
+```
+- Possible blocked elements: **`;`**, **space**, **`whoami` command**.
+
+## Blacklisted Characters
+- Example PHP code blocking specific characters:
+```php
+$blacklist = ['&', '|', ';'];
+if (strpos($_POST['ip'], $blacklist) !== false) {
+    echo "Invalid input";
+}
+```
+- Testing other inputs can help identify blocked characters.
+
+---
+
+

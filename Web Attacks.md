@@ -151,3 +151,122 @@
 - HTTP Verb Tampering allows **Command Injection** by bypassing filters.
 
 ---
+
+# Preventing HTTP Verb Tampering
+
+## Overview
+
+- **HTTP Verb Tampering** vulnerabilities arise from insecure web server configurations and insecure coding practices.
+- The vulnerability occurs when **HTTP methods** are not properly restricted, allowing attackers to bypass security measures.
+- This section discusses how to **patch** and **prevent** these vulnerabilities.
+## Insecure Configuration
+
+1. **Apache Configuration Vulnerability**:
+   - Limiting authorization to **specific HTTP methods** (e.g., GET) exposes the application to other methods (POST, HEAD, etc.).
+   ```xml
+   <Directory "/var/www/html/admin">
+       AuthType Basic
+       AuthName "Admin Panel"
+       AuthUserFile /etc/apache2/.htpasswd
+       <Limit GET>
+           Require valid-user
+       </Limit>
+   </Directory>
+   ```
+
+* **Fix**: Use `<LimitExcept>` to restrict all methods except the specified ones.
+
+```xml
+<Directory "/var/www/html/admin">
+    AuthType Basic
+    AuthName "Admin Panel"
+    AuthUserFile /etc/apache2/.htpasswd
+    <LimitExcept GET POST>
+        Require valid-user
+    </LimitExcept>
+</Directory>
+```
+
+2. **Tomcat Configuration Vulnerability**:
+
+   * Restricting HTTP methods (e.g., GET) leaves the app vulnerable to other methods.
+
+   ```xml
+   <security-constraint>
+       <web-resource-collection>
+           <url-pattern>/admin/*</url-pattern>
+           <http-method>GET</http-method>
+       </web-resource-collection>
+       <auth-constraint>
+           <role-name>admin</role-name>
+       </auth-constraint>
+   </security-constraint>
+   ```
+
+   * **Fix**: Avoid restricting methods with `<http-method>`, or use proper configuration to cover all methods.
+
+3. **ASP.NET Configuration Vulnerability**:
+
+   * Limiting HTTP methods (e.g., GET) exposes the application to attacks via other methods.
+
+   ```xml
+   <system.web>
+       <authorization>
+           <allow verbs="GET" roles="admin">
+               <deny verbs="GET" users="*"/>
+           </allow>
+       </authorization>
+   </system.web>
+   ```
+
+   * **Fix**: Use proper access controls across all methods, or consider using `add/remove` statements to handle method restrictions.
+
+4. **General Recommendations**:
+
+   * Avoid restricting authorization to specific HTTP verbs.
+   * Use safe keywords to limit or allow methods across web servers:
+
+     * **Apache**: `<LimitExcept>`
+     * **Tomcat**: `http-method-omission`
+     * **ASP.NET**: `add/remove`
+   * Consider **disabling HEAD** requests unless specifically needed.
+
+## Insecure Coding
+
+1. **PHP Code Vulnerability**:
+
+   * The code below checks for special characters only in `$_POST['filename']`, but **uses both GET and POST** parameters via `$_REQUEST['filename']`.
+
+   ```php
+   if (isset($_REQUEST['filename'])) {
+       if (!preg_match('/[^A-Za-z0-9. _-]/', $_POST['filename'])) {
+           system("touch " . $_REQUEST['filename']);
+       } else {
+           echo "Malicious Request Denied!";
+       }
+   }
+   ```
+
+   * **Exploit**: By using GET requests, attackers bypass the filter as `$_POST` parameters are empty, and GET parameters are used in the command, leading to **Command Injection**.
+
+2. **Solution**: Ensure **consistency in HTTP method usage** across all code functions:
+
+   * Avoid mixing GET and POST methods.
+   * Ensure that **security filters** cover all HTTP methods.
+   * Use **appropriate security functions** that test all request parameters across methods:
+
+     * **PHP**: `$_REQUEST['param']`
+     * **Java**: `request.getParameter('param')`
+     * **C#**: `Request['param']`
+
+3. **Testing**:
+
+   * Expand the scope of your **security filters** to cover all request parameters, regardless of HTTP method.
+
+
+## Key Takeaways
+
+* **Insecure Configurations**: Avoid restricting methods like GET and POST. Use proper configurations to handle all HTTP methods.
+* **Insecure Coding**: Always maintain **consistent HTTP method usage** in security filters to avoid method-specific vulnerabilities.
+* **Testing**: Ensure that security tests cover **all parameters** from all HTTP methods (GET, POST, etc.).
+

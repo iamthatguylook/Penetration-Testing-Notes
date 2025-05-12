@@ -270,3 +270,45 @@
 * **Insecure Coding**: Always maintain **consistent HTTP method usage** in security filters to avoid method-specific vulnerabilities.
 * **Testing**: Ensure that security tests cover **all parameters** from all HTTP methods (GET, POST, etc.).
 
+---
+
+# IDOR (Insecure Direct Object References)
+
+## What is IDOR?
+- IDOR is a type of access control vulnerability.
+- Occurs when an application exposes direct references to internal objects (e.g., files, database IDs) without proper authorization checks.
+- Example: `download.php?file_id=123` — changing the ID may give access to other users' files if access control is missing.
+
+## Key Causes
+- Lack of server-side access control checks.
+- Over-reliance on front-end to enforce restrictions.
+- Predictable or guessable object identifiers (e.g., incremental IDs).
+
+## What Makes it a Vulnerability?
+- Just exposing direct references is not enough.
+- It becomes a vulnerability **only if**:
+  - There's **no back-end validation** to ensure the user is authorized to access the referenced object.
+
+## Impact of IDOR Vulnerabilities
+- **Information Disclosure**: Access to sensitive files, user data, or credit card details.
+- **Data Manipulation**: Modify or delete data of other users.
+- **Privilege Escalation**: Use admin functions (via insecure endpoints) as a standard user.
+- **Account Takeover** or **Full Application Compromise**.
+
+## Examples
+- Accessing others' files: `file_id=124`
+- Changing user roles: `change_role.php?user_id=100&role=admin`
+
+## Why It’s Common
+- Building and maintaining comprehensive access control is complex.
+- Many developers overlook server-side checks.
+- Difficult to detect via automated testing tools.
+
+## Prevention Techniques
+- Implement robust **Role-Based Access Control (RBAC)**.
+- Always validate user permissions on the **server-side**.
+- Use unpredictable, non-sequential identifiers (UUIDs).
+- Avoid exposing sensitive endpoints in front-end code.
+
+---
+

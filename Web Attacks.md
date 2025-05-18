@@ -692,5 +692,73 @@ Chaining **IDOR (Insecure Direct Object Reference)** vulnerabilities allows atta
 
 ---
 
+Here are concise notes in **Markdown** format summarizing **IDOR prevention** techniques, including **Object-Level Access Control** and **Secure Object Referencing**:
+
+---
+
+# 🔐 IDOR Prevention
+
+## 1. 🛡️ Object-Level Access Control (OLAC)
+
+### 🔑 Core Principle
+
+Prevent unauthorized access to objects by checking user permissions **on the server-side** before fulfilling any request.
+
+### ✅ Best Practices
+
+* Implement **Role-Based Access Control (RBAC)**.
+* Centralize role and permission mapping.
+* Validate access **on the back-end**, never rely on client-side roles or identifiers.
+
+### 🧪 Example Rule (Pseudocode / Firebase-style):
+
+```js
+match /api/profile/{userId} {
+    allow read, write: if user.isAuth == true
+    && (user.uid == userId || user.roles == 'admin');
+}
+```
+
+* ✅ Allows users to access only their own profile
+* ✅ Admins can access any profile
+* 🚫 No trust in client-supplied role or uid
+
+## 2. 🧾 Secure Object Referencing
+
+### ⚠️ Avoid:
+
+* Predictable IDs: `/profile?uid=1`, `/documents/2`
+* Front-end generated or visible object references
+
+### ✅ Use:
+
+* **UUID v4** or **salted hashes** as object references
+* Server-side generated and stored references
+* Map references to real objects in the database
+
+### ✅ Benefits:
+
+* Reduces guessability and enumeration
+* Prevents many forms of automated IDOR attacks
+
+### 🧱 Example (PHP - Insecure):
+
+```php
+$uid = intval($_REQUEST['uid']);
+$query = "SELECT url FROM documents WHERE uid = " . $uid;
+```
+
+### ✅ Secure Alternative:
+
+* Use a UUID (e.g. `89c9b29b-d19f-4515-b2dd-abb6e693eb20`)
+* Query with a **back-end validated token**:
+
+```php
+$uuid = $_REQUEST['uuid'];
+$query = "SELECT url FROM documents WHERE uuid = ?";
+```
+
+---
+
 ---
 

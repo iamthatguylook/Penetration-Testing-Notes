@@ -760,5 +760,37 @@ $query = "SELECT url FROM documents WHERE uuid = ?";
 
 ---
 
+## 🛡️ XXE (XML External Entity) Injection
+
+* Vulnerability from insecure XML input handling.
+* Allows attackers to read local files, perform DoS, SSRF, etc.
+* Listed in OWASP Top 10 security risks.
+
+## 📄 XML Overview
+
+* Markup language used to store and transport data.
+* Structured as a tree of nested elements.
+* Focused on data, not display.
+
+## 📌 Key XML Terms
+
+* **Tag**: Markup enclosed in `< >`
+* **Entity**: Variable enclosed in `& ;`
+* **Element**: Data between start and end tags
+* **Attribute**: Key-value pairs in tags
+* **Declaration**: Specifies XML version/encoding
+
+## 🧾 DTD (Document Type Definition)
+
+* Defines structure and valid elements in XML.
+* Can be included internally or linked externally.
+
+## 💡 XML Entities
+
+* Internal entities: Custom variables for reuse.
+* External entities: Load data from files or URLs.
+* External entities pose **XXE risks** when parsed on the server.
+
 ---
+
 

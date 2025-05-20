@@ -1085,3 +1085,55 @@ cat Logs/TARGET_IP/etc/passwd.log
 ```
 
 ---
+
+# XXE Prevention
+
+## Overview
+- XXE (XML External Entity) vulnerabilities occur when XML parsers process external entities from untrusted input.
+- Prevention is generally easier than other web vulnerabilities because it's often due to outdated libraries.
+
+## Avoiding Outdated Components
+
+- XXE often results from **outdated or insecure XML libraries**.
+- Example: PHP's `libxml_disable_entity_loader()` is **deprecated** as of PHP 8.0.0 due to its security risks.
+- Relying on secure, up-to-date XML libraries reduces the risk of XXE.
+- Keep all XML parsers and related components up to date:
+  - XML libraries (e.g., libxml, lxml)
+  - API libraries (e.g., SOAP)
+  - File processors (e.g., SVG, PDF processors)
+- Tools like **npm** and **code editors (e.g., VSCode)** warn about deprecated or vulnerable modules.
+
+## Using Safe XML Configurations
+
+Apply secure parser configurations to harden XML input handling:
+
+- Disable custom DTDs
+- Disable External Entity references
+- Disable Parameter Entities
+- Disable XInclude support
+- Prevent entity reference loops (cyclical inclusion)
+
+## Proper Error Handling
+
+- Avoid displaying runtime or parser errors that may leak sensitive data.
+- Implement proper exception handling in backend systems.
+- Hide detailed error messages from users to prevent error-based XXE.
+
+## Use Safer Data Formats
+
+- Prefer data formats like **JSON** or **YAML** over XML.
+- Avoid XML-dependent protocols like **SOAP**, favor **RESTful APIs** using JSON.
+
+## Web Application Firewalls (WAFs)
+
+- WAFs can help detect and block malicious XML payloads.
+- Should be used as a **supplement**, not a replacement, for secure coding and configuration.
+- WAFs are bypassable and should not be the sole line of defense.
+
+## Reference
+
+- OWASP XXE Prevention Cheat Sheet:
+  - Lists insecure libraries
+  - Recommends secure configuration practices
+
+---

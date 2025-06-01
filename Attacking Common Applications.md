@@ -358,4 +358,163 @@ http://blog.inlanefreight.local/wp-content/uploads/2021/08/<shell>.php?cmd=id
 
 ---
 
+# Joomla - Discovery & Enumeration
+
+## Overview
+
+Joomla is a free and open-source CMS, released in August 2005. It is widely used for:
+
+* Forums, galleries, eCommerce, user communities
+* Written in **PHP** with **MySQL** backend
+* Enhanced by 7,000+ extensions and 1,000+ templates
+
+## API Enumeration
+
+Query Joomla’s CMS version stats:
+
+```bash
+curl -s https://developer.joomla.org/stats/cms_version | python3 -m json.tool
+```
+
+Returns data such as:
+
+```json
+"total": 2776276,
+"cms_version": {
+    "3.9": 30.28,
+    "3.6": 24.29,
+    "3.8": 18.84,
+    ...
+}
+```
+
+## Discovery Techniques
+
+### Initial Fingerprinting
+
+**Identify via meta tag:**
+
+```bash
+curl -s http://dev.inlanefreight.local/ | grep Joomla
+```
+
+Returns:
+
+```html
+<meta name="generator" content="Joomla! - Open Source Content Management" />
+```
+
+### robots.txt Check
+
+Common Joomla `robots.txt` disallows:
+
+```
+Disallow: /administrator/
+Disallow: /components/
+Disallow: /modules/
+...
+```
+
+### Favicon
+
+Can be used for visual fingerprinting (not always unique).
+
+### README.txt
+
+```bash
+curl -s http://dev.inlanefreight.local/README.txt | head -n 5
+```
+
+May show:
+
+```
+* Joomla! installation/upgrade package to version 3.x
+* Joomla! 3.9 version history - https://docs.joomla.org/...
+```
+
+### XML Manifest
+
+```bash
+curl -s http://dev.inlanefreight.local/administrator/manifests/files/joomla.xml | xmllint --format -
+```
+
+Look for `<version>` tag:
+
+```xml
+<version>3.9.4</version>
+```
+
+### cache.xml
+
+Also useful for approximate version info:
+
+```bash
+curl -s http://dev.inlanefreight.local/plugins/system/cache/cache.xml
+```
+
+## Enumeration Tools
+
+### droopescan
+
+Install:
+
+```bash
+sudo pip3 install droopescan
+```
+
+Run:
+
+```bash
+droopescan scan joomla --url http://dev.inlanefreight.local/
+```
+
+**Findings:**
+
+* Possible versions: 3.8.7 - 3.8.13
+* Interesting URLs:
+
+  * `joomla.xml`
+  * `administrator/`
+  * `LICENSE.txt`
+  * `cache.xml`
+
+
+
+### JoomlaScan (Python 2.7)
+
+Install dependencies:
+
+```bash
+sudo python2.7 -m pip install urllib3 certifi bs4
+```
+
+Run:
+
+```bash
+python2.7 joomlascan.py -u http://dev.inlanefreight.local
+```
+
+**Findings:**
+
+* Components: `com_actionlogs`, `com_admin`, `com_ajax`, `com_banners`
+* Explorable directories and LICENSE files
+
+
+## Authentication Brute Force
+
+Default Joomla admin username is `admin`. Password is set during installation.
+
+### Attempt brute-force with weak credentials
+
+```bash
+sudo python3 joomla-brute.py -u http://dev.inlanefreight.local -w /usr/share/metasploit-framework/data/wordlists/http_default_pass.txt -usr admin
+```
+
+**Successful login:**
+
+```plaintext
+admin:admin
+```
+
+---
 

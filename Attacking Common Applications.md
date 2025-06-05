@@ -907,4 +907,121 @@ droopescan scan drupal -u http://drupal.inlanefreight.local
 
 ---
 
+# ☕ Apache Tomcat - Discovery & Enumeration
 
+## 🔎 Overview
+
+* **Apache Tomcat** is a Java servlet and JSP engine.
+* Commonly used with frameworks like **Spring**, **Gradle**.
+* Often seen in **internal networks**, less exposed externally.
+
+## 🛰️ Discovery Techniques
+
+### 🧭 1. Identify via HTTP Headers
+
+```bash
+curl -i http://host:8080/invalid
+```
+
+* Look for **Server: Apache-Coyote/1.1** or **Tomcat version** in error page.
+
+### 📚 2. Check Default Docs
+
+```bash
+curl -s http://host:8080/docs/ | grep Tomcat
+```
+
+* Confirms version like `Apache Tomcat 9.0.30`.
+
+## 🗂️ Tomcat Directory Structure
+
+```
+├── bin               # Startup scripts
+├── conf              # Config files (e.g., tomcat-users.xml)
+├── lib               # JAR libraries
+├── logs              # Logs
+├── temp              # Temp files
+├── webapps           # Deployed apps
+│   ├── manager       # Admin panel
+│   └── ROOT          # Default app
+└── work              # Runtime cache
+```
+
+### 📌 Key Files:
+
+* `conf/tomcat-users.xml`: user roles & passwords
+* `webapps/<app>/WEB-INF/web.xml`: route-to-class mappings
+* `WEB-INF/classes/`: compiled `.class` files
+* `jsp/`: JSP pages like `admin.jsp`
+
+## 🧾 Sample web.xml (Deployment Descriptor)
+
+```xml
+<servlet>
+  <servlet-name>AdminServlet</servlet-name>
+  <servlet-class>com.inlanefreight.api.AdminServlet</servlet-class>
+</servlet>
+<servlet-mapping>
+  <servlet-name>AdminServlet</servlet-name>
+  <url-pattern>/admin</url-pattern>
+</servlet-mapping>
+```
+
+### Resolves to class path:
+
+```
+WEB-INF/classes/com/inlanefreight/api/AdminServlet.class
+```
+
+## 🔐 tomcat-users.xml Sample
+
+```xml
+<role rolename="manager-gui" />
+<user username="tomcat" password="tomcat" roles="manager-gui" />
+
+<role rolename="admin-gui" />
+<user username="admin" password="admin" roles="manager-gui,admin-gui" />
+```
+### Built-in Roles:
+
+* `manager-gui`: GUI access
+* `manager-script`: HTTP API
+* `manager-jmx`: JMX proxy
+* `manager-status`: Status pages only
+
+## 🔍 Enumeration
+
+### 🔎 Gobuster Scan
+
+```bash
+gobuster dir -u http://host:8180 -w /usr/share/dirbuster/wordlists/directory-list-2.3-small.txt
+```
+
+### 🗂️ Common Paths:
+
+* `/manager`
+* `/host-manager`
+* `/docs`
+* `/examples`
+
+## 🔑 Access Manager Panel
+
+Try default credentials:
+
+```
+tomcat:tomcat
+admin:admin
+```
+
+If successful:
+
+* Deploy a `.war` file with **JSP web shell**.
+* Gain **Remote Code Execution**.
+
+## 🛠️ Next Steps
+
+* If login fails, attempt **brute force**.
+* Exploit known **vulnerabilities** (e.g., CVE-2020-1938, Ghostcat).
+* Look for **LFI** to access `web.xml`, `tomcat-users.xml`.
+
+---

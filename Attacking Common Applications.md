@@ -1232,3 +1232,68 @@ nmap -sV -p 8009,8080 app-dev.inlanefreight.local
   * Remove any custom JSP or payload files.
 
 ---
+
+
+# Jenkins - Discovery & Enumeration
+
+Jenkins is an open-source automation server written in Java. It enables continuous integration and delivery (CI/CD), helping developers build, test, and deploy software efficiently.
+
+## Discovery / Footprinting
+
+### Scenario
+
+Assume:
+- We are conducting an **internal penetration test**.
+- Discovered a likely Jenkins instance.
+- Potential for **RCE as SYSTEM**, providing an entry point into **Active Directory**.
+
+### Default Ports
+
+- **8080** – Default web interface port.
+- **5000** – Used for master-slave communication.
+
+### Security Mechanisms
+
+Jenkins supports various security realms and authorization methods:
+
+- **Local database**
+- **LDAP**
+- **Unix user database**
+- **Delegated to servlet container**
+- **No authentication** (common in misconfigured setups)
+
+Admins can control:
+- Account registration permissions
+- Authorization roles and access controls
+
+## Enumeration Techniques
+
+### Identify Jenkins Instance
+
+#### Jenkins Configure Security Page
+```plaintext
+http://jenkins.inlanefreight.local:8000/configureSecurity/
+````
+
+* Shows authentication and security realm settings.
+* Example: `'Jenkins’ own user database'` and `'Logged-in users can do anything'`.
+
+#### Jenkins Login Page
+
+```plaintext
+http://jenkins.inlanefreight.local:8000/login?from=%2F
+```
+
+* Standard login with username, password, and "Keep me signed in" option.
+* Good fingerprinting indicator.
+
+### Weak / Default Credentials
+
+* Common defaults:
+
+  * `admin:admin`
+  * `admin:password`
+* Misconfigured Jenkins servers **might not require authentication**.
+* Such configurations have been found in **internal and occasionally external** penetration tests.
+
+---

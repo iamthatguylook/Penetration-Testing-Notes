@@ -1686,4 +1686,139 @@ sudo nc -lnvp 443
 * Set a **schedule** for the notification to run periodically.
 * Useful for re-establishing access during long-term engagements.
 
+
+---
+
+# 📝 osTicket 
+
+## 📌 What is osTicket?
+
+* **osTicket** is an open-source support ticketing system.
+* Used by organizations (schools, companies, government, etc.) to manage customer support inquiries.
+* Written in **PHP**, uses **MySQL**, and runs on **Windows or Linux**.
+* Integrates support requests from:
+
+  * **Email**
+  * **Phone**
+  * **Web-based forms**
+
+> Comparable systems: Jira, OTRS, Request Tracker, Spiceworks.
+
+
+## 🎯 Why osTicket Matters in Assessments
+
+* Though typically secure, osTicket can be **leveraged for information gathering** even if no vulnerabilities are present.
+* A common **open-source application**, so its structure and logic are well-documented.
+
+## 🔍 Footprinting and Enumeration Techniques
+
+### Key Indicators of osTicket
+
+* Cookie named `OSTSESSID` set in browser.
+* Page title/footer includes "powered by osTicket".
+* Support center typically offers:
+
+  * Open new ticket
+  * Check ticket status
+
+### Tools & Limitations
+
+* **EyeWitness**: Useful for identifying osTicket visually.
+* **Nmap**: Will not help identify the specific web app—only webserver info (Apache/IIS).
+
+
+## ⚙️ osTicket Workflow Breakdown
+
+### 1. **User Input**
+
+* Problem reported via form/email.
+* Could be abused via **social engineering** (e.g., feigning a tech issue to gather more info from support staff).
+
+### 2. **Processing**
+
+* Admins reproduce issue in controlled environment.
+* Investigate deeper if internal bug is suspected.
+
+### 3. **Solution**
+
+* Other departments may join the ticket thread.
+* Opportunity to **collect new usernames, emails, or internal procedures**.
+
+## 🚨 Attacking osTicket
+
+### Known Vulnerabilities
+
+* Search `osTicket` on [Exploit-DB](https://www.exploit-db.com) for:
+
+  * Remote File Inclusion (RFI)
+  * SQL Injection (SQLi)
+  * Arbitrary File Upload
+  * Cross-site Scripting (XSS)
+* **Example**:
+
+  * **CVE-2020-24881**: SSRF vulnerability in osTicket v1.14.1
+
+### Email Enumeration via Support Portals
+
+* Submitting a ticket may give you an **internal email address** (e.g., `940288@inlanefreight.local`).
+* Can be reused to register on **Slack, GitLab, or similar services** that verify using company emails.
+
+## 🧠 Case Study: `inlanefreight.local`
+
+### Credentials Found via Dehashed:
+
+```bash
+email: kevin@inlanefreight.local
+username: kgrimes
+password: Fish1ng_s3ason!
+```
+
+### Subdomain Enumeration Reveals:
+
+* **support.inlanefreight.local** – osTicket instance
+* **vpn.inlanefreight.local** – Barracuda SSL VPN
+
+### Login Flow:
+
+* `kgrimes` fails to log in.
+* `kevin@inlanefreight.local` → **successful login** to osTicket.
+* **Support ticket** reveals:
+
+  * VPN issues
+  * Password reset using a **default new joiner password**
+  * Password sent in plain text via ticket reply
+
+## 🛡️ Security Risks & Misconfigurations
+
+### Potential Exploitable Weaknesses:
+
+* Password reuse and weak password policy.
+* No MFA on VPN portal.
+* Exposed helpdesk system with user information.
+* Default passwords reused for multiple users.
+
+### What Attackers Can Do:
+
+* **Password spray** across services using default password.
+* Use email addresses found in ticketing system for OSINT or credential stuffing.
+* Register for other internal services using a verified company email.
+
+## ✅ Recommended Mitigations
+
+| Mitigation                               | Explanation                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| **Limit exposure**                       | Avoid exposing internal apps like osTicket to the internet.                 |
+| **Use MFA**                              | Require multi-factor authentication for **all** external services.          |
+| **Security training**                    | Train staff not to share passwords or sensitive info over support channels. |
+| **Strong password policy**               | Disallow weak/default/common passwords.                                     |
+| **Force password change on first login** | Prevent long-term reuse of default credentials.                             |
+| **Periodic expiration**                  | Ensure users change their passwords periodically.                           |
+
+
+## 🔚 Final Thoughts
+
+* Even if secure, systems like osTicket offer **valuable entry points for attackers**.
+* Support portals can inadvertently expose internal processes and sensitive data.
+* Treat **every interface** as a potential **information leak** vector.
+
 ---

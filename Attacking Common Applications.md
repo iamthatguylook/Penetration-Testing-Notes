@@ -2077,11 +2077,9 @@ With access to the GitLab server, attackers can:
 
 # 📘 Attacking Tomcat CGI
 
-## 🔍 Overview
-
 **CVE-2019-0232** is a **critical Remote Code Execution (RCE)** vulnerability affecting the **Apache Tomcat CGI Servlet** on **Windows** systems where the `enableCmdLineArguments` setting is enabled.
 
-### 🔐 Vulnerable Versions
+#### 🔐 Vulnerable Versions
 
 * Tomcat 9.0.0.M1 to 9.0.17
 * Tomcat 8.5.0 to 8.5.39
@@ -2100,7 +2098,7 @@ The **CGI Servlet** allows Tomcat to interface with **external applications/scri
 
 Acts as **middleware** between web browsers and scripts, enabling dynamic content generation.
 
-## ✅ Advantages vs ❌ Disadvantages of CGI Scripts
+### ✅ Advantages vs ❌ Disadvantages of CGI Scripts
 
 | ✅ Advantages                           | ❌ Disadvantages                          |
 | -------------------------------------- | ---------------------------------------- |
@@ -2108,7 +2106,7 @@ Acts as **middleware** between web browsers and scripts, enabling dynamic conten
 | Use any language with STDIN/STDOUT     | Cannot cache between requests            |
 | Reuse of existing code                 | High processing time + low scalability   |
 
-## ⚙️ `enableCmdLineArguments` Configuration
+### ⚙️ `enableCmdLineArguments` Configuration
 
 * **Purpose**: Allows CGI scripts to receive command-line arguments from query strings.
 * **Risk**: When **enabled on Windows**, poor input validation allows **command injection**.

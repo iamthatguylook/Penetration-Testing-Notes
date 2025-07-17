@@ -2735,3 +2735,117 @@ C:\ColdFusion8\runtime\bin> dir
 ```
 
 ---
+
+# 🛠️ IIS Tilde Enumeration Notes
+
+## 📖 Overview
+
+**IIS Tilde Enumeration** is a web server vulnerability specific to certain versions of **Microsoft IIS** (notably IIS 6, 7, and 7.5). It allows attackers to discover **hidden files and directories** by exploiting the **8.3 filename convention** used in Windows file systems.
+
+> Windows automatically creates short (8.3) names for long filenames to maintain compatibility with older software. These short names can inadvertently expose internal file and folder structures.
+
+## 🔍 How the Vulnerability Works
+
+* The 8.3 format means:
+
+  * Up to **8 characters** before the extension
+  * **\~1** or similar suffix to differentiate duplicates
+  * **3 characters** after the dot (the extension)
+
+For example:
+
+| Long File Name    | Short File Name |
+| ----------------- | --------------- |
+| `SecretDocuments` | `SECRET~1`      |
+| `somefile.txt`    | `SOMEFI~1.TXT`  |
+| `somefile1.txt`   | `SOMEFI~2.TXT`  |
+
+* IIS allows access using these short names.
+* If a file or folder is not publicly listed or browsable, it may still be accessible using its short name.
+
+
+## 🔧 Step-by-Step Enumeration Process
+
+### Step 1: 🕵️ Recon with Nmap
+
+Before performing any web-based enumeration, start by identifying services and open ports.
+
+```bash
+nmap -p- -sV -sC --open 10.129.224.91
+```
+
+#### Example Output:
+
+```
+80/tcp open  http    Microsoft IIS httpd 7.5
+```
+
+🎯 **Target Confirmed**: IIS 7.5 on port 80 — potentially vulnerable to tilde enumeration.
+
+### Step 2: ⚙️ Automated Tilde Enumeration with `IIS-ShortName-Scanner`
+
+Manual probing (e.g., `http://target/~a`) is inefficient. Use this tool instead:
+
+* **Tool**: [`IIS ShortName Scanner`](https://github.com/irsdl/IIS-ShortName-Scanner)
+
+#### Run the scanner:
+
+```bash
+java -jar iis_shortname_scanner.jar 0 5 http://10.129.204.231/
+```
+
+* First `0` = scan level (depth 0 is fast, lower false positives)
+* Second `5` = timeout
+* URL = target site
+
+#### Output Example:
+
+```
+Identified directories:
+  - ASPNET~1
+  - UPLOAD~1
+
+Identified files:
+  - TRANSF~1.ASP
+  - CSASPX~1.CS
+```
+
+📌 **Important**: `TRANSF~1.ASP` indicates a real file. But the actual full name is unknown — further brute-forcing needed.
+
+### Step 3: 🧾 Create a Custom Wordlist for Brute Forcing
+
+Use known wordlists to guess full file names that start with a known prefix (e.g., `transf`).
+
+```bash
+egrep -r ^transf /usr/share/wordlists/* | sed 's/^[^:]*://' > /tmp/list.txt
+```
+
+#### Explanation:
+
+| Command             | Purpose                                                           |
+| ------------------- | ----------------------------------------------------------------- |
+| `egrep -r ^transf`  | Search all wordlists recursively for lines starting with `transf` |
+| `sed 's/^[^:]*://'` | Remove file path info and isolate the words                       |
+| `> /tmp/list.txt`   | Save cleaned words to a file                                      |
+
+🧠 **Why this matters**: We already know `TRANSF~1.ASP` exists — so we try to match it to a full name like `transfer.aspx`, `transform.aspx`, etc.
+
+
+### Step 4: 🔍 Directory/File Brute Forcing with Gobuster
+
+With the wordlist in hand, use `gobuster` to brute-force the actual file name.
+
+```bash
+gobuster dir -u http://10.129.204.231/ -w /tmp/list.txt -x .aspx,.asp
+```
+
+#### Output:
+
+```
+/transfer.aspx        (Status: 200) [Size: 941]
+```
+
+✅ **Success**: We now know that `TRANSF~1.ASP` refers to the full file `transfer.aspx`.
+
+---
+

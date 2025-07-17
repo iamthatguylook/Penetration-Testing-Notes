@@ -2849,3 +2849,196 @@ gobuster dir -u http://10.129.204.231/ -w /tmp/list.txt -x .aspx,.asp
 
 ---
 
+# 🗂️ LDAP 
+
+## 📘 What is LDAP?
+
+**LDAP (Lightweight Directory Access Protocol)** is an application protocol used to access and manage **directory services** over a network. A directory is a structured database optimized for reading, browsing, and searching.
+
+### 📋 Key Features of LDAP
+
+| Feature                   | Description                                                         |
+| ------------------------- | ------------------------------------------------------------------- |
+| **Efficient**             | Lean query language and optimized for read-heavy operations.        |
+| **Global Naming**         | Uses a hierarchical (X.500) structure with globally unique entries. |
+| **Flexible & Extensible** | Custom attributes and object classes can be defined.                |
+| **Cross-platform**        | Runs over TCP/IP or SSL, supported on many platforms.               |
+| **Authentication**        | Can centralize login for multiple systems (SSO, etc.).              |
+
+## ⚠️ LDAP Limitations
+
+| Limitation                | Description                                                     |
+| ------------------------- | --------------------------------------------------------------- |
+| **Compliance**            | Requires LDAP-compliant systems — vendor lock-in potential.     |
+| **Complexity**            | Hard to configure and secure correctly without expertise.       |
+| **No Default Encryption** | Must use **LDAPS** or **StartTLS** for encrypted communication. |
+| **LDAP Injection**        | Vulnerable if user input isn't sanitized properly.              |
+
+
+## 🔒 Common Use Cases of LDAP
+
+| Use Case               | Description                                          |
+| ---------------------- | ---------------------------------------------------- |
+| **Authentication**     | Single sign-on across multiple systems.              |
+| **Authorisation**      | Control user access to files, systems, and services. |
+| **Directory Services** | Query and manage users, computers, printers, etc.    |
+| **Synchronization**    | Keep user/account data consistent across systems.    |
+
+## 🆚 LDAP vs Active Directory (AD)
+
+| LDAP                                                    | Active Directory (AD)                                |
+| ------------------------------------------------------- | ---------------------------------------------------- |
+| A protocol for accessing directory services.            | A full-fledged directory service built by Microsoft. |
+| Open and cross-platform.                                | Works primarily with Windows-based systems.          |
+| Supports multiple schemas and flexible structure.       | Uses a Microsoft-extended X.500 schema.              |
+| Supports authentication methods like Simple Bind, SASL. | Uses Kerberos, NTLM, and LDAP over SSL/TLS.          |
+
+
+## 🔄 How LDAP Works
+
+| **Request Component**  | **Description**                                                            | **Response Component** | **Description**                                                                |
+| ---------------------- | -------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------ |
+| **Session Connection** | Client connects to the server via port `389` (LDAP) or `636` (LDAPS).      | **Response Type**      | Indicates the type of operation performed in response (e.g., search result).   |
+| **Request Type**       | Operation type: `bind`, `search`, `modify`, `add`, `delete`, etc.          | **Result Code**        | Indicates if the operation succeeded or failed and why.                        |
+| **Request Parameters** | Includes DN (Distinguished Name), search filter, scope, attributes/values. | **Matched DN**         | Closest matching DN if the exact entry wasn't found.                           |
+| **Request ID**         | Unique ID to track the request-response pair.                              | **Referral**           | URL of another LDAP server, if applicable.                                     |
+|                        |                                                                            | **Response Data**      | The returned data: attributes and values, or confirmation of operation result. |
+
+
+### 🔧 Common LDAP Operations
+
+* **Bind**: Authenticate the client.
+* **Search**: Query the directory.
+* **Modify/Add/Delete**: Change entries.
+* **Unbind**: Disconnect the session.
+
+
+## 🔍 LDAP Search Example
+
+```bash
+ldapsearch -H ldap://ldap.example.com:389 \
+  -D "cn=admin,dc=example,dc=com" \
+  -w secret123 \
+  -b "ou=people,dc=example,dc=com" \
+  "(mail=john.doe@example.com)"
+```
+
+### 🔎 Breakdown
+
+* `-H`: Host (LDAP server)
+* `-D`: Bind DN (login as this user)
+* `-w`: Password
+* `-b`: Base DN (search from here)
+* Search filter: `(mail=john.doe@example.com)`
+
+### ✅ Response Sample
+
+```ldap
+dn: uid=jdoe,ou=people,dc=example,dc=com
+cn: John Doe
+sn: Doe
+mail: john.doe@example.com
+objectClass: person
+result: 0 Success
+```
+
+## 💥 LDAP Injection Explained
+
+### 🔐 What is LDAP Injection?
+
+An attack where malicious input is inserted into an LDAP query, altering its logic and bypassing authentication or retrieving unauthorized data — similar to SQL Injection.
+
+### 🚨 Dangerous Characters
+
+| Character | Function                    |            |
+| --------- | --------------------------- | ---------- |
+| `*`       | Wildcard (matches anything) |            |
+| `()`      | Groups expressions          |            |
+| `&`       | Logical AND                 |            |
+| \`        | \`                          | Logical OR |
+
+
+### 📌 Vulnerable LDAP Query Example
+
+```php
+$filter = "(&(objectClass=user)(sAMAccountName=$username)(userPassword=$password))";
+```
+
+#### ⚠️ Malicious Input
+
+```php
+$username = "*";
+$password = "dummy";
+```
+
+This becomes:
+
+```ldap
+(&(objectClass=user)(sAMAccountName=*)(userPassword=dummy))
+```
+
+💡 **Effect**: Matches **any user** with password "dummy" — even if username is unknown.
+
+
+### 🧪 Second Scenario
+
+```php
+$username = "dummy";
+$password = "*";
+```
+
+Query becomes:
+
+```ldap
+(&(objectClass=user)(sAMAccountName=dummy)(userPassword=*))
+```
+
+🟡 This only works **if `dummy` exists** AND password filtering is allowed — **rare in real LDAP setups**.
+
+
+## 🛡️ Mitigation of LDAP Injection
+
+* ✅ **Input validation**: Whitelist expected characters.
+* 🔒 **Escape special characters**: `*`, `(`, `)`, `\`, etc.
+* 🔐 **Use parameterized LDAP APIs** where available.
+* 🧪 **Test for injection vectors** during security reviews.
+
+
+## 🛠️ LDAP Enumeration with Nmap
+
+```bash
+nmap -p- -sC -sV --open --min-rate=1000 10.129.204.229
+```
+
+### 🔍 Scan Result
+
+```
+PORT    STATE SERVICE VERSION
+80/tcp  open  http    Apache httpd 2.4.41 (Ubuntu)
+389/tcp open  ldap    OpenLDAP 2.2.X - 2.3.X
+```
+
+✅ Indicates a **web app on port 80** and **LDAP service on port 389** — likely used for login/authentication.
+
+
+## 🚨 LDAP Injection in Practice
+
+### 🧪 Testing Login with Wildcards
+
+```text
+Username: *
+Password: *
+```
+
+✅ Results in successful login → **LDAP injection confirmed**.
+
+### 🔓 Impact
+
+* **Bypass authentication**
+* **Access unauthorized accounts**
+* **Modify or delete LDAP data**
+* **Exfiltrate sensitive user information**
+
+---
+
+

@@ -3041,4 +3041,112 @@ Password: *
 
 ---
 
+# Web Mass Assignment Vulnerabilities
+
+## 🧠 Definition
+Mass assignment vulnerability occurs when an application automatically assigns input values (from forms, JSON, etc.) to model attributes **without proper filtering or validation**. This can lead to unauthorized changes in sensitive data like admin roles or user permissions.
+
+## ⚙️ How It Happens
+- Many web frameworks offer **mass-assignment features** to reduce boilerplate code.
+- Developers often **fail to whitelist attributes**, allowing attackers to manipulate fields not intended for user input.
+- Attackers can reverse-engineer parameters and modify **unprotected fields** during HTTP requests.
+
+## 🛠 Example: Ruby on Rails
+
+### Model Definition:
+```ruby
+class User < ActiveRecord::Base
+  attr_accessible :username, :email
+end
+````
+
+### Malicious Input:
+
+```json
+{
+  "user": {
+    "username": "hacker",
+    "email": "hacker@example.com",
+    "admin": true
+  }
+}
+```
+
+Even though `admin` is not in `attr_accessible`, if Rails version is misconfigured or strong parameters aren't used properly, the attacker might gain elevated privileges.
+
+## 🐍 Python Example: Asset Manager App
+
+### Registration Logic:
+
+```python
+try:
+  if request.form['confirmed']:
+    cond = True
+except:
+  cond = False
+```
+
+If `confirmed` is supplied in the POST request (e.g. `confirmed=test`), it sets the condition to `True`.
+
+### Login Check:
+
+```python
+for i, j, k in cur.execute('select * from users where username=? and password=?', (username, password)):
+  if k:
+    session['user'] = i
+    return redirect("/home", code=302)
+```
+
+* `k` represents the `confirmed` value.
+* If `confirmed=True`, the user bypasses the "pending approval" logic and gains access directly.
+
+### Exploitation Steps:
+
+1. Register a new user.
+2. Intercept the POST request using **Burp Suite**.
+3. Modify the request:
+
+   ```
+   POST /register
+   username=new&password=test&confirmed=test
+   ```
+4. Login with the credentials `new:test` — now you're approved without admin intervention.
+
+## 🛡️ Prevention Techniques
+
+### Ruby on Rails: Use Strong Parameters
+
+```ruby
+class UsersController < ApplicationController
+  def create
+    @user = User.new(user_params)
+    if @user.save
+      redirect_to @user
+    else
+      render 'new'
+    end
+  end
+
+  private
+
+  def user_params
+    params.require(:user).permit(:username, :email)
+  end
+end
+```
+
+### General Guidelines:
+
+* ✅ Use **whitelisting** to explicitly permit specific fields.
+* ❌ Avoid assigning entire request parameters (`params`) to models directly.
+* ✅ Validate and sanitize all user inputs.
+* ✅ Use framework-provided security features like:
+
+  * Rails: `strong_parameters`
+  * Django: form validation
+  * Flask: manual parameter filtering
+
+---
+
+
 

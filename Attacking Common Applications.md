@@ -3147,6 +3147,121 @@ end
   * Flask: manual parameter filtering
 
 ---
+# 🛠️ Attacking Applications Connecting to Services
+
+## 📘 Overview
+Applications often connect to backend services like databases via **connection strings**, which may include **credentials**. Improper handling or storage of these strings can lead to security risks.
+
+Exploitation involves:
+- Reverse engineering binaries (e.g., ELF executables or DLLs)
+- Extracting sensitive data (e.g., credentials in connection strings)
+- Using that data to connect to backend services
+- Attempting **lateral movement** or **privilege escalation**
+
+## 🐧 ELF Executable Analysis
+
+### 📂 Binary: `octopus_checker`
+- Found on a Linux system.
+- On execution, attempts connection to an SQL Server using ODBC.
+
+#### Example Output:
+```bash
+$ ./octopus_checker
+Program had started..
+Attempting Connection
+Connecting ...
+The driver reported the following diagnostics...
+Can't open lib 'ODBC Driver 17 for SQL Server' : file not found
+connected
+````
+
+### 🔍 Reverse Engineering with GDB (PEDA)
+
+1. Launch binary in GDB:
+
+   ```bash
+   gdb ./octopus_checker
+   ```
+
+2. Set disassembly style and disassemble main:
+
+   ```gdb
+   gdb-peda$ set disassembly-flavor intel
+   gdb-peda$ disas main
+   ```
+
+3. Search for calls related to SQL connection:
+
+   * Look for `SQLDriverConnect@plt`
+   * Trace parameters to registers, especially **RDX**
+
+4. Set breakpoint before SQLDriverConnect call:
+
+   ```gdb
+   gdb-peda$ b *0x5555555551b0
+   ```
+
+5. Run the binary to catch the credentials:
+
+   ```gdb
+   gdb-peda$ run
+   ```
+
+6. Observe `RDX` register:
+
+   ```asm
+   RDX: "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost,1401;UID=username;PWD=password;"
+   ```
+
+🎯 **Credentials leaked directly in memory!**
+
+## 🪟 DLL File Analysis (Windows)
+
+### 📁 File: `MultimasterAPI.dll`
+
+* Found on a Windows machine.
+* Is a **.NET assembly** (.NET Framework 4.6.1).
+
+### 🔧 Tools:
+
+* `Get-FileMetaData` (PowerShell): Used to inspect DLL metadata.
+* `dnSpy`: .NET decompiler for reverse engineering.
+
+#### Example PowerShell Output:
+
+```powershell
+Get-FileMetaData .\MultimasterAPI.dll
+```
+
+* Revealed endpoints and version info.
+* Noted references like:
+
+  ```
+  api/getColleagues
+  http://localhost:8081
+  ```
+
+### 🧵 Inspecting Source with dnSpy
+
+1. Load `MultimasterAPI.dll` into **dnSpy**.
+2. Navigate to:
+
+   ```
+   MultimasterAPI.Controllers -> ColleagueController
+   ```
+3. Discovered hardcoded SQL connection string:
+
+   ```csharp
+   "Data Source=localhost;Initial Catalog=master;User ID=admin;Password=secret123"
+   ```
+
+## 🧪 Post-Exploitation Techniques
+
+* ✅ **Direct Connection**: Reuse extracted credentials to access MS SQL directly.
+* ✅ **Password Spraying**: Attempt using the leaked password across other services.
+* ✅ **Lateral Movement**: Test access to other systems in the same environment.
+
+---
 
 
 

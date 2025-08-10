@@ -164,7 +164,7 @@ find / -path /proc -prune -o -type f -perm -o+w 2>/dev/null
 
 ---
 
-# 🛠 Linux Environment Enumeration — Detailed Notes
+# 🛠 Linux Environment Enumeration
 
 ## 1. **Initial Orientation**
 
@@ -417,3 +417,208 @@ searchsploit <service_name> <version>
 * Directly find public exploits to test.
 
 ---
+
+# Linux Services & Internals Enumeration
+
+## Overview
+
+* After gathering info about users, groups, files, binaries, scripts, directories, etc., next step is to **deep dive into OS internals**.
+* Key objectives:
+
+  * Identify installed services & applications.
+  * Identify running services and used sockets.
+  * Enumerate users, admins, groups.
+  * Check currently logged in and recent login users.
+  * Investigate password policies.
+  * Check if host is joined to Active Directory domain.
+  * Analyze history, logs, backups.
+  * Detect recently modified files and cron jobs.
+  * Gather IP and network info.
+  * Review `/etc/hosts` for interesting entries.
+  * Check network connections (internal/external).
+  * Identify installed useful tools (e.g. netcat, python, nmap).
+  * Access and analyze bash histories for secrets.
+  * Detect hijackable cron jobs.
+  * Identify multiple interfaces for pivoting potential.
+
+## Internals & Network Interfaces
+
+* The term **internals** means internal configuration & integrated processes.
+* Key interfaces are how system communicates externally.
+
+```bash
+ip a
+```
+
+Example output insights:
+
+* Loopback interface (`lo`) with `127.0.0.1`
+* Ethernet interface (`ens192`) with dynamic IP `10.129.203.168/16`
+* IPv6 addresses present.
+* Multiple interfaces might indicate pivot opportunities.
+
+## /etc/hosts File
+
+```bash
+cat /etc/hosts
+```
+
+Typical entries:
+
+```
+127.0.0.1 localhost
+127.0.1.1 hostname
+# IPv6 entries for localhost and multicast groups
+::1 ip6-localhost ip6-loopback
+```
+
+* Useful to map hostnames to IPs locally.
+* Sometimes may contain interesting internal network names.
+
+## User Login Information
+
+* Check last login for users to gauge usage frequency:
+
+```bash
+lastlog
+```
+
+* Look for users who **never logged in** and users with recent logins.
+
+* Analyze typical login times for patterns.
+
+* Check who is currently logged in:
+
+```bash
+w
+```
+
+* Provides info about active users, their terminals, origin IPs, and idle times.
+
+## Bash History & Command History
+
+* Review shell history for passwords or clues:
+
+```bash
+history
+```
+
+* Look for:
+
+  * Passwords passed as arguments.
+  * Use of git, cron, SSH commands.
+  * Any suspicious or privileged commands.
+
+* Search for other history files:
+
+```bash
+find / -type f \( -name '*_hist' -o -name '*_history' \) -exec ls -l {} \; 2>/dev/null
+```
+
+## Cron Jobs
+
+* Scheduled tasks may run as root or privileged users.
+* Enumerate cron jobs for potential hijacking:
+
+```bash
+ls -la /etc/cron.daily/
+```
+
+* Also check `/etc/cron.hourly/`, `/etc/cron.weekly/`, `/etc/crontab`.
+* Look for scripts with weak permissions or relative paths.
+
+## Proc Filesystem
+
+* `/proc` is a virtual filesystem providing real-time system/process info.
+* Can inspect running processes, kernel parameters, system memory, devices.
+* Use for reconnaissance of system internals.
+
+```bash
+find /proc -name cmdline -exec cat {} \; 2>/dev/null | tr " " "\n"
+```
+
+## Installed Packages
+
+* List all installed packages (Debian/Ubuntu example):
+
+```bash
+apt list --installed | tr "/" " " | cut -d" " -f1,3 | sed 's/[0-9]://g' | tee -a installed_pkgs.list
+```
+
+* Helps identify potentially vulnerable or exploitable software versions.
+
+## Sudo Version
+
+* Check sudo version for known vulnerabilities:
+
+```bash
+sudo -V
+```
+
+## Binaries on System
+
+* Check common executable directories:
+
+```bash
+ls -l /bin /usr/bin /usr/sbin/
+```
+
+* Important to find potentially exploitable binaries or setuid programs.
+
+## GTFObins Check
+
+* Compare installed packages/binaries with known exploitable binaries:
+
+```bash
+for i in $(curl -s https://gtfobins.github.io/ | html2text | cut -d" " -f1 | sed '/^[[:space:]]*$/d'); do
+  if grep -q "$i" installed_pkgs.list; then
+    echo "Check GTFO for: $i"
+  fi
+done
+```
+
+## Using strace for Tracing Syscalls
+
+* `strace` can trace program syscalls and signals.
+* Useful for:
+
+  * Understanding program behavior.
+  * Detecting system calls accessing files, network, credentials.
+
+Example:
+
+```bash
+strace ping -c1 10.129.112.20
+```
+
+* Can reveal network socket usage, file opens, and other internals.
+
+## Configuration Files & Scripts
+
+* Configuration files often reveal service setups, credentials, paths:
+
+```bash
+find / -type f \( -name '*.conf' -o -name '*.config' \) -exec ls -l {} \; 2>/dev/null
+```
+
+* Search for scripts that might run regularly or have exploitable permissions:
+
+```bash
+find / -type f -name "*.sh" 2>/dev/null | grep -v "src\|snap\|share"
+```
+
+---
+
+## Running Services & Processes
+
+* Check running processes by user (e.g., root):
+
+```bash
+ps aux | grep root
+```
+
+* Identify important services running with high privileges.
+* Check if any scripts or binaries with weak permissions are running.
+
+---
+

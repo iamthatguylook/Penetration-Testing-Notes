@@ -164,4 +164,3 @@ find / -path /proc -prune -o -type f -perm -o+w 2>/dev/null
 
 ---
 
-If you want, I can also make a **privilege escalation cheat sheet** from this so it’s a quick step-by-step playbook for real use. That would be a more condensed operational version of these notes.

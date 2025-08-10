@@ -164,3 +164,256 @@ find / -path /proc -prune -o -type f -perm -o+w 2>/dev/null
 
 ---
 
+# 🛠 Linux Environment Enumeration — Detailed Notes
+
+## 1. **Initial Orientation**
+
+When you first get access to a machine (reverse shell, SSH, etc.), it’s important to know **who you are, where you are, and what you can do**.
+
+```bash
+whoami
+```
+
+* Shows the current username.
+* If it’s `root`, you already have full control.
+* If it’s a system account (`www-data`, `nobody`), you’ll likely need privilege escalation.
+
+```bash
+id
+```
+
+* Displays UID, GID, and group memberships.
+* Check if you belong to privileged groups like:
+
+  * `sudo` → can run commands as root
+  * `docker` → can escape to host
+  * `lxd` → can escalate via container mounting
+  * `adm` → can read `/var/log` (possible creds in logs)
+
+```bash
+hostname
+```
+
+* Machine’s network name.
+* Useful for pivoting in multi-host networks — can reveal naming conventions.
+
+```bash
+ifconfig` or `ip a
+```
+
+* Lists network interfaces, assigned IPs, and MAC addresses.
+* Look for multiple interfaces (may indicate different networks to pivot into).
+
+```bash
+sudo -l
+```
+
+* Shows which commands you can run with `sudo` **without** a password.
+* Dangerous entries:
+
+  * `ALL` → full root
+  * `/bin/bash` or `/bin/sh` → instant root shell
+  * Scripts or binaries you can modify → escalation via privilege abuse
+
+## 2. **OS & Kernel Information**
+
+Determining OS and kernel helps you **target known vulnerabilities**.
+
+```bash
+cat /etc/os-release
+```
+
+* Lists OS name, version, codename.
+* Useful for finding OS-specific privilege escalation exploits.
+
+```bash
+uname -a
+```
+
+* Shows kernel version and architecture.
+* Vulnerable kernels may have public exploits (search in `searchsploit`).
+
+💡 Example:
+Kernel `5.4.0-42-generic` → Search: `searchsploit linux kernel 5.4.0`
+
+## 3. **Environment Variables & PATH**
+
+Knowing `$PATH` tells you **where the shell looks for binaries** — important for path hijacking attacks.
+
+```bash
+echo $PATH
+```
+
+* If current directory `.` appears before `/usr/bin`, you could create malicious scripts with the same name as common commands.
+
+```bash
+env
+```
+
+* Dumps all environment variables.
+* Things to look for:
+
+  * `USER`, `HOME` — user info
+  * `SHELL` — current shell
+  * `HISTFILE` — bash history file
+  * `LD_PRELOAD`, `LD_LIBRARY_PATH` — potential shared library injection points
+## 4. **System Hardware Info**
+
+Sometimes, system type matters for container escapes, virtual machine exploits, or CPU bugs.
+
+```bash
+lscpu
+```
+
+* Architecture (x86\_64, ARM, etc.)
+* Hypervisor vendor (e.g., KVM, VMware)
+* Number of cores (useful for stress testing or DoS attacks)
+
+## 5. **Available Shells**
+
+```bash
+cat /etc/shells
+```
+
+* Lists installed shells.
+* If `bash` is not available but `sh` or `zsh` is, you may need to adapt payloads.
+* May find `rbash` (restricted shell) — can look for breakout methods.
+
+## 6. **Security Mechanisms**
+
+```bash
+lsmod
+```
+
+* Check loaded kernel modules (may reveal security tools).
+
+```bash
+ps aux
+```
+
+* Check for processes like:
+
+  * `fail2ban` → brute-force protection
+  * `auditd` → logs system calls
+  * `snort` → IDS
+  * `tripwire` → file integrity monitoring
+
+Also check:
+
+```bash
+sestatus         # SELinux status
+aa-status        # AppArmor profiles
+ufw status       # Firewall rules
+```
+
+## 7. **Drives & File Systems**
+
+```bash
+lsblk
+```
+
+* Lists all storage devices and partitions.
+
+```bash
+df -h
+```
+
+* Shows mounted partitions and free space.
+* Writable mounts (especially `/mnt`, `/media`) may allow placing binaries or scripts for escalation.
+
+```bash
+cat /etc/fstab
+```
+
+* Lists persistent mounts.
+* Sometimes contains plaintext credentials for NFS/SMB shares.
+
+## 8. **Networking**
+
+```bash
+route
+```
+
+* Shows the routing table.
+* A `0.0.0.0` route is the default gateway (often another machine to target).
+
+```bash
+cat /etc/resolv.conf
+```
+
+* Shows DNS servers — can lead to internal DNS enumeration.
+
+```bash
+arp -a
+```
+
+* Lists nearby devices on the LAN (possible lateral movement targets).
+
+## 9. **Users & Groups**
+
+```bash
+cat /etc/passwd
+```
+
+* Lists all system accounts.
+* Look for unusual accounts with `/bin/bash` (means they can log in).
+
+```bash
+grep "sh$" /etc/passwd
+```
+
+* Quickly filter only accounts with shell access.
+
+```bash
+cat /etc/group
+```
+
+* Shows group memberships.
+* If you’re in `docker`, `lxd`, or `adm`, you might have escalation paths.
+
+```bash
+ls /home
+```
+
+* Lists home directories — good place to check for `.ssh` keys or configs.
+
+## 10. **Sensitive Files**
+
+```bash
+find / -type f -name "*.conf" 2>/dev/null
+find / -type f -name "*.config" 2>/dev/null
+```
+
+* Config files may store DB passwords, API tokens, etc.
+
+## 11. **Hidden Files & Directories**
+
+```bash
+find / -type f -name ".*" 2>/dev/null
+find / -type d -name ".*" 2>/dev/null
+```
+
+* Look for `.git`, `.ssh`, `.env`, `.bash_history` — often store secrets.
+
+## 12. **Temporary Files**
+
+```bash
+ls -l /tmp /var/tmp /dev/shm
+```
+
+* `/tmp` → cleared on reboot (\~10 days)
+* `/var/tmp` → persists longer (\~30 days)
+* `/dev/shm` → RAM disk, fast storage (also good for hiding malicious files)
+
+## 13. **Quick Exploit Check**
+
+Once OS, kernel, and service versions are known:
+
+```bash
+searchsploit <kernel_version>
+searchsploit <service_name> <version>
+```
+
+* Directly find public exploits to test.
+
+---

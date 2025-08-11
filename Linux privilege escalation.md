@@ -606,9 +606,6 @@ find / -type f \( -name '*.conf' -o -name '*.config' \) -exec ls -l {} \; 2>/dev
 ```bash
 find / -type f -name "*.sh" 2>/dev/null | grep -v "src\|snap\|share"
 ```
-
----
-
 ## Running Services & Processes
 
 * Check running processes by user (e.g., root):
@@ -621,4 +618,71 @@ ps aux | grep root
 * Check if any scripts or binaries with weak permissions are running.
 
 ---
+
+# Credential Hunting
+
+When enumerating a system, note down any **credentials** you find.  
+They can be useful for:
+- Escalating privileges (to other users or root)
+- Accessing databases
+- Accessing other systems in the environment
+
+## Common Locations for Credentials
+
+- **Configuration files**: `.conf`, `.config`, `.xml`
+- **Shell scripts**
+- **Bash history**: `.bash_history`
+- **Backup files**: `.bak`
+- **Database files**
+- **Plain text files**
+
+
+## /var Directory & Web Root
+
+- `/var` often contains the **web root** for the web server.
+- May contain database credentials or other sensitive information.
+- Example: WordPress config file with MySQL credentials
+
+```bash
+grep 'DB_USER\|DB_PASSWORD' wp-config.php
+````
+
+## Searching for Config Files
+
+Search for config files across the system (excluding `/proc`):
+
+```bash
+find / ! -path "*/proc/*" -iname "*config*" -type f 2>/dev/null
+```
+
+Example results:
+
+```
+/etc/ssh/ssh_config
+/etc/ssh/sshd_config
+/etc/python3/debian_config
+/etc/kbd/config
+/etc/manpath.config
+/boot/config-4.4.0-116-generic
+...
+```
+
+## SSH Keys
+
+* Look for **SSH private keys** — they may belong to more privileged users or allow access to other hosts.
+* Check `known_hosts` to identify previously connected systems for potential **lateral movement**.
+
+Example:
+
+```bash
+ls ~/.ssh
+```
+
+* **`id_rsa`** → Private key
+* **`id_rsa.pub`** → Public key
+* **`known_hosts`** → Past host connections
+
+---
+
+
 

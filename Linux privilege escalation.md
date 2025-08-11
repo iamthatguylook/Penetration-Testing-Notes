@@ -684,5 +684,91 @@ ls ~/.ssh
 
 ---
 
+# Path Abuse
+
+**PATH** is an environment variable that specifies directories where executables can be located.  
+It allows running commands without specifying the full absolute path.
+
+Example:
+```bash
+cat /tmp/test.txt
+# Instead of
+/bin/cat /tmp/test.txt
+````
+
+Check the current PATH:
+
+```bash
+env | grep PATH
+echo $PATH
+```
+
+Example output:
+
+```
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+```
+
+## Exploiting PATH for Privilege Escalation
+
+### 1. Creating a Malicious Script in a PATH Directory
+
+If we place a script in any directory listed in `$PATH`, it can be run from anywhere.
+
+Example:
+
+```bash
+pwd && conncheck
+# Output from /usr/local/sbin/conncheck
+```
+
+Even when in `/tmp`:
+
+```bash
+pwd && conncheck
+# Still runs the script from /usr/local/sbin
+```
+
+### 2. Adding Current Directory (.) to PATH
+
+By adding `.` to the PATH, binaries in the current directory are executed first.
+
+Example:
+
+```bash
+PATH=.:$PATH
+export PATH
+echo $PATH
+```
+
+Output:
+
+```
+.:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+```
+
+### 3. Replacing Common Commands
+
+If `. ` is in PATH, you can create malicious versions of common binaries (e.g., `ls`) for command hijacking.
+
+Example:
+
+```bash
+touch ls
+echo 'echo "PATH ABUSE!!"' > ls
+chmod +x ls
+ls
+```
+
+Output:
+
+```
+PATH ABUSE!!
+```
+
+---
+
+
+
 
 

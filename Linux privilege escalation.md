@@ -856,3 +856,81 @@ sudo su
 
 ---
 
+# Escaping Restricted Shells
+
+A **restricted shell** is a type of shell that limits the user's ability to execute commands. Users are only allowed to run specific commands or access certain directories. This is often used in enterprise networks to prevent accidental or intentional system damage.  
+
+Common restricted shells include:  
+- **rbash** (Restricted Bourne Shell)  
+- **rksh** (Restricted Korn Shell)  
+- **rzsh** (Restricted Z Shell)  
+
+## Types of Restricted Shells
+
+### RBASH
+- A restricted version of the Bourne shell.  
+- Prevents changing directories, setting/modifying environment variables, or executing commands outside allowed directories.  
+- Used for basic restrictions on users.  
+
+### RKSH
+- Restricted Korn shell.  
+- Prevents executing commands in other directories, creating/modifying functions, and modifying the environment.  
+- Offers slightly more flexibility than rbash.  
+
+### RZSH
+- Restricted Z shell.  
+- Prevents running scripts, defining aliases, and modifying the shell environment.  
+- More flexible but still controlled.  
+
+## Use Case Example
+- **External partners** → assigned to **rbash** for minimal access (e.g., email, file sharing).  
+- **Contractors** → assigned to **rksh** for limited advanced access (e.g., DB or web servers).  
+- **Employees** → assigned to **rzsh** for running specific applications/scripts.
+
+## Escaping Techniques
+
+### 1. Command Injection
+- Exploiting arguments passed to allowed commands.  
+- Example (restricted to `ls -l`):  
+  ```bash
+  ls -l `pwd`
+  ```
+
+* Injects `pwd` into the command execution.
+* Bypasses restrictions to execute `pwd`.
+
+### 2. Command Substitution
+
+* Using backticks (`` ` ``) or `$()` to execute commands.
+* Example:
+
+  ```bash
+  ls -l $(whoami)
+  ```
+
+### 3. Command Chaining
+
+* Using metacharacters like `;` or `|` to chain commands.
+* Example:
+
+  ```bash
+  ls -l; id
+  ```
+
+### 4. Environment Variables
+
+* Overwriting or creating variables used by the shell.
+* Example: modifying `$PATH` to point to user-controlled directories with binaries.
+
+### 5. Shell Functions
+
+* Defining functions to execute restricted commands indirectly.
+* Example:
+
+  ```bash
+  mysh() { /bin/sh; }
+  mysh
+  ```
+
+---
+

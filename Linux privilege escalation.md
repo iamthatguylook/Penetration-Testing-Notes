@@ -934,3 +934,76 @@ Common restricted shells include:
 
 ---
 
+# 🔑 Special Permissions in Linux (setuid & setgid)
+
+Linux files and programs have **permissions** that control who can read, write, or execute them. But there are **special permissions** that go beyond the normal `rwx`.
+
+These are:
+
+* **setuid (Set User ID)**
+* **setgid (Set Group ID)**
+
+They are represented with an **s** instead of the usual **x** in file permissions.
+
+## 1. ✅ Set User ID (setuid)
+
+* **What it does**:
+  When a file/program has the **setuid bit set**, anyone who runs that file will **temporarily gain the permissions of the file’s owner**.
+
+  * Usually, the owner is **root**.
+  * This means a normal user can execute the program with **root privileges**.
+
+* **How it looks**:
+
+  ```
+  -rwsr-xr-x 1 root root 54256 May 17  2017 /usr/bin/passwd
+  ```
+
+  Notice the **`s`** in place of the **x** → `rws` instead of `rwx`.
+
+* **Finding setuid binaries**:
+
+  ```bash
+  find / -user root -perm -4000 -exec ls -ldb {} \; 2>/dev/null
+  ```
+
+## 2. ✅ Set Group ID (setgid)
+
+* **What it does**:
+  When a file/program has the **setgid bit set**, anyone who runs it will **temporarily gain the permissions of the file’s group**.
+
+  * Example: If a program is owned by group `admin`, a normal user will run it as if they are in the `admin` group.
+
+* **How it looks**:
+
+  ```
+  -rwsr-sr-x 1 root root 85832 Nov 30  2017 /usr/lib/snapd/snap-confine
+  ```
+
+  Notice the **`s`** in the **group execute field**.
+
+* **Practical use**:
+
+  * Helps shared applications manage files with group permissions.
+  * Example: If multiple users need access to files in a project directory, setgid ensures new files inherit the **group ID** instead of the user’s default group.
+
+* **Finding setgid binaries**:
+
+  ```bash
+  find / -uid 0 -perm -6000 -type f 2>/dev/null
+  ```
+
+
+## 3. 🚩 Security Implications
+
+* **Why risky?**
+
+  * Any misconfigured or vulnerable setuid/setgid binary = easy privilege escalation.
+  * Attackers can search for these binaries, reverse engineer them, and exploit them.
+
+* **Real-world attacks**:
+
+  * Exploiting `/usr/bin/screen`, `/usr/bin/pkexec`, or old versions of `passwd`.
+  * Using GTFOBins (a known database of binaries that can be abused for privilege escalation).
+
+---

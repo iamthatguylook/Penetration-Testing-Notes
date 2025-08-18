@@ -1063,7 +1063,7 @@ User sysadm may run the following commands on NIX02:
 
 ---
 
-# Privileged Groups Exploitation Notes
+# Privileged Groups Exploitation
 
 ## LXC / LXD
 - **Overview:**  

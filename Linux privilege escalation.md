@@ -1731,7 +1731,7 @@ kubectl --token=$TOKEN --certificate-authority=ca.crt --server=https://<API_SERV
 
 ---
 
-# 🌀 Logrotate Overview and Exploitation Notes
+# 🌀 Logrotate 
 
 ## 📘 What is Logrotate?
 Logrotate is a Linux utility designed to manage log files by:

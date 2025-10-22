@@ -1960,7 +1960,7 @@ uid=0(root) gid=0(root) groups=0(root)
 
 ---
 
-# Kernel Exploits\
+# Kernel Exploits
 
 * **What:** Kernel-level exploits leverage kernel vulnerabilities to run code as `root`.
 

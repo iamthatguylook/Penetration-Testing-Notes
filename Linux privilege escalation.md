@@ -2513,3 +2513,99 @@ id
 ```
 
 ---
+
+# 🛡️ Linux Hardening 
+
+Proper hardening reduces or eliminates local privilege escalation risks. Key areas to focus on:
+
+
+## 🔄 Updates and Patching
+
+- Keep kernel and packages up to date.
+- Use automated tools:
+  - Ubuntu/Debian: `unattended-upgrades`
+  - Red Hat/CentOS: `yum-cron`
+
+
+## ⚙️ Configuration Management
+
+- Audit writable files and SUID binaries:
+  ```bash
+  find / -perm -4000 -type f 2>/dev/null
+  ```
+- Use absolute paths in cron and sudo configs.
+- Avoid storing plaintext credentials in world-readable files.
+- Clean up:
+  ```bash
+  rm ~/.bash_history
+  ```
+- Restrict access to custom libraries.
+- Remove unused packages/services:
+  ```bash
+  apt purge <package>
+  ```
+- Consider enabling SELinux:
+  ```bash
+  sudo setenforce 1
+  ```
+
+## 👥 User Management
+
+- Limit user/admin accounts.
+- Log and monitor login attempts.
+- Enforce strong password policies:
+  - Use `/etc/security/opasswd` with PAM.
+- Restrict group and sudo access:
+  ```bash
+  visudo
+  ```
+- Rotate passwords regularly.
+
+## 🧰 Automation & Monitoring Tools
+
+- Use tools like:
+  - Puppet
+  - SaltStack
+  - Zabbix
+  - Nagios
+- Zabbix example: checksum verification
+  ```bash
+  vfs.file.cksum[/usr/bin/sensitive_binary]
+  ```
+  
+## 🔍 Auditing & Compliance
+
+- Perform regular audits using standards:
+  - DISA STIGs
+  - ISO27001, PCI-DSS, HIPAA
+- Use tools like Lynis:
+  ```bash
+  git clone https://github.com/CISOfy/lynis
+  cd lynis
+  ./lynis audit system
+  ```
+
+### Lynis Output Highlights
+- Warnings:
+  - Incorrect cronjob permissions
+  - Unsynchronized system time
+- Suggestions:
+  - Set GRUB password
+  - Disable core dumps
+  - Run `pwck` to fix password file
+  - Configure encryption rounds
+
+
+## ✅ Lynis Scan Summary
+
+- Hardening Index: `60`
+- Tests Performed: `256`
+- Modules:
+  - Security Audit ✅
+  - Vulnerability Scan ✅
+- Files:
+  - `/home/mrb3n/lynis.log`
+  - `/home/mrb3n/lynis-report.dat`
+
+---
+

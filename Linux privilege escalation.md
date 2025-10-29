@@ -2290,8 +2290,6 @@ sudo /usr/bin/python3 mem_status.py
 # uid=0(root) gid=0(root) groups=0(root)
 ```
 
----
-
 ## 3️⃣ PYTHONPATH Environment Variable
 
 ### Description:

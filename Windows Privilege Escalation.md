@@ -129,3 +129,230 @@ MatchingRule: c:\windows\system32\cmd.exe
 * Indicates the presence of **AppLocker enforcement** that must be bypassed.
 
 ---
+
+Below is a clean, organized **Markdown note set** summarizing the key concepts and commands from your Windows privilege‑escalation initial enumeration section.
+You can drop this directly into Obsidian/Notion/CherryTree/etc.
+
+---
+
+# Initial Enumeration Notes
+
+## 🎯 Goal
+
+After obtaining a low‑privileged shell on a Windows host, enumerate the system to identify paths to escalate to:
+
+* **NT AUTHORITY\SYSTEM**
+* **Local Administrator**
+* **Any user in the Administrators group**
+* **Domain users with local admin**
+* **Domain Admins**
+
+Enumeration provides situational awareness to identify vulnerabilities, misconfigurations, and credential exposure.
+
+## 🔍 Key Areas of Windows Enumeration
+
+## 1. **System Information**
+
+### 🔧 Tasklist — Running Processes & Services
+
+```cmd
+tasklist /svc
+```
+
+* Identify unusual processes.
+* Look for services running as **SYSTEM** or **Administrator**.
+* Non‑standard apps = potential escalation (e.g., FileZilla, custom services).
+
+### 📝 Know common Windows processes:
+
+* `smss.exe`
+* `csrss.exe`
+* `winlogon.exe`
+* `lsass.exe`
+* `svchost.exe`
+
+## 2. **Environment Variables**
+
+```cmd
+set
+```
+
+### Look for:
+
+* `PATH` misconfigurations → DLL hijacking potential.
+* Mapped home drives or shares.
+* Roaming profiles: persistence via `Startup` folder.
+
+## 3. **Detailed System Configuration**
+
+### Systeminfo
+
+```cmd
+systeminfo
+```
+
+Reveals:
+
+* OS + version + build
+* Patch level (important for exploit discovery)
+* Boot time (long uptime → likely unpatched)
+* Manufacturer (VM detection)
+* Hotfixes (unless hidden)
+* Network adapters
+
+## 4. **Patch & Hotfix Enumeration**
+
+If `systeminfo` hides hotfixes:
+
+### WMIC:
+
+```cmd
+wmic qfe
+```
+
+### PowerShell:
+
+```powershell
+Get-HotFix
+```
+
+Compare missing patches against known privilege-escalation CVEs.
+
+## 5. **Installed Software**
+
+### WMIC:
+
+```cmd
+wmic product get name
+```
+
+### PowerShell:
+
+```powershell
+Get-WmiObject -Class Win32_Product | select Name, Version
+```
+
+What to look for:
+
+* Software with known exploits.
+* Tools storing credentials (e.g., FileZilla, Putty, SQL clients).
+* Services running vulnerable or outdated versions.
+
+## 6. **Network Information**
+
+### Netstat
+
+```cmd
+netstat -ano
+```
+
+Identify:
+
+* Internal‑only services exploitable from local shell.
+* High‑value ports: `1433` (SQL), `21` (FTP), `80`, `445`, `3389`.
+
+## 7. **User & Group Enumeration**
+
+### Logged‑in Users
+
+```cmd
+query user
+```
+
+### Current User
+
+```cmd
+whoami
+echo %USERNAME%
+```
+
+### User Privileges
+
+```cmd
+whoami /priv
+```
+
+Key escalation‑relevant privileges:
+
+* **SeImpersonatePrivilege**
+* **SeAssignPrimaryTokenPrivilege**
+* **SeBackupPrivilege**
+* **SeRestorePrivilege**
+
+#### Group Memberships
+
+```cmd
+whoami /groups
+```
+
+## 8. **Local Users**
+
+```cmd
+net user
+```
+
+What to check:
+
+* Reused naming patterns (e.g., `bob` vs `bob_adm`)
+* Presence of service accounts
+* Users with admin‑like names
+
+
+## 9. **Local Groups**
+
+```cmd
+net localgroup
+```
+
+Inspect members of high‑priv groups:
+
+```cmd
+net localgroup administrators
+```
+
+Look for:
+
+* Non‑standard users
+* Domain users with local admin access
+
+## 10. **Password & Account Policy**
+
+```cmd
+net accounts
+```
+
+Reveals:
+
+* Password length
+* Lockout settings
+* Password expiration
+* Weak policy ⇒ password spraying opportunity
+
+
+## 🧭 What to Look For During Enumeration
+
+### 🔓 **Misconfigurations**
+
+* Writable directories in PATH
+* Services running as SYSTEM but with weak permissions
+* Unquoted service paths
+* Startup folder access
+
+### 🔑 **Credential Exposure**
+
+* User home directories containing:
+
+  * `.txt` or `.xlsx` files
+  * Scripts with passwords
+  * Private keys
+  * Saved session files
+
+### 🕵️ **Escalation Indicators**
+
+* Long system uptime → likely unpatched
+* Tools like SQL Server, FileZilla, VMware Tools
+* Privileged tokens (Impersonation)
+* Logged‑in privileged users
+
+---
+

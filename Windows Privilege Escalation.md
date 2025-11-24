@@ -356,3 +356,179 @@ Reveals:
 
 ---
 
+Here is a **clean, structured, easy-to-study markdown version** of your notes.
+
+---
+
+# Communication With Processes
+
+## 1. Overview
+
+Privilege escalation often involves analyzing running processes and how they communicate. Even non-administrator processes can provide paths to higher privileges—especially if they run with impersonation privileges or insecure configurations.
+
+
+## 2. Access Tokens (Windows)
+
+* Access tokens define the **security context** of a process or thread.
+* A token contains:
+
+  * User identity
+  * Privileges
+  * Group memberships
+* When a user logs in, Windows issues a token.
+* Every process the user interacts with receives a copy of this token to determine access rights.
+
+## 3. Enumerating Network Services
+
+Processes frequently communicate through **network sockets** (DNS, HTTP, SMB, etc.).
+
+### 🔍 Using `netstat` to View Active Connections
+
+```cmd
+netstat -ano
+```
+
+Key fields:
+
+* **Local Address:** where service is listening
+* **Foreign Address:** remote connection target
+* **PID:** process associated with the connection
+* **State:** LISTENING, ESTABLISHED, etc.
+
+### 🔑 What to Look For
+
+Look for services listening on:
+
+* **127.0.0.1** or **::1** (loopback interfaces)
+* **NOT listening** on:
+
+  * The real IP address
+  * 0.0.0.0 (all interfaces)
+
+Services bound only to localhost are often **poorly secured** because admins assume “no one external can access them.”
+
+### Example: Vulnerable Local Port
+
+* Port **14147** → FileZilla Admin interface
+* Potential to:
+
+  * Extract stored FTP credentials
+  * Create an FTP share pointing to `C:\`
+  * Gain access as the FileZilla service account (often with high privileges)
+
+
+## 4. More Examples of Network-Based Privilege Escalation
+
+### 🔸 Splunk Universal Forwarder
+
+* Default configuration: **no authentication**
+* Allows remote deployment of applications
+* Runs as **SYSTEM**
+* Can lead to **remote code execution (RCE)**
+
+### 🔸 Erlang Port (25672)
+
+Used by distributed systems such as:
+
+* **RabbitMQ**
+* **CouchDB**
+* **SolarWinds**
+
+Issues:
+
+* Uses a **cookie** for authentication
+* Cookies often weak:
+
+  * Example: RabbitMQ uses default cookie `rabbit`
+* Cookie stored in world-readable config files → privilege escalation
+
+
+## 5. Named Pipes (Inter-Process Communication)
+
+Named pipes allow processes to communicate via shared memory.
+
+### Types
+
+* **Anonymous pipes:** Simple, one-way
+* **Named pipes:** Two-way communication, persistent name (e.g. `\\.\pipe\msagent_12`)
+
+### Named Pipes in Cobalt Strike
+
+Example workflow:
+
+1. Beacon creates pipe: `\\.\pipe\msagent_12`
+2. Beacon injects command into another process
+3. Output written to the pipe
+4. Server reads from pipe and displays results
+
+Attackers often rename pipes to look legitimate (e.g., `mojo`, similar to Chrome's Mojo IPC).
+
+## 6. Enumerating Named Pipes
+
+### Using Sysinternals `PipeList`
+
+```cmd
+pipelist.exe /accepteula
+```
+
+Shows:
+
+* Pipe name
+* Number of instances
+* Max allowed instances
+
+### Using PowerShell
+
+```powershell
+gci \\.\pipe\
+```
+
+## 7. Checking Pipe Permissions
+
+Use **Accesschk** to view DACLs (permissions).
+
+### Example: LSASS named pipe
+
+```cmd
+accesschk.exe /accepteula \\.\Pipe\lsass -v
+```
+
+Expected:
+
+* Only **Administrators** have full access
+* Everyone else: limited read/write attributes
+
+---
+
+# 8. Named Pipe Privilege Escalation Example
+
+## WindscribeService Example
+
+### Step 1: Find writable pipes
+
+```cmd
+accesschk.exe -w \pipe\* -v
+```
+
+### Step 2: Inspect specific pipe
+
+```cmd
+accesschk.exe -accepteula -w \pipe\WindscribeService -v
+```
+
+Finding:
+
+* `Everyone` has **FILE_ALL_ACCESS**
+* Means any authenticated user can **read, write, and execute** operations on the pipe
+
+### Result:
+
+This allows an attacker to:
+
+* Interact directly with the service
+* Abuse insecure functionality
+* Execute code as the **service account**
+* Often escalates to **SYSTEM**
+
+---
+

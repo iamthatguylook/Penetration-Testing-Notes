@@ -356,10 +356,6 @@ Reveals:
 
 ---
 
-Here is a **clean, structured, easy-to-study markdown version** of your notes.
-
----
-
 # Communication With Processes
 
 ## 1. Overview

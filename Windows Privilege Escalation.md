@@ -494,9 +494,7 @@ Expected:
 * Only **Administrators** have full access
 * Everyone else: limited read/write attributes
 
----
-
-# 8. Named Pipe Privilege Escalation Example
+## 8. Named Pipe Privilege Escalation Example
 
 ## WindscribeService Example
 

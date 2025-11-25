@@ -528,3 +528,155 @@ This allows an attacker to:
 
 ---
 
+# Windows Privileges Overview
+
+## **1. What Are Windows Privileges?**
+
+* Privileges = rights allowing specific system-level actions (load drivers, debug processes, backup files, impersonate users, etc.).
+* Different from *access rights*, which control access to objects (files, registry, services).
+* Privileges are stored in local/domain security databases and added to the **access token** at login.
+* Most privileges start **Disabled** and must be enabled before use.
+
+### **Why We Care**
+
+* Many privileges can be **abused for privilege escalation** to:
+
+  * Local Administrator
+  * SYSTEM
+  * Domain Admin
+
+
+## **2. Windows Authorization Basics**
+
+* Windows uses **Security Principals** (users, computers, groups, processes).
+* Each principal has a **SID** (Security Identifier).
+* Access to an object is decided by comparing:
+
+  * Your **access token** (User SID, Group SIDs, Privileges)
+  * Object’s **DACL** (access rights defined in ACEs)
+
+**Attack Goal:**
+Find a way to insert yourself into this authorization chain or abuse privileges to elevate.
+
+
+## **3. Privileged Groups (High-Value Targets)**
+
+### **🔥 Top Escalation-Relevant Groups**
+
+| Group                                                  | Why Important                                               |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| **Administrators / Domain Admins / Enterprise Admins** | Full control everywhere                                     |
+| **Backup Operators**                                   | Can backup SAM, NTDS.dit, registry → basically Domain Admin |
+| **Server Operators**                                   | Manage services, SMB, backups                               |
+| **Print Operators**                                    | Can load malicious printer drivers on DCs                   |
+| **Hyper-V Admins**                                     | Can control virtual DCs → effectively Domain Admin          |
+| **Account Operators**                                  | Modify non-protected accounts/groups                        |
+| **Remote Desktop Users**                               | Often granted logon rights → lateral movement               |
+| **Remote Management Users**                            | PSRemoting access to DCs                                    |
+| **DNS Admins**                                         | Can load DLLs → potential SYSTEM execution                  |
+
+⚠ Many orgs mistakenly add “normal” users to these groups → easy escalation.
+
+## **4. Key Privileges to Know (Most Abusable)**
+
+### **🔥 High-Risk Privileges (commonly exploited)**
+
+| Privilege                         | Use / Abuse                                       |
+| --------------------------------- | ------------------------------------------------- |
+| **SeImpersonatePrivilege**        | Potato attacks (Juicy/PrintSpoofer/etc.) → SYSTEM |
+| **SeDebugPrivilege**              | Open any process → inject → SYSTEM                |
+| **SeBackupPrivilege**             | Copy protected files (SAM, SYSTEM, NTDS.dit)      |
+| **SeRestorePrivilege**            | Overwrite protected files                         |
+| **SeTakeOwnershipPrivilege**      | Take ownership of any file or object              |
+| **SeLoadDriverPrivilege**         | Load unsigned kernel drivers                      |
+| **SeTcbPrivilege**                | “Act as part of OS” — extremely dangerous         |
+| **SeCreateSymbolicLinkPrivilege** | Abuse symlink races                               |
+| **SeShutdownPrivilege**           | Can shut down DCs (DoS)                           |
+
+
+
+## **5. How to View Assigned Privileges**
+
+```cmd
+whoami /priv
+```
+
+### **Admin (Elevated)**
+
+* Many privileges assigned but mostly **Disabled** until enabled.
+* Examples: SeDebugPrivilege, SeBackupPrivilege, SeLoadDriverPrivilege.
+
+### **Admin (Non-Elevated)**
+
+* Privileges appear restricted → **UAC filtering**.
+
+### **Standard User**
+
+* Usually only:
+
+  * SeChangeNotifyPrivilege
+  * SeIncreaseWorkingSetPrivilege
+
+## **6. Elevation Concepts**
+
+* Privileges may be:
+
+  * **Assigned but Disabled** → need to be programmatically enabled.
+  * **Assigned via Group Membership**
+  * **Restricted by UAC** until elevated console is used.
+
+* Windows has no built-in command to enable privileges → requires:
+
+  * PowerShell scripts
+  * Custom C#/C++ executables
+  * Token adjustment tools
+
+## **7. Detection (Defensive Note)**
+
+* Event ID **4672**: “Special privileges assigned to new logon”
+
+  * Great for detecting accounts suddenly receiving strong privileges.
+  * Should alert if unusual accounts have admin-level privileges.
+
+## **8. What to Look For During Enumeration**
+
+Always check:
+
+### **1. Privilege list**
+
+```
+whoami /priv
+```
+
+Especially:
+
+* SeImpersonate
+* SeDebug
+* Backup/Restore
+* TakeOwnership
+
+### **2. Group membership**
+
+```
+whoami /groups
+net user <username>
+```
+
+Look for:
+
+* Backup Operators
+* Server Operators
+* DNS Admins
+* RDP/Remote Management Users
+
+### **3. UAC status**
+
+* Token splitting can hide privileges until elevated.
+
+### **4. Local & domain GPO privilege assignments**
+
+* Can override local rights.
+
+
+---
+

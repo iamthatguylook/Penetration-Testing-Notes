@@ -91,7 +91,7 @@ Shows recently communicated hosts for each interface.
 
 ## 📦 AppLocker Policy Enumeration
 
-### `Get-AppLockerPolicy -Effective`
+### `Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections`
 
 Default rules include:
 

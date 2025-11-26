@@ -1346,3 +1346,85 @@ robocopy /B E:\Windows\NTDS C:\Tools\ntds ntds.dit
 No external tools required.
 
 ---
+
+# 📝 Event Log Readers
+
+## 🔍 Overview
+
+* When **auditing of process creation (Event ID 4688)** and **command-line logging** is enabled, Windows records detailed process execution metadata.
+* These logs can be forwarded to a SIEM (e.g., ElasticSearch) to detect suspicious activity such as:
+
+  * Enumeration commands on non-admin machines (`tasklist`, `systeminfo`, etc.)
+  * Reconnaissance (`dir`, `net view`, `type`, etc.)
+  * Lateral movement / malware spreading commands (`at`, `wmic`, `reg`, etc.)
+
+## 🎯 Purpose of Event Log Readers Group
+
+* Members **can read event logs** on the local machine.
+* Allows giving limited logging visibility to users without granting full administrative rights.
+* Useful for power users, developers, or IT staff needing log access.
+
+## 👤 Confirming Group Membership
+
+```cmd
+net localgroup "Event Log Readers"
+```
+
+Example output:
+
+```
+Alias name  : Event Log Readers
+Members     : logger
+```
+
+## ⚠️ Security Implications
+
+* Many Windows commands allow passing passwords directly in the command line.
+* If command-line logging is enabled, **passwords are recorded in the Security log**.
+* Example captured command:
+
+  ```
+  net use T: \\fs01\backups /user:tim MyStr0ngP@ssword
+  ```
+* Attackers with **Event Log Readers** membership can extract this sensitive info.
+
+
+## 🧰 Querying Event Logs
+
+## Using `wevtutil`
+
+### Search Security Log for `/user`
+
+```powershell
+wevtutil qe Security /rd:true /f:text | Select-String "/user"
+```
+
+### Using alternate credentials
+
+```cmd
+wevtutil qe Security /rd:true /f:text /r:share01 /u:julie.clay /p:Welcome1 | findstr "/user"
+```
+
+
+## Using PowerShell: `Get-WinEvent`
+
+### Filter for Event ID 4688 (process creation)
+
+```powershell
+Get-WinEvent -LogName Security |
+  where { $_.ID -eq 4688 -and $_.Properties[8].Value -like '*/user*' } |
+  Select-Object @{name='CommandLine'; expression={ $_.Properties[8].Value }}
+```
+
+⚠️ **Important:**
+Reading the *Security* log with `Get-WinEvent` requires:
+
+* Administrator privileges **OR**
+* Modified registry permissions for:
+
+  ```
+  HKLM\System\CurrentControlSet\Services\Eventlog\Security
+  ```
+* **Event Log Readers membership alone is NOT enough.**
+
+---

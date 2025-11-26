@@ -1616,3 +1616,80 @@ Add-DnsServerResourceRecordA -Name wpad -ZoneName domain.local \
 ```
 
 ---
+
+# 📝 Hyper-V Administrators — Notes
+
+## 🔍 Overview
+
+* Members of the **Hyper-V Administrators** group have full administrative access to all Hyper-V virtualization features.
+* If **Domain Controllers are virtualized**, Hyper-V admins should be treated as **Domain Admin–equivalent**, because they can:
+
+  * Clone a running Domain Controller.
+  * Mount the copied **.vhdx** disk offline.
+  * Extract **NTDS.dit**, then dump **NTLM password hashes** for *all domain accounts*.
+
+## 🛠️ Privilege Escalation Vector: Hard-Link Abuse
+
+### 🧩 Background
+
+* When a VM is deleted, **vmms.exe** (Hyper-V Virtual Machine Management Service) attempts to restore original permissions on its corresponding `.vhdx` file.
+* This operation runs as **NT AUTHORITY\SYSTEM**.
+* If we can create a **native hard link** where that `.vhdx` file used to be, we can redirect the permission restore operation to **any SYSTEM-protected file**, giving us full control.
+
+### Vulnerable scenarios:
+
+* Systems vulnerable to:
+
+  * **CVE-2018-0952**
+  * **CVE-2019-0841**
+* Or systems that have **services running as SYSTEM** which are startable by non-admin users.
+
+
+## 🧪 Example Exploit Path Using Mozilla Maintenance Service
+
+### 🎯 Target File
+
+Firefox installs:
+
+```
+C:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe
+```
+
+This service:
+
+* Runs as **NT AUTHORITY\SYSTEM**
+* Can be **started by unprivileged users**
+* Is ideal for replacing with a malicious binary once permissions are obtained.
+
+
+## 🔧 Exploitation Steps
+
+### 1. Create Native Hard Link (After VM Delete Scenario)
+
+* Use an NTFS hard-link PoC to force SYSTEM to reset permissions on a file we choose (ex: maintenanceservice.exe).
+* After this step, we gain **full permissions** on the file.
+
+### 2. Take Ownership
+
+```cmd
+takeown /F "C:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe"
+```
+
+### 3. Replace With Malicious Executable
+
+* Swap the legitimate binary with a malicious **maintenanceservice.exe** that executes any SYSTEM-level payload:
+
+  * Reverse shell
+  * Add local admin
+  * Dump SAM, etc.
+
+
+### 4. Start the Service
+
+```cmd
+sc.exe start MozillaMaintenance
+```
+
+This executes the malicious binary as **SYSTEM**, granting full privilege escalation.
+
+---

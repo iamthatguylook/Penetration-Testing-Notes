@@ -4202,4 +4202,79 @@ type C:\Users\Administrator\Desktop\flag.txt
 
 ---
 
+# 🛡 Windows Hardening
+
+## 1. Secure Clean OS Installation
+
+* Use a **custom OS image** for uniform deployment.
+* Include:
+
+  * Required apps for users.
+  * Configuration for functionality and security.
+  * Latest tested updates.
+* Removes bloatware and ensures consistent baseline for troubleshooting.
+
+
+## 2. Updates and Patching
+
+* Windows Update Orchestrator:
+
+  1. Scans host for updates.
+  2. Decides applicable updates.
+  3. Downloads & installs updates.
+  4. Finalizes updates after reboot.
+* **Enterprise deployment**: use WSUS or SCCM.
+* **Tip**: Test updates in a small environment before wide deployment.
+
+
+## 3. Configuration Management
+
+* Use **Group Policy (GPMC / Local Policy / PowerShell)** to manage:
+
+  * Security settings.
+  * Application behavior.
+  * Updates and Defender scans.
+* Active Directory recommended for enterprise.
+* Local policy usable for standalone machines.
+
+## 4. User Management
+
+* Limit **admin accounts** and unnecessary privileges.
+* Enforce **strong passwords** & rotation.
+* Enable **Two-Factor Authentication (2FA)**.
+* Monitor login attempts.
+* Avoid over-permissioned users (e.g., regular user with Domain Admin).
+
+
+## 5. Audit & Compliance
+
+* Use **STIGs**, **Microsoft Security Compliance Toolkit**, or frameworks like **ISO27001 / PCI-DSS / HIPAA**.
+* Audits check for compliance but do not replace penetration testing.
+* Conduct **manual and automated scans** for verification.
+
+
+## 6. Logging & Monitoring
+
+* **Sysmon** (Sysinternals):
+
+  * Tracks processes, network connections, file activity, logins.
+  * Logs stored in: `Applications and Service Logs\Microsoft\Windows\Sysmon\Operational`.
+* Network logs & SIEM integration improve threat detection.
+* Tools: PacketBeat, IDS/IPS, Security Onion.
+
+
+## 7. Key Hardening Measures
+
+* Enable **Secure Boot** and **BitLocker** encryption.
+* Audit **writable files, directories, and binaries**.
+* Use **absolute paths** for scheduled tasks/scripts.
+* Do **not store credentials in plaintext**.
+* Clean up **home directories & PowerShell history**.
+* Restrict modification of **custom libraries**.
+* Remove unnecessary **packages/services**.
+* Enable **Device Guard & Credential Guard** (Windows 10+).
+* Apply **Group Policy** for consistent settings.
+
+---
+
 

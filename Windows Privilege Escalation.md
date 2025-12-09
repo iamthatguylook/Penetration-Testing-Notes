@@ -2819,3 +2819,101 @@ WINLPE-WS01
 
 ---
 
+# 🔑 Credential Hunting
+
+## 📌 Importance
+- Credentials can provide:
+  - Local admin access
+  - Foothold into Active Directory domain
+  - Privilege escalation within the domain
+- Many potential sources: config files, history files, unattended installs, browser dictionaries, PowerShell credential stores.
+
+## 📂 Application Configuration Files
+- Applications may store passwords in **cleartext**.
+- Search for sensitive strings:
+```powershell
+PS C:\htb> findstr /SIM /C:"password" *.txt *.ini *.cfg *.config *.xml
+```
+- Example: IIS `web.config` may contain credentials.
+  - Default path: `C:\inetpub\wwwroot\web.config`
+  - Multiple versions may exist → search recursively.
+
+## 📖 Dictionary Files
+- Chrome dictionary may contain sensitive words added by users.
+```powershell
+PS C:\htb> gc 'C:\Users\htb-student\AppData\Local\Google\Chrome\User Data\Default\Custom Dictionary.txt' | Select-String password
+```
+
+**Output:**
+```
+Password1234!
+```
+
+## 📝 Unattended Installation Files
+- `unattend.xml` may store **auto-logon credentials** in plaintext or base64.
+- Example:
+```xml
+<AutoLogon>
+    <Password>
+        <Value>local_4dmin_p@ss</Value>
+        <PlainText>true</PlainText>
+    </Password>
+    <Enabled>true</Enabled>
+    <Username>Administrator</Username>
+</AutoLogon>
+```
+- Path: often created during OS deployment, but copies may remain.
+
+
+## 📜 PowerShell History File
+- Since PowerShell 5.0, history stored at:
+```
+C:\Users\<username>\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
+```
+
+### Confirm save path
+```powershell
+PS C:\htb> (Get-PSReadLineOption).HistorySavePath
+```
+
+**Output:**
+```
+C:\Users\htb-student\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
+```
+
+### Read history
+```powershell
+PS C:\htb> gc (Get-PSReadLineOption).HistorySavePath
+```
+
+**Example entries:**
+```
+wevtutil qe Application "/q:*[Application [(EventID=3005)]]" /f:text /rd:true /u:WEB02\administrator /p:5erv3rAdmin! /r:WEB02
+```
+
+### Read all users’ history
+```powershell
+PS C:\htb> foreach($user in ((ls C:\users).fullname)){cat "$user\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt" -ErrorAction SilentlyContinue}
+```
+
+## 🔐 PowerShell Credentials (DPAPI)
+- Credentials stored via `Export-Clixml` → encrypted with DPAPI.
+- Example script (`Connect-VC.ps1`):
+```powershell
+$encryptedPassword = Import-Clixml -Path 'C:\scripts\pass.xml'
+$decryptedPassword = $encryptedPassword.GetNetworkCredential().Password
+Connect-VIServer -Server 'VC-01' -User 'bob_adm' -Password $decryptedPassword
+```
+
+### Decrypt credentials (if running as same user)
+```powershell
+PS C:\htb> $credential = Import-Clixml -Path 'C:\scripts\pass.xml'
+PS C:\htb> $credential.GetNetworkCredential().username
+bob
+
+PS C:\htb> $credential.GetNetworkCredential().password
+Str0ng3ncryptedP@ss!
+```
+
+---
+

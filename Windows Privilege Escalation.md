@@ -2245,7 +2245,9 @@ Windows permissions can be complex. Misconfigurations can allow privilege escala
 ## 🔍 1. Permissive File System ACLs
 
 ### **Tool: SharpUp**
-
+```
+.\SharpUp.exe audit
+```
 * Checks for weak ACLs and modifiable service binaries.
 * Example finding:
 

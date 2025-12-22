@@ -1161,6 +1161,91 @@ to search for authentication-related events.
 - **LaZagne**: Supports multiple browsers for credential extraction.
 - **Potential Risk**: Stored credentials can be extracted and decrypted, exposing user accounts.
 
+---
+
+# Credential Hunting in Network Traffic
+
+Some environments still use **unencrypted protocols**, exposing credentials in **cleartext network traffic**. This allows attackers to extract usernames, passwords, hashes, and community strings from packet captures.
+
+
+## Wireshark
+
+Wireshark is a **packet analyzer** used to inspect live or captured network traffic. It supports powerful **display filters**.
+
+
+## Useful Wireshark Filters
+
+| Filter                                            | Purpose                   |
+| ------------------------------------------------- | ------------------------- |
+| `ip.addr == 56.48.210.13`                         | Filter specific IP        |
+| `tcp.port == 80`                                  | Filter by port (HTTP)     |
+| `http`                                            | Show HTTP traffic         |
+| `dns`                                             | Show DNS traffic          |
+| `icmp`                                            | Show ICMP packets         |
+| `tcp.flags.syn == 1 && tcp.flags.ack == 0`        | Detect SYN packets        |
+| `http.request.method == "POST"`                   | Find HTTP POST requests   |
+| `tcp.stream eq 53`                                | Follow a TCP conversation |
+| `eth.addr == 00:11:22:33:44:55`                   | Filter by MAC             |
+| `ip.src == 192.168.24.3 && ip.dst == 56.48.210.3` | Traffic between two hosts |
+
+
+
+## Searching for Credentials in Wireshark
+
+### Display Filter
+
+```text
+http contains "passw"
+```
+
+### GUI Method
+
+```
+Edit → Find Packet → Search for string (e.g. "passw")
+```
+
+Useful keywords:
+
+* `pass`
+* `password`
+* `username`
+* `login`
+* `auth`
+
+## Pcredz
+
+**Pcredz** automatically extracts credentials from **pcap files or live traffic**.
+
+### Supported Data
+
+* FTP usernames & passwords
+* HTTP Basic / Form credentials
+* SNMP community strings
+* POP / SMTP / IMAP credentials
+* NTLMv1 / NTLMv2 hashes
+* Kerberos AS-REQ hashes (etype 23)
+* LDAP / SMB / MSSQL credentials
+* Credit card numbers
+
+
+## Running Pcredz on a PCAP
+
+```bash
+./Pcredz -f demo.pcapng -t -v
+```
+
+### Example Output
+
+```text
+Found SNMPv2 Community string: s3cr...
+FTP User: le...
+FTP Pass: qw...
+```
+
+
+---
+
+
 # Passwd, Shadow, & Opasswd
 
 ## Authentication Mechanism

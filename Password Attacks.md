@@ -175,6 +175,135 @@ locate more tools
 ```
 locate *2john*
 ```
+
+---
+
+# Introduction to Hashcat
+
+**Hashcat** is a fast, open-source password cracking tool for **Linux, Windows, and macOS** with excellent **GPU support**.
+It supports many **hash types** and multiple **attack modes**.
+
+## General Syntax
+
+```bash
+hashcat -a <attack_mode> -m <hash_type> <hashes> [wordlist | rule | mask | ...]
+```
+
+**Options:**
+
+* `-a` → Attack mode
+* `-m` → Hash type ID
+* `<hashes>` → Hash string or file with hashes
+* Extra arguments depend on attack mode
+
+## Listing Supported Hash Types
+
+```bash
+hashcat --help
+```
+
+Example hash modes:
+
+* `0` → MD5
+* `100` → SHA1
+* `1400` → SHA2-256
+* `1700` → SHA2-512
+* `500` → MD5 Crypt
+
+---
+
+## Identifying Hash Types (hashid)
+
+```bash
+hashid -m '$1$FNr44XZC$wQxY6HHLrgrGX0e1195k.1'
+```
+
+**Example output:**
+
+* MD5 Crypt → Hashcat Mode `500`
+
+## Attack Modes Overview
+
+### Dictionary Attack (`-a 0`)
+
+Tests hashes against a wordlist.
+
+```bash
+hashcat -a 0 -m 0 e3e3ec5831ad5e7288241960e5d4fdb8 /usr/share/wordlists/rockyou.txt
+```
+
+Used when:
+
+* Passwords are common
+* Leaked databases
+* Weak password policies
+
+## Rule-Based Dictionary Attack
+
+Rules mutate words (add numbers, leetspeak, capitalization, etc.)
+
+**Rules location:**
+
+```bash
+ls -l /usr/share/hashcat/rules
+```
+
+**Example with `best64.rule`:**
+
+```bash
+hashcat -a 0 -m 0 1b0556a75770563578569ae21392630c /usr/share/wordlists/rockyou.txt -r /usr/share/hashcat/rules/best64.rule
+```
+
+## Mask Attack (`-a 3`)
+
+Brute-force attack with a **defined pattern**.
+
+### Built-in Charsets
+
+| Symbol | Meaning           |
+| ------ | ----------------- |
+| `?l`   | lowercase letters |
+| `?u`   | uppercase letters |
+| `?d`   | digits            |
+| `?s`   | symbols           |
+| `?a`   | all printable     |
+| `?h`   | hex lowercase     |
+| `?H`   | hex uppercase     |
+
+### Mask Example
+
+**Pattern:**
+
+* 1 uppercase
+* 4 lowercase
+* 1 digit
+* 1 symbol
+
+Mask:
+
+```
+?u?l?l?l?l?d?s
+```
+
+**Command:**
+
+```bash
+hashcat -a 3 -m 0 1e293d6912d074c0fd15844d803400dd '?u?l?l?l?l?d?s'
+```
+
+## Custom Charsets
+
+Define custom sets using:
+
+* `-1`, `-2`, `-3`, `-4`
+
+Then reference with:
+
+* `?1`, `?2`, `?3`, `?4`
+
+
+---
+
 # Network Services
 
 - During penetration tests, networks have various services to manage, edit, or create content, hosted with specific permissions.
